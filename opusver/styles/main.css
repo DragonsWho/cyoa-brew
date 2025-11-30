@@ -700,3 +700,261 @@ body.debug-mode #game-wrapper {
     pointer-events: none;        /* Чтобы курсор не "спотыкался" об текст внутри */
     opacity: 0.8;
 }
+
+
+
+/* ================================
+   COMPACT EDITOR STYLES (UPDATED)
+   ================================ */
+
+/* Sidebar Layout */
+.editor-sidebar {
+    background: #1a1a1a;
+    width: 320px; /* Фиксированная ширина */
+    position: fixed;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    z-index: 4000;
+    display: flex;
+    flex-direction: column;
+    box-shadow: -5px 0 20px rgba(0, 0, 0, 0.5);
+    border-left: 1px solid #333;
+}
+
+/* Синхронизация отступа для картинки */
+body.debug-mode #game-wrapper {
+    margin-right: 320px; /* Должно совпадать с шириной sidebar */
+    transition: margin-right 0.3s;
+}
+
+/* Scrollable Content Area */
+.sidebar-scroll-content {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden; /* Убираем гориз. скролл */
+    padding-bottom: 40px;
+    scrollbar-width: thin;
+    scrollbar-color: #444 #1a1a1a;
+}
+
+.editor-header {
+    background: #222;
+    padding: 10px 15px;
+    border-bottom: 1px solid #333;
+    flex-shrink: 0;
+}
+
+.editor-header h3 {
+    color: #4CAF50;
+    font-size: 1rem; 
+    margin: 0;
+}
+
+/* Common Section Styles */
+.editor-section {
+    padding: 0 10px;
+    margin-bottom: 5px;
+    border-bottom: none;
+    box-sizing: border-box; /* Важно для устранения гориз. скролла */
+    width: 100%;
+}
+
+/* Floating Label Inputs */
+.input-group {
+    position: relative;
+    margin-bottom: 8px;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.input-group input,
+.input-group textarea {
+    width: 100%;
+    background: #252525;
+    border: 1px solid #333;
+    color: #eee;
+    padding: 6px 8px;
+    padding-right: 45px; /* Место под лейбл */
+    border-radius: 4px;
+    font-size: 0.9rem;
+    font-family: inherit;
+    transition: border-color 0.2s;
+    box-sizing: border-box;
+    resize: vertical;
+}
+
+.input-group input:focus,
+.input-group textarea:focus {
+    outline: none;
+    border-color: #4CAF50;
+    background: #2a2a2a;
+}
+
+.input-label {
+    position: absolute;
+    right: 8px;
+    top: 6px;
+    color: #555;
+    font-size: 0.75rem;
+    pointer-events: none;
+    user-select: none;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+/* Compact Grid Layouts */
+.row-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.row-4 {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 4px;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.row-4 .input-group input {
+    padding-right: 5px; 
+    text-align: center;
+    padding-left: 2px;
+}
+
+.row-4 .input-label {
+    display: none; /* Прячем лейблы в сетке 4, они там не влезут */
+}
+/* Или показываем их над полем, если нужно, но лучше использовать placeholder или заголовки */
+
+/* Accordions */
+.accordion-header {
+    cursor: pointer;
+    padding: 8px 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: #4CAF50;
+    font-weight: bold;
+    font-size: 0.95rem;
+    user-select: none;
+    border-bottom: 1px solid #2a2a2a;
+}
+
+.accordion-header:hover { color: #66bb6a; }
+
+.accordion-header::after {
+    content: '▼';
+    font-size: 0.7em;
+    transition: transform 0.2s;
+}
+
+.accordion-header.collapsed::after {
+    transform: rotate(-90deg);
+}
+
+.accordion-content {
+    display: block;
+    overflow: hidden;
+    padding: 10px 0;
+}
+
+.accordion-content.collapsed {
+    display: none;
+}
+
+/* Code Editor Area */
+.code-editor {
+    width: 100%;
+    height: 300px;
+    background: #111;
+    color: #0f0;
+    font-family: 'Consolas', monospace;
+    font-size: 0.8rem;
+    border: 1px solid #333;
+    border-radius: 4px;
+    padding: 8px;
+    box-sizing: border-box;
+    white-space: pre;
+    overflow: auto;
+}
+
+/* Compact Rule Lists */
+.compact-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    width: 100%;
+}
+
+.compact-row {
+    display: grid;
+    grid-template-columns: 35% 1fr 24px;
+    gap: 4px;
+    align-items: center;
+    box-sizing: border-box;
+}
+
+.compact-row select,
+.compact-row input {
+    background: #222;
+    border: 1px solid #333;
+    color: #ddd;
+    padding: 4px;
+    border-radius: 3px;
+    font-size: 0.85rem;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.icon-btn {
+    background: #d32f2f;
+    color: white;
+    border: none;
+    border-radius: 3px;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-weight: bold;
+}
+.icon-btn:hover { background: #b71c1c; }
+
+.full-width-btn {
+    width: 100%;
+    padding: 8px;
+    background: #333;
+    border: 1px solid #444;
+    color: #ccc;
+    cursor: pointer;
+    border-radius: 4px;
+    margin-top: 5px;
+    font-size: 0.85rem;
+    box-sizing: border-box;
+}
+.full-width-btn:hover { background: #444; color: #fff; }
+
+.delete-item-btn {
+    background: #500;
+    color: #faa;
+    border: 1px solid #800;
+    width: 100%;
+    padding: 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-bottom: 10px;
+}
+.delete-item-btn:hover { background: #700; }
+
+.primary-btn {
+    background: #2e7d32;
+    color: white;
+    border: none;
+}
+.primary-btn:hover { background: #388e3c; }

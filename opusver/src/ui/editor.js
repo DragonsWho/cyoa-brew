@@ -13,6 +13,8 @@ export class CYOAEditor {
         
         this.selectedItem = null;
         this.selectedGroup = null;
+        
+        // Dragging state
         this.isDragging = false;
         this.isResizing = false;
         this.dragStart = { x: 0, y: 0 };
@@ -64,51 +66,102 @@ export class CYOAEditor {
         sidebar.innerHTML = `
             <div class="editor-header">
                 <h3>🎨 CYOA Editor</h3>
-                <button class="close-btn" onclick="CYOA.editor.disable()">✕</button>
+                <button class="close-btn" onclick="CYOA.controls.toggleDebug()">✕</button>
             </div>
             
-            <div class="editor-section">
-                <h4>Selection</h4>
-                <div id="editor-selection-info" class="info-text">
-                    Click on any item to edit
-                </div>
-            </div>
-            
-            <div class="editor-section" id="editor-item-props" style="display:none;">
-                <h4>Item Properties</h4>
-                <label>ID:</label><input type="text" id="edit-id" class="editor-input">
-                <label>Title:</label><input type="text" id="edit-title" class="editor-input">
-                <label>Description:</label><textarea id="edit-description" class="editor-textarea" rows="4"></textarea>
-                
-                <h4>Position & Size</h4>
-                <div class="coords-grid">
-                    <div><label>X:</label><input type="number" id="edit-x" class="editor-input"></div>
-                    <div><label>Y:</label><input type="number" id="edit-y" class="editor-input"></div>
-                    <div><label>W:</label><input type="number" id="edit-w" class="editor-input"></div>
-                    <div><label>H:</label><input type="number" id="edit-h" class="editor-input"></div>
+            <div class="sidebar-scroll-content">
+                <!-- Selection Info -->
+                <div class="editor-section" style="padding-top:10px;">
+                    <div id="editor-selection-info" class="info-text" style="font-size: 0.8rem; color: #888;">
+                        No selection
+                    </div>
                 </div>
                 
-                <h4>Rules</h4>
-                <div id="rule-builder-container"></div>
-                
-                <button class="editor-btn delete-btn" onclick="CYOA.editor.deleteSelected()">🗑️ Delete Item</button>
-            </div>
-            
-            <div class="editor-section">
-                <h4>Actions</h4>
-                <button class="editor-btn" onclick="CYOA.editor.addNewItem()">➕ Add New Item</button>
-                <button class="editor-btn" onclick="CYOA.editor.exportConfig()">💾 Export JSON</button>
-            </div>
-            
-            <div class="editor-section">
-                <h4>Generated Code</h4>
-                <textarea id="code-preview" class="code-preview" readonly></textarea>
-                <button class="editor-btn" onclick="CYOA.editor.copyCode()">📋 Copy Code</button>
+                <div id="editor-item-props" style="display:none;">
+                    
+                    <!-- Main Properties -->
+                    <div class="editor-section">
+                        <div class="row-2">
+                            <div class="input-group">
+                                <input type="text" id="edit-id">
+                                <span class="input-label">ID</span>
+                            </div>
+                            <div class="input-group">
+                                <input type="text" id="edit-group-display" readonly style="color:#888; cursor:default;">
+                                <span class="input-label">GRP</span>
+                            </div>
+                        </div>
+                        
+                        <div class="input-group">
+                            <input type="text" id="edit-title">
+                            <span class="input-label">Title</span>
+                        </div>
+                        
+                        <div class="input-group">
+                            <textarea id="edit-description" rows="7"></textarea>
+                            <span class="input-label" style="top: 8px;">Desc</span>
+                        </div>
+                    </div>
+
+                    <!-- Position & Size (Accordion) -->
+                    <div class="editor-section">
+                        <div class="accordion-header" onclick="CYOA.editor.toggleAccordion(this)">
+                            Position & Size
+                        </div>
+                        <div class="accordion-content">
+                            <div class="row-4">
+                                <div class="input-group" title="X"><input type="number" id="edit-x"></div>
+                                <div class="input-group" title="Y"><input type="number" id="edit-y"></div>
+                                <div class="input-group" title="Width"><input type="number" id="edit-w"></div>
+                                <div class="input-group" title="Height"><input type="number" id="edit-h"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Rules Container (Filled by RuleBuilder) -->
+                    <div id="rule-builder-container"></div>
+                    
+                    <!-- Raw JSON Editor (Accordion) -->
+                    <div class="editor-section">
+                        <div class="accordion-header collapsed" onclick="CYOA.editor.toggleAccordion(this)">
+                            🔧 Raw JSON
+                        </div>
+                        <div class="accordion-content collapsed">
+                            <textarea id="edit-raw-json" class="code-editor"></textarea>
+                            <div style="font-size:0.7rem; color:#666; margin-top:4px;">Edit above to update item</div>
+                        </div>
+                    </div>
+
+                    <!-- Actions Footer -->
+                    <div class="editor-section" style="margin-top: 20px; border-top: 1px solid #333; padding-top: 15px;">
+                        <button class="delete-item-btn" onclick="CYOA.editor.deleteSelected()">
+                            🗑️ Delete Item
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Global Actions -->
+                <div class="editor-section">
+                     <div class="row-2">
+                        <button class="full-width-btn" onclick="CYOA.editor.addNewItem()">➕ Add Item</button>
+                        <button class="full-width-btn primary-btn" onclick="CYOA.editor.exportConfig()">💾 Save JSON</button>
+                    </div>
+                </div>
             </div>
         `;
         
         document.body.appendChild(sidebar);
         this.ruleBuilder.renderUI(document.getElementById('rule-builder-container'));
+        
+        // Setup listeners
+        this.setupFormListeners();
+        this.setupJsonListener();
+    }
+
+    toggleAccordion(header) {
+        header.classList.toggle('collapsed');
+        const content = header.nextElementSibling;
+        content.classList.toggle('collapsed');
     }
 
     // ==================== DRAG & DROP ====================
@@ -135,6 +188,9 @@ export class CYOAEditor {
 
     handleMouseDown(e) {
         if (!this.enabled) return;
+
+        // Ignore clicks inside sidebar
+        if (e.target.closest('#editor-sidebar')) return;
         
         const target = e.target.closest('.item-zone');
         if (!target) {
@@ -151,10 +207,7 @@ export class CYOAEditor {
         if (!item || !group) return;
         
         this.selectItem(item, group, target);
-        
-        // --- ADDED: Добавляем класс для отключения анимации ---
         target.classList.add('dragging');
-        // -----------------------------------------------------
 
         const rect = target.getBoundingClientRect();
         const handleX = rect.right - this.handleSize;
@@ -169,7 +222,7 @@ export class CYOAEditor {
         this.dragStart = { x: e.clientX, y: e.clientY };
         this.initialRect = { ...item.coords };
         
-        // Кэширование размеров
+        // Cache dimensions
         const pageIndex = group.page || 0;
         const dim = this.renderer.pageDimensions[pageIndex];
         const container = document.querySelector(`#page-${pageIndex}`);
@@ -207,7 +260,7 @@ export class CYOAEditor {
             this.selectedItem.coords.h = Math.max(20, Math.round(this.initialRect.h + dy * scaleY));
         }
         
-        // Прямое обновление стилей (самый быстрый способ)
+        // Direct style update for performance
         const element = document.getElementById(`btn-${this.selectedItem.id}`);
         if (element) {
             const style = CoordHelper.toPercent(this.selectedItem.coords, dim);
@@ -216,12 +269,10 @@ export class CYOAEditor {
     }
 
     handleMouseUp(e) {
-        // --- ADDED: Удаляем класс dragging у выбранного элемента ---
         if (this.selectedItem) {
             const element = document.getElementById(`btn-${this.selectedItem.id}`);
             if (element) element.classList.remove('dragging');
         }
-        // -----------------------------------------------------------
 
         if (this.isDragging || this.isResizing) {
             this.updateFormInputs();
@@ -252,12 +303,15 @@ export class CYOAEditor {
         element.classList.add('editor-selected');
         
         document.getElementById('editor-item-props').style.display = 'block';
+        
+        // Update Readonly Group Field
+        const groupInput = document.getElementById('edit-group-display');
+        if(groupInput) groupInput.value = group.title || group.id;
+
         this.updateFormInputs();
         
-        document.getElementById('editor-selection-info').innerHTML = `
-            <strong>Selected:</strong> ${item.title || item.id}<br>
-            <strong>Group:</strong> ${group.title || group.id}
-        `;
+        document.getElementById('editor-selection-info').innerHTML = 
+            `<span style="color:#4CAF50">Editing:</span> ${item.title || item.id}`;
         
         this.ruleBuilder.loadItem(item, group);
     }
@@ -290,7 +344,10 @@ export class CYOAEditor {
 
     updateCodePreview() {
         if (!this.selectedItem) return;
-        document.getElementById('code-preview').value = JSON.stringify(this.selectedItem, null, 2);
+        const el = document.getElementById('edit-raw-json');
+        if (el) {
+            el.value = JSON.stringify(this.selectedItem, null, 2);
+        }
     }
 
     setupFormListeners() {
@@ -318,6 +375,43 @@ export class CYOAEditor {
         }
     }
 
+    setupJsonListener() {
+        const jsonArea = document.getElementById('edit-raw-json');
+        if (jsonArea) {
+            jsonArea.addEventListener('input', (e) => {
+                try {
+                    const newData = JSON.parse(e.target.value);
+                    if (this.selectedItem && this.selectedGroup) {
+                        // Update object properties in place
+                        Object.keys(this.selectedItem).forEach(key => delete this.selectedItem[key]);
+                        Object.assign(this.selectedItem, newData);
+                        
+                        // Refresh UI
+                        this.renderer.renderButtons();
+                        
+                        // Refresh Inputs without infinite loop
+                        // (We manually update fields instead of calling updateFormInputs which updates JSON)
+                        document.getElementById('edit-id').value = newData.id || '';
+                        document.getElementById('edit-title').value = newData.title || '';
+                        document.getElementById('edit-description').value = newData.description || '';
+                        document.getElementById('edit-x').value = newData.coords?.x || 0;
+                        document.getElementById('edit-y').value = newData.coords?.y || 0;
+                        document.getElementById('edit-w').value = newData.coords?.w || 0;
+                        document.getElementById('edit-h').value = newData.coords?.h || 0;
+                        
+                        this.ruleBuilder.loadItem(this.selectedItem, this.selectedGroup);
+                        
+                        // Re-select visually in case ID changed
+                        const newEl = document.getElementById(`btn-${newData.id}`);
+                        if (newEl) newEl.classList.add('editor-selected');
+                    }
+                } catch (err) {
+                    // Invalid JSON, ignore or show error state
+                }
+            });
+        }
+    }
+
     // ==================== ACTIONS ====================
 
     deleteSelected() {
@@ -339,8 +433,8 @@ export class CYOAEditor {
         const newItem = {
             id: `new_item_${Date.now()}`,
             title: 'New Item',
-            description: 'Edit me!',
-            coords: { x: 100, y: 100, w: 300, h: 200 },
+            description: 'Description',
+            coords: { x: 100, y: 100, w: 200, h: 100 },
             cost: []
         };
         
@@ -362,12 +456,6 @@ export class CYOAEditor {
         a.href = url;
         a.download = `${config.meta?.title || 'cyoa'}_edited.json`;
         a.click();
-        
         URL.revokeObjectURL(url);
-    }
-
-    copyCode() {
-        const code = document.getElementById('code-preview').value;
-        navigator.clipboard.writeText(code).then(() => alert('Code copied!'));
     }
 }

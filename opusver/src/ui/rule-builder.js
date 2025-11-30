@@ -13,26 +13,36 @@ export class RuleBuilder {
 
     renderUI(container) {
         container.innerHTML = `
-            <div class="rule-builder">
-                <!-- Cost Section -->
-                <div class="rule-section">
-                    <label>💰 Cost:</label>
-                    <div id="cost-list"></div>
-                    <button class="small-btn" onclick="CYOA.editor.ruleBuilder.addCost()">+ Add Cost</button>
+            <!-- Cost Section -->
+            <div class="editor-section">
+                <div class="accordion-header" onclick="CYOA.editor.toggleAccordion(this)">
+                    💰 Cost
                 </div>
-                
-                <!-- Requirements Section -->
-                <div class="rule-section">
-                    <label>✅ Requirements:</label>
-                    <div id="requirements-list"></div>
-                    <button class="small-btn" onclick="CYOA.editor.ruleBuilder.addRequirement()">+ Add Requirement</button>
+                <div class="accordion-content">
+                    <div id="cost-list" class="compact-list"></div>
+                    <button class="full-width-btn" onclick="CYOA.editor.ruleBuilder.addCost()">+ Add Cost</button>
                 </div>
-                
-                <!-- Incompatible Section -->
-                <div class="rule-section">
-                    <label>❌ Incompatible:</label>
-                    <div id="incompatible-list"></div>
-                    <button class="small-btn" onclick="CYOA.editor.ruleBuilder.addIncompatible()">+ Add Incompatible</button>
+            </div>
+            
+            <!-- Requirements Section -->
+            <div class="editor-section">
+                <div class="accordion-header collapsed" onclick="CYOA.editor.toggleAccordion(this)">
+                    ✅ Requirements
+                </div>
+                <div class="accordion-content collapsed">
+                    <div id="requirements-list" class="compact-list"></div>
+                    <button class="full-width-btn" onclick="CYOA.editor.ruleBuilder.addRequirement()">+ Add Requirement</button>
+                </div>
+            </div>
+            
+            <!-- Incompatible Section -->
+            <div class="editor-section">
+                <div class="accordion-header collapsed" onclick="CYOA.editor.toggleAccordion(this)">
+                    ❌ Incompatible
+                </div>
+                <div class="accordion-content collapsed">
+                    <div id="incompatible-list" class="compact-list"></div>
+                    <button class="full-width-btn" onclick="CYOA.editor.ruleBuilder.addIncompatible()">+ Add Incompatible</button>
                 </div>
             </div>
         `;
@@ -60,22 +70,19 @@ export class RuleBuilder {
         const costs = this.currentItem.cost || [];
         
         if (costs.length === 0) {
-            container.innerHTML = '<div class="empty-state">No costs</div>';
+            container.innerHTML = '<div style="color:#666; font-size:0.8rem; text-align:center; padding:5px;">No costs</div>';
             return;
         }
         
         container.innerHTML = costs.map((cost, index) => `
-            <div class="rule-item">
-                <select onchange="CYOA.editor.ruleBuilder.updateCostCurrency(${index}, this.value)">
+            <div class="compact-row">
+                <select onchange="CYOA.editor.ruleBuilder.updateCostCurrency(${index}, this.value)" title="Currency">
                     ${this.getCurrencyOptions(cost.currency)}
                 </select>
-                <input type="number" value="${cost.value || 0}" 
-                       onchange="CYOA.editor.ruleBuilder.updateCostValue(${index}, this.value)"
-                       placeholder="Value">
-                <input type="text" value="${cost.formula || ''}" 
-                       onchange="CYOA.editor.ruleBuilder.updateCostFormula(${index}, this.value)"
-                       placeholder="Formula (optional)">
-                <button class="delete-mini-btn" onclick="CYOA.editor.ruleBuilder.removeCost(${index})">×</button>
+                <input type="text" value="${cost.value !== undefined ? cost.value : (cost.formula || 0)}" 
+                       onchange="CYOA.editor.ruleBuilder.updateCostValueOrFormula(${index}, this.value)"
+                       placeholder="Val/Formula">
+                <button class="icon-btn" onclick="CYOA.editor.ruleBuilder.removeCost(${index})">×</button>
             </div>
         `).join('');
     }
@@ -84,23 +91,19 @@ export class RuleBuilder {
         const currencies = this.engine.config.points || [];
         return currencies.map(c => 
             `<option value="${c.id}" ${c.id === selected ? 'selected' : ''}>
-                ${c.name}
+                ${c.name.substr(0, 10)}
             </option>`
         ).join('');
     }
 
     addCost() {
         if (!this.currentItem) return;
-        
-        if (!this.currentItem.cost) {
-            this.currentItem.cost = [];
-        }
+        if (!this.currentItem.cost) this.currentItem.cost = [];
         
         const firstCurrency = this.engine.config.points?.[0]?.id || 'points';
-        
         this.currentItem.cost.push({
             currency: firstCurrency,
-            value: -5
+            value: -1
         });
         
         this.renderCosts();
@@ -120,18 +123,17 @@ export class RuleBuilder {
         this.updateParent();
     }
 
-    updateCostValue(index, value) {
+    updateCostValueOrFormula(index, value) {
         if (!this.currentItem?.cost?.[index]) return;
-        this.currentItem.cost[index].value = parseInt(value) || 0;
-        this.updateParent();
-    }
-
-    updateCostFormula(index, value) {
-        if (!this.currentItem?.cost?.[index]) return;
-        if (value.trim()) {
-            this.currentItem.cost[index].formula = value;
-        } else {
+        
+        // Try to parse as int
+        if (!isNaN(value) && value.trim() !== '') {
+            this.currentItem.cost[index].value = parseInt(value);
             delete this.currentItem.cost[index].formula;
+        } else {
+            // Assume formula
+            this.currentItem.cost[index].formula = value;
+            delete this.currentItem.cost[index].value;
         }
         this.updateParent();
     }
@@ -147,28 +149,25 @@ export class RuleBuilder {
         const reqs = this.currentItem.requirements || [];
         
         if (reqs.length === 0) {
-            container.innerHTML = '<div class="empty-state">No requirements</div>';
+            container.innerHTML = '<div style="color:#666; font-size:0.8rem; text-align:center; padding:5px;">No requirements</div>';
             return;
         }
         
         container.innerHTML = reqs.map((req, index) => `
-            <div class="rule-item">
+            <div class="compact-row" style="grid-template-columns: 1fr 24px;">
                 <input type="text" value="${req}" 
                        onchange="CYOA.editor.ruleBuilder.updateRequirement(${index}, this.value)"
                        placeholder="item_id or formula">
-                <button class="delete-mini-btn" onclick="CYOA.editor.ruleBuilder.removeRequirement(${index})">×</button>
+                <button class="icon-btn" onclick="CYOA.editor.ruleBuilder.removeRequirement(${index})">×</button>
             </div>
         `).join('');
     }
 
     addRequirement() {
         if (!this.currentItem) return;
+        if (!this.currentItem.requirements) this.currentItem.requirements = [];
         
-        if (!this.currentItem.requirements) {
-            this.currentItem.requirements = [];
-        }
-        
-        this.currentItem.requirements.push('item_id');
+        this.currentItem.requirements.push('');
         this.renderRequirements();
         this.updateParent();
     }
@@ -197,28 +196,25 @@ export class RuleBuilder {
         const incomp = this.currentItem.incompatible || [];
         
         if (incomp.length === 0) {
-            container.innerHTML = '<div class="empty-state">No incompatibilities</div>';
+            container.innerHTML = '<div style="color:#666; font-size:0.8rem; text-align:center; padding:5px;">No incompatibilities</div>';
             return;
         }
         
         container.innerHTML = incomp.map((id, index) => `
-            <div class="rule-item">
+            <div class="compact-row" style="grid-template-columns: 1fr 24px;">
                 <input type="text" value="${id}" 
                        onchange="CYOA.editor.ruleBuilder.updateIncompatible(${index}, this.value)"
                        placeholder="item_id">
-                <button class="delete-mini-btn" onclick="CYOA.editor.ruleBuilder.removeIncompatible(${index})">×</button>
+                <button class="icon-btn" onclick="CYOA.editor.ruleBuilder.removeIncompatible(${index})">×</button>
             </div>
         `).join('');
     }
 
     addIncompatible() {
         if (!this.currentItem) return;
+        if (!this.currentItem.incompatible) this.currentItem.incompatible = [];
         
-        if (!this.currentItem.incompatible) {
-            this.currentItem.incompatible = [];
-        }
-        
-        this.currentItem.incompatible.push('item_id');
+        this.currentItem.incompatible.push('');
         this.renderIncompatible();
         this.updateParent();
     }
