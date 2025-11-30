@@ -48,32 +48,23 @@ export class RuleBuilder {
         `;
     }
 
-    // ==================== LOAD ITEM ====================
-
     loadItem(item, group) {
         this.currentItem = item;
         this.currentGroup = group;
-        
         this.renderCosts();
         this.renderRequirements();
         this.renderIncompatible();
     }
 
-    // ==================== COST ====================
-
     renderCosts() {
         if (!this.currentItem) return;
-        
         const container = document.getElementById('cost-list');
         if (!container) return;
-        
         const costs = this.currentItem.cost || [];
-        
         if (costs.length === 0) {
-            container.innerHTML = '<div style="color:#666; font-size:0.8rem; text-align:center; padding:5px;">No costs</div>';
+            container.innerHTML = '<div style="color:#666; font-size:0.8rem; text-align:center; padding:2px;">No costs</div>';
             return;
         }
-        
         container.innerHTML = costs.map((cost, index) => `
             <div class="compact-row">
                 <select onchange="CYOA.editor.ruleBuilder.updateCostCurrency(${index}, this.value)" title="Currency">
@@ -81,7 +72,7 @@ export class RuleBuilder {
                 </select>
                 <input type="text" value="${cost.value !== undefined ? cost.value : (cost.formula || 0)}" 
                        onchange="CYOA.editor.ruleBuilder.updateCostValueOrFormula(${index}, this.value)"
-                       placeholder="Val/Formula">
+                       placeholder="Val">
                 <button class="icon-btn" onclick="CYOA.editor.ruleBuilder.removeCost(${index})">×</button>
             </div>
         `).join('');
@@ -99,13 +90,8 @@ export class RuleBuilder {
     addCost() {
         if (!this.currentItem) return;
         if (!this.currentItem.cost) this.currentItem.cost = [];
-        
         const firstCurrency = this.engine.config.points?.[0]?.id || 'points';
-        this.currentItem.cost.push({
-            currency: firstCurrency,
-            value: -1
-        });
-        
+        this.currentItem.cost.push({ currency: firstCurrency, value: -1 });
         this.renderCosts();
         this.updateParent();
     }
@@ -125,39 +111,30 @@ export class RuleBuilder {
 
     updateCostValueOrFormula(index, value) {
         if (!this.currentItem?.cost?.[index]) return;
-        
-        // Try to parse as int
         if (!isNaN(value) && value.trim() !== '') {
             this.currentItem.cost[index].value = parseInt(value);
             delete this.currentItem.cost[index].formula;
         } else {
-            // Assume formula
             this.currentItem.cost[index].formula = value;
             delete this.currentItem.cost[index].value;
         }
         this.updateParent();
     }
 
-    // ==================== REQUIREMENTS ====================
-
     renderRequirements() {
         if (!this.currentItem) return;
-        
         const container = document.getElementById('requirements-list');
         if (!container) return;
-        
         const reqs = this.currentItem.requirements || [];
-        
         if (reqs.length === 0) {
-            container.innerHTML = '<div style="color:#666; font-size:0.8rem; text-align:center; padding:5px;">No requirements</div>';
+            container.innerHTML = '<div style="color:#666; font-size:0.8rem; text-align:center; padding:2px;">No requirements</div>';
             return;
         }
-        
         container.innerHTML = reqs.map((req, index) => `
             <div class="compact-row" style="grid-template-columns: 1fr 24px;">
                 <input type="text" value="${req}" 
                        onchange="CYOA.editor.ruleBuilder.updateRequirement(${index}, this.value)"
-                       placeholder="item_id or formula">
+                       placeholder="item_id">
                 <button class="icon-btn" onclick="CYOA.editor.ruleBuilder.removeRequirement(${index})">×</button>
             </div>
         `).join('');
@@ -166,7 +143,6 @@ export class RuleBuilder {
     addRequirement() {
         if (!this.currentItem) return;
         if (!this.currentItem.requirements) this.currentItem.requirements = [];
-        
         this.currentItem.requirements.push('');
         this.renderRequirements();
         this.updateParent();
@@ -185,21 +161,15 @@ export class RuleBuilder {
         this.updateParent();
     }
 
-    // ==================== INCOMPATIBLE ====================
-
     renderIncompatible() {
         if (!this.currentItem) return;
-        
         const container = document.getElementById('incompatible-list');
         if (!container) return;
-        
         const incomp = this.currentItem.incompatible || [];
-        
         if (incomp.length === 0) {
-            container.innerHTML = '<div style="color:#666; font-size:0.8rem; text-align:center; padding:5px;">No incompatibilities</div>';
+            container.innerHTML = '<div style="color:#666; font-size:0.8rem; text-align:center; padding:2px;">No incompatibilities</div>';
             return;
         }
-        
         container.innerHTML = incomp.map((id, index) => `
             <div class="compact-row" style="grid-template-columns: 1fr 24px;">
                 <input type="text" value="${id}" 
@@ -213,7 +183,6 @@ export class RuleBuilder {
     addIncompatible() {
         if (!this.currentItem) return;
         if (!this.currentItem.incompatible) this.currentItem.incompatible = [];
-        
         this.currentItem.incompatible.push('');
         this.renderIncompatible();
         this.updateParent();
@@ -232,10 +201,7 @@ export class RuleBuilder {
         this.updateParent();
     }
 
-    // ==================== UPDATE PARENT ====================
-
     updateParent() {
-        // Notify editor to update UI
         if (window.CYOA?.editor) {
             window.CYOA.editor.updateCodePreview();
             window.CYOA.editor.engine.recalculate();

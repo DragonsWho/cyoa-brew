@@ -59,10 +59,8 @@ body.show-zones .click-zone::after { content: attr(id); position: absolute; top:
 body.show-zones .info-zone { border: 2px dashed rgba(255,165,0,0.4) !important; background: rgba(255,165,0,0.1) !important; }
 
 /* === EDIT MODE INTERACTION (Depends on active Tab) === */
-/* Tab: CHOICE - Items interactive, Groups ignored */
 body.edit-mode-choice .item-zone { pointer-events: auto; cursor: move; }
 body.edit-mode-choice .info-zone { pointer-events: none; }
-/* Tab: GROUP - Groups interactive, Items ignored */
 body.edit-mode-group .info-zone { pointer-events: auto; cursor: move; z-index: 2000; } 
 body.edit-mode-group .item-zone { pointer-events: none; opacity: 0.5; }
 
@@ -75,25 +73,25 @@ body.edit-mode-group .item-zone { pointer-events: none; opacity: 0.5; }
 /* === EDITOR SIDEBAR LAYOUT === */
 .editor-sidebar { background: #1a1a1a; width: 340px; position: fixed; right: 0; top: 0; bottom: 0; z-index: 4000; display: flex; flex-direction: column; box-shadow: -5px 0 20px rgba(0,0,0,0.5); border-left: 1px solid #333; }
 body.edit-mode-active #game-wrapper { margin-right: 340px; transition: margin-right 0.3s; }
-.editor-header { background: #222; padding: 10px 15px; border-bottom: 1px solid #333; display: flex; justify-content: space-between; align-items: center; }
-.editor-header h3 { margin: 0; color: #4CAF50; font-size: 1rem; }
-.close-btn { background: #d32f2f; color: white; border: none; width: 24px; height: 24px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; }
 
 /* === EDITOR TABS === */
 .editor-tabs { display: flex; background: #111; border-bottom: 1px solid #333; }
 .tab-btn { flex: 1; background: #111; border: none; color: #888; padding: 12px 0; cursor: pointer; font-weight: bold; font-size: 0.9rem; border-bottom: 2px solid transparent; transition: all 0.2s; }
 .tab-btn:hover { color: #ccc; background: #181818; }
 .tab-btn.active { color: #fff; background: #1a1a1a; border-bottom: 2px solid #4CAF50; }
+.close-tab-btn { background: #d32f2f; color: white; border: none; width: 40px; flex-shrink: 0; cursor: pointer; font-size: 16px; font-weight: bold; display: flex; align-items: center; justify-content: center; }
+.close-tab-btn:hover { background: #b71c1c; }
 
-/* === EDITOR CONTENT === */
-.sidebar-scroll-content { flex: 1; overflow-y: auto; padding-bottom: 40px; scrollbar-width: thin; scrollbar-color: #444 #1a1a1a; }
-.editor-section { padding: 15px 10px; border-bottom: 1px solid #2a2a2a; width: 100%; box-sizing: border-box; }
+/* === EDITOR CONTENT (Stable Gutter + Offset Padding) === */
+/* Padding right is reduced to 2px to account for the ~8px reserved gutter */
+.sidebar-scroll-content { flex: 1; overflow-y: auto; overflow-x: hidden; padding-bottom: 40px; padding-top: 15px; scrollbar-gutter: stable; scrollbar-width: thin; scrollbar-color: #444 transparent; }
+.editor-section { padding: 5px 2px 5px 10px; width: 100%; box-sizing: border-box; border-bottom: 1px solid #222; }
 .info-text { background: #252525; padding: 15px; border-radius: 4px; color: #aaa; font-size: 0.9rem; line-height: 1.4; text-align: center; margin: 10px; }
 
 /* === FLOATING LABEL INPUTS === */
-.input-group { position: relative; margin-bottom: 8px; width: 100%; background: #252525; border: 1px solid #333; border-radius: 4px; transition: border-color 0.2s; }
+.input-group { position: relative; margin-bottom: 5px; width: 100%; background: #252525; border: 1px solid #333; border-radius: 4px; transition: border-color 0.2s; }
 .input-group:focus-within { border-color: #4CAF50; background: #2a2a2a; }
-.input-group input, .input-group textarea { width: 100%; background: transparent; border: none; color: #eee; padding: 6px 8px; font-size: 0.9rem; z-index: 2; position: relative; font-family: inherit; }
+.input-group input, .input-group textarea { width: 100%; background: transparent; border: none; color: #eee; padding: 6px 8px; font-size: 0.9rem; z-index: 2; position: relative; font-family: inherit; resize: vertical; display: block; }
 .input-group input:focus, .input-group textarea:focus { outline: none; }
 .input-label { position: absolute; right: 8px; color: #555; font-size: 0.75rem; pointer-events: none; font-weight: 600; text-transform: uppercase; z-index: 1; transition: opacity 0.2s; white-space: nowrap; }
 .input-group input + .input-label { top: 50%; transform: translateY(-50%); }
@@ -105,21 +103,33 @@ body.edit-mode-active #game-wrapper { margin-right: 340px; transition: margin-ri
 .row-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; width: 100%; }
 .row-4 .input-group input { text-align: center; padding: 6px 2px; }
 .row-4 .input-label { display: none; }
-.accordion-header { cursor: pointer; padding: 8px 0; display: flex; justify-content: space-between; color: #4CAF50; font-weight: bold; border-bottom: 1px solid #2a2a2a; user-select: none; }
-.accordion-header::after { content: '▼'; font-size: 0.7em; transition: transform 0.2s; }
+.accordion-header { cursor: pointer; padding: 6px 0; display: flex; justify-content: space-between; color: #4CAF50; font-weight: bold; border-bottom: 1px solid #222; user-select: none; font-size: 0.9em; }
+.accordion-header::after { content: '▼'; font-size: 0.8em; transition: transform 0.2s; }
 .accordion-header.collapsed::after { transform: rotate(-90deg); }
-.accordion-content { display: block; overflow: hidden; padding: 10px 0; }
+.accordion-content { display: block; overflow: hidden; padding: 5px 0; }
 .accordion-content.collapsed { display: none; }
-.full-width-btn { width: 100%; padding: 8px; background: #333; border: 1px solid #444; color: #ccc; cursor: pointer; border-radius: 4px; margin-top: 5px; font-weight: bold; }
-.full-width-btn:hover { background: #444; color: #fff; }
-.delete-item-btn { background: #500; color: #faa; border: 1px solid #800; width: 100%; padding: 10px; border-radius: 4px; cursor: pointer; }
-.primary-btn { background: #2e7d32; color: white; border: none; }
+.row-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 5px; }
+.action-btn { width: 100%; padding: 10px; border-radius: 4px; cursor: pointer; font-weight: bold; color: white; border: none; font-size: 0.9rem; }
+.btn-delete { background: #500; border: 1px solid #700; }
+.btn-delete:hover { background: #700; }
+.btn-add { background: #333; border: 1px solid #444; }
+.btn-add:hover { background: #444; }
+.primary-btn { background: #2e7d32; color: white; border: none; width: 100%; padding: 10px; border-radius: 4px; font-weight: bold; }
 
-/* === RULE BUILDER === */
+/* === RULE BUILDER & SCROLLBARS === */
 .compact-list { display: flex; flex-direction: column; gap: 6px; width: 100%; }
 .compact-row { display: grid; grid-template-columns: 35% 1fr 24px; gap: 4px; align-items: center; }
 .compact-row select, .compact-row input { background: #222; border: 1px solid #333; color: #ddd; padding: 4px; border-radius: 3px; width: 100%; }
 .icon-btn { background: #d32f2f; color: white; border: none; border-radius: 3px; width: 24px; height: 24px; cursor: pointer; }
+.full-width-btn { width: 100%; padding: 8px; background: #333; border: 1px solid #444; color: #ccc; cursor: pointer; border-radius: 4px; margin-top: 5px; font-weight: bold; font-size: 0.85rem; }
+.code-editor { width: 100%; height: 200px; background: #111; color: #0f0; font-family: monospace; font-size: 0.8rem; border: 1px solid #333; border-radius: 4px; padding: 5px; box-sizing: border-box; resize: vertical; }
+.code-editor:focus { outline: none !important; border-color: #4CAF50; box-shadow: none; }
+/* Resizer: 70% gradient as requested */
+::-webkit-resizer { background: linear-gradient(135deg, transparent 70%, #666 70%); }
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #444; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #666; }
 
 /* === MOBILE === */
 @media (max-width: 1200px) { .editor-sidebar { width: 100%; max-width: 340px; } body.edit-mode-active #game-wrapper { margin-right: 0; } }

@@ -12,23 +12,15 @@ export class CYOAEditor {
         this.ruleBuilder = new RuleBuilder(engine);
         
         this.selectedItem = null;
-        this.selectedGroup = null; // Currently selected Group Object
-        this.activeTab = 'choice'; // 'choice', 'group', 'settings'
+        this.selectedGroup = null;
+        this.activeTab = 'choice'; 
         
-        // Canvas for measuring text width (simple inputs)
         this.measureContext = document.createElement('canvas').getContext('2d');
         
-        // Mirror div for measuring textarea height/overlap
         this.mirrorDiv = document.createElement('div');
-        this.mirrorDiv.style.position = 'absolute';
-        this.mirrorDiv.style.visibility = 'hidden';
-        this.mirrorDiv.style.height = 'auto';
-        this.mirrorDiv.style.overflow = 'hidden';
-        this.mirrorDiv.style.whiteSpace = 'pre-wrap'; 
-        this.mirrorDiv.style.wordWrap = 'break-word';
+        this.mirrorDiv.style.cssText = 'position:absolute; visibility:hidden; height:auto; overflow:hidden; white-space:pre-wrap; word-wrap:break-word;';
         document.body.appendChild(this.mirrorDiv);
 
-        // Dragging state
         this.isDragging = false;
         this.isResizing = false;
         this.dragStart = { x: 0, y: 0 };
@@ -37,39 +29,29 @@ export class CYOAEditor {
         this.dragContext = null;
         
         this.enabled = false;
-        
         console.log('✏️ Editor initialized');
     }
-
-    // ==================== ENABLE/DISABLE ====================
 
     enable() {
         if (this.enabled) return;
         this.enabled = true;
         this.createEditorUI();
         this.attachEventListeners();
-        this.switchTab('choice'); // Default tab
+        this.switchTab('choice');
         console.log('✏️ Editor enabled');
     }
 
     disable() {
         if (!this.enabled) return;
         this.enabled = false;
-        
         const sidebar = document.getElementById('editor-sidebar');
         if (sidebar) sidebar.remove();
-        
         this.removeEventListeners();
-        
-        // Cleanup visual classes
         document.querySelectorAll('.item-zone, .info-zone').forEach(el => {
             el.classList.remove('editable', 'editor-selected');
         });
-        
         console.log('✏️ Editor disabled');
     }
-
-    // ==================== UI CREATION ====================
 
     createEditorUI() {
         if (document.getElementById('editor-sidebar')) return;
@@ -79,23 +61,18 @@ export class CYOAEditor {
         sidebar.className = 'editor-sidebar';
         
         sidebar.innerHTML = `
-            <div class="editor-header">
-                <h3>CYOA Editor</h3>
-                <button class="close-btn" onclick="CYOA.controls.toggleEditMode()">✕</button>
-            </div>
-
-            <!-- Tabs -->
             <div class="editor-tabs">
                 <button class="tab-btn" data-tab="choice" onclick="CYOA.editor.switchTab('choice')">Choice</button>
                 <button class="tab-btn" data-tab="group" onclick="CYOA.editor.switchTab('group')">Group</button>
                 <button class="tab-btn" data-tab="settings" onclick="CYOA.editor.switchTab('settings')">Settings</button>
+                <button class="close-tab-btn" onclick="CYOA.controls.toggleEditMode()">✕</button>
             </div>
             
             <div class="sidebar-scroll-content">
                 
                 <!-- TAB 1: CHOICE -->
                 <div id="tab-content-choice" class="tab-content" style="display:none;">
-                    <div id="choice-empty-state" class="info-text" style="margin: 20px;">
+                    <div id="choice-empty-state" class="info-text">
                         Select an item on the page to edit.
                     </div>
 
@@ -117,7 +94,7 @@ export class CYOAEditor {
                                 <span class="input-label">Title</span>
                             </div>
                             <div class="input-group">
-                                <textarea id="edit-description" rows="5"></textarea>
+                                <textarea id="edit-description" rows="7"></textarea>
                                 <span class="input-label">Desc</span>
                             </div>
                         </div>
@@ -137,25 +114,33 @@ export class CYOAEditor {
                             </div>
                         </div>
                         
-                        <!-- Rules Container (Injected) -->
+                        <!-- Rule Builder -->
                         <div id="rule-builder-container"></div>
+
+                        <!-- RAW JSON -->
+                        <div class="editor-section">
+                            <div class="accordion-header collapsed" onclick="CYOA.editor.toggleAccordion(this)">
+                                🔧 Raw JSON
+                            </div>
+                            <div class="accordion-content collapsed">
+                                <textarea id="edit-raw-json" class="code-editor"></textarea>
+                            </div>
+                        </div>
                         
-                        <!-- Actions -->
-                        <div class="editor-section" style="margin-top: 20px;">
-                            <button class="delete-item-btn" onclick="CYOA.editor.deleteSelectedItem()">
-                                🗑️ Delete Choice
-                            </button>
-                             <button class="full-width-btn" onclick="CYOA.editor.addNewItem()">
-                                ➕ Add New Choice
-                            </button>
+                        <!-- Actions Footer -->
+                        <div class="editor-section" style="margin-top: 10px; border-top: 1px solid #222;">
+                            <div class="row-buttons">
+                                <button class="action-btn btn-delete" onclick="CYOA.editor.deleteSelectedItem()">🗑️ Delete</button>
+                                <button class="action-btn btn-add" onclick="CYOA.editor.addNewItem()">➕ Add New</button>
+                            </div>
                         </div>
                     </div>
                 </div>
 
                 <!-- TAB 2: GROUP -->
                 <div id="tab-content-group" class="tab-content" style="display:none;">
-                    <div id="group-empty-state" class="info-text" style="margin: 20px;">
-                        Select a group on the page (Info Box) or select a choice first.
+                    <div id="group-empty-state" class="info-text">
+                        Select a group (Info Box) or a choice first.
                     </div>
 
                     <div id="group-props" style="display:none;">
@@ -169,14 +154,14 @@ export class CYOAEditor {
                                 <span class="input-label">Title</span>
                             </div>
                             <div class="input-group">
-                                <textarea id="group-description" rows="3"></textarea>
+                                <textarea id="group-description" rows="7"></textarea>
                                 <span class="input-label">Description</span>
                             </div>
                         </div>
 
                         <div class="editor-section">
                             <div class="accordion-header" onclick="CYOA.editor.toggleAccordion(this)">
-                                Group Area
+                                Position & Size
                             </div>
                             <div class="accordion-content">
                                 <div class="row-4">
@@ -188,27 +173,34 @@ export class CYOAEditor {
                             </div>
                         </div>
                         
-                        <!-- Group Rules Placeholder (Future) -->
+                        <!-- Group Rules (JSON) -->
                          <div class="editor-section">
-                             <h4>Group Rules (e.g. Max Choices)</h4>
-                             <div class="info-text">Coming soon...</div>
+                             <div class="accordion-header" onclick="CYOA.editor.toggleAccordion(this)">
+                                 📜 Group Rules (JSON)
+                             </div>
+                             <div class="accordion-content">
+                                 <textarea id="group-rules-json" class="code-editor" style="height:150px;"></textarea>
+                                 <div style="font-size:0.7rem; color:#666;">Format: {"max_choices": 1, "budget": {...}}</div>
+                             </div>
                          </div>
+
+                        <!-- Actions Footer -->
+                        <div class="editor-section" style="margin-top: 10px; border-top: 1px solid #222;">
+                            <div class="row-buttons">
+                                <button class="action-btn btn-delete" onclick="CYOA.editor.deleteSelectedGroup()">🗑️ Delete Group</button>
+                                <button class="action-btn btn-add" onclick="CYOA.editor.addNewGroup()">➕ Add Group</button>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
                 <!-- TAB 3: SETTINGS -->
                 <div id="tab-content-settings" class="tab-content" style="display:none;">
                     <div class="editor-section">
-                        <h4>File Operations</h4>
-                        <div class="row-2">
-                             <button class="full-width-btn" style="opacity:0.5; cursor:not-allowed;">📂 Load JSON</button>
-                             <button class="full-width-btn primary-btn" onclick="CYOA.editor.exportConfig()">💾 Save JSON</button>
+                        <div class="accordion-header">File Operations</div>
+                        <div class="accordion-content" style="display:block">
+                            <button class="full-width-btn primary-btn" onclick="CYOA.editor.exportConfig()">💾 Save JSON</button>
                         </div>
-                    </div>
-                    
-                    <div class="editor-section">
-                        <h4>Visual Settings</h4>
-                         <div class="info-text">Shadows, Colors, Night Mode toggles will go here.</div>
                     </div>
                 </div>
 
@@ -218,34 +210,26 @@ export class CYOAEditor {
         document.body.appendChild(sidebar);
         this.ruleBuilder.renderUI(document.getElementById('rule-builder-container'));
         
-        // Listeners for inputs
         this.setupChoiceListeners();
         this.setupGroupListeners();
+        this.setupJsonListeners();
         this.setupLabelAutoHiding();
     }
 
-    // ==================== TAB LOGIC ====================
-
     switchTab(tabName) {
         this.activeTab = tabName;
-
-        // Visual Tabs
         document.querySelectorAll('.tab-btn').forEach(btn => {
             btn.classList.toggle('active', btn.dataset.tab === tabName);
         });
-
-        // Content Visibility
         document.querySelectorAll('.tab-content').forEach(content => {
             content.style.display = 'none';
         });
         document.getElementById(`tab-content-${tabName}`).style.display = 'block';
 
-        // Context Switching Logic
         document.body.classList.remove('edit-mode-choice', 'edit-mode-group');
 
         if (tabName === 'choice') {
             document.body.classList.add('edit-mode-choice');
-            // If we have a selected item, ensure properties are shown
             if (this.selectedItem) {
                 this.updateChoiceInputs();
                 document.getElementById('choice-empty-state').style.display = 'none';
@@ -253,20 +237,14 @@ export class CYOAEditor {
             }
         } else if (tabName === 'group') {
             document.body.classList.add('edit-mode-group');
-            
-            // Auto-select group if an item was selected
             if (this.selectedItem) {
                 const group = this.engine.findGroupForItem(this.selectedItem.id);
                 if (group) this.selectGroup(group);
             }
-            
-            // If we have a selected group, show properties
             if (this.selectedGroup) {
                 document.getElementById('group-empty-state').style.display = 'none';
                 document.getElementById('group-props').style.display = 'block';
             }
-        } else {
-            // Settings
         }
     }
 
@@ -276,59 +254,28 @@ export class CYOAEditor {
         content.classList.toggle('collapsed');
     }
 
-    // ==================== LABEL AUTO HIDING ====================
-    // (Existing logic kept, just ensuring it triggers on tab switch)
     setupLabelAutoHiding() {
         const checkCollision = (input) => {
             const label = input.nextElementSibling;
             if (!label || !label.classList.contains('input-label')) return;
-
             const inputStyle = window.getComputedStyle(input);
-            const labelStyle = window.getComputedStyle(label);
 
             if (input.tagName === 'TEXTAREA') {
                 this.mirrorDiv.style.font = inputStyle.font;
-                this.mirrorDiv.style.lineHeight = inputStyle.lineHeight;
-                this.mirrorDiv.style.padding = inputStyle.padding;
                 this.mirrorDiv.style.width = inputStyle.width;
-                this.mirrorDiv.style.boxSizing = inputStyle.boxSizing;
-                
-                this.mirrorDiv.textContent = input.value;
-                const marker = document.createElement('span');
-                marker.textContent = '|'; 
-                this.mirrorDiv.appendChild(marker);
-
-                const markerRect = marker.getBoundingClientRect();
-                const mirrorRect = this.mirrorDiv.getBoundingClientRect();
-                const textBottomRelative = markerRect.bottom - mirrorRect.top;
-                const textRightRelative = markerRect.right - mirrorRect.left;
-                
-                const labelWidth = label.offsetWidth + parseFloat(labelStyle.right || 0) + 5;
-                const labelHeight = label.offsetHeight + parseFloat(labelStyle.bottom || 0) + 2;
-                const inputHeight = input.clientHeight;
-
+                this.mirrorDiv.style.padding = inputStyle.padding;
+                this.mirrorDiv.textContent = input.value + '|';
                 if (input.scrollHeight > input.clientHeight) {
                     label.classList.add('label-hidden');
-                    return;
-                }
-                const dangerZoneY = inputHeight - labelHeight;
-                const dangerZoneX = input.clientWidth - labelWidth;
-
-                if (textBottomRelative > dangerZoneY && textRightRelative > dangerZoneX) {
-                    label.classList.add('label-hidden');
                 } else {
-                    label.classList.remove('label-hidden');
+                     label.classList.remove('label-hidden');
                 }
                 return;
             }
-
-            // Simple Inputs
-            const inputWidth = input.clientWidth;
-            const labelTotalWidth = label.offsetWidth + parseFloat(labelStyle.right) + 8;
+            
             this.measureContext.font = inputStyle.font;
             const textWidth = this.measureContext.measureText(input.value).width;
-
-            if ((textWidth + 8) > (inputWidth - labelTotalWidth)) {
+            if ((textWidth + 10) > (input.clientWidth - label.offsetWidth - 10)) {
                 label.classList.add('label-hidden');
             } else {
                 label.classList.remove('label-hidden');
@@ -336,23 +283,17 @@ export class CYOAEditor {
         };
 
         const attach = () => {
-             const inputs = document.querySelectorAll('#editor-sidebar input[type="text"], #editor-sidebar input[type="number"], #editor-sidebar textarea');
+             const inputs = document.querySelectorAll('#editor-sidebar input[type="text"], #editor-sidebar input[type="number"], #editor-sidebar textarea:not(.code-editor)');
              inputs.forEach(input => {
-                input.removeEventListener('input', input._labelHandler); // cleanup old
+                input.removeEventListener('input', input._labelHandler);
                 input._labelHandler = () => checkCollision(input);
                 input.addEventListener('input', input._labelHandler);
                 checkCollision(input);
              });
         };
-
-        // Attach periodically/on interaction
         this.triggerLabelCheck = attach;
-        window.addEventListener('resize', attach);
-        // Initial attach
         setTimeout(attach, 500); 
     }
-
-    // ==================== INTERACTION HANDLERS ====================
 
     attachEventListeners() {
         document.addEventListener('mousedown', this.handleMouseDown.bind(this));
@@ -361,9 +302,7 @@ export class CYOAEditor {
         document.addEventListener('keydown', this.handleKeyDown.bind(this));
     }
 
-    removeEventListeners() {
-        // ... (standard removal code)
-    }
+    removeEventListeners() {}
 
     handleMouseDown(e) {
         if (!this.enabled) return;
@@ -372,12 +311,9 @@ export class CYOAEditor {
         let target = null;
         let objectToEdit = null;
 
-        // Logic depends on active tab
         if (this.activeTab === 'group') {
-            // In Group Mode: Try to click Group Zones
             target = e.target.closest('.info-zone');
             if (target) {
-                // ID format: "group-ID"
                 const gid = target.id.replace('group-', '');
                 const group = this.engine.config.groups.find(g => g.id === gid);
                 if (group) {
@@ -386,7 +322,6 @@ export class CYOAEditor {
                 }
             }
         } else {
-            // In Choice (or Settings) Mode: Try to click Items
             target = e.target.closest('.item-zone');
             if (target) {
                 const itemId = target.dataset.itemId;
@@ -394,34 +329,27 @@ export class CYOAEditor {
                 if (item) {
                     this.selectChoice(item, target);
                     objectToEdit = item;
-                    // Also update selected group reference for context
                     this.selectedGroup = this.engine.findGroupForItem(item.id);
                 }
-            } else {
-                // Clicked void -> Deselect
-                if(this.activeTab === 'choice') this.deselectChoice();
+            } else if(this.activeTab === 'choice') {
+                this.deselectChoice();
             }
         }
 
         if (objectToEdit && target) {
             target.classList.add('dragging');
-            
             const rect = target.getBoundingClientRect();
-            const handleX = rect.right - this.handleSize;
-            const handleY = rect.bottom - this.handleSize;
             
-            if (e.clientX >= handleX && e.clientY >= handleY) {
+            if (e.clientX >= rect.right - this.handleSize && e.clientY >= rect.bottom - this.handleSize) {
                 this.isResizing = true;
             } else {
                 this.isDragging = true;
             }
             
             this.dragStart = { x: e.clientX, y: e.clientY };
-            // Ensure object has coords initialized
             if (!objectToEdit.coords) objectToEdit.coords = {x:0,y:0,w:100,h:100};
             this.initialRect = { ...objectToEdit.coords };
             
-            // Scaling context
             const group = (objectToEdit.items) ? objectToEdit : this.engine.findGroupForItem(objectToEdit.id);
             const pageIndex = group?.page || 0;
             const dim = this.renderer.pageDimensions[pageIndex];
@@ -433,7 +361,7 @@ export class CYOAEditor {
                     scaleX: dim.w / containerRect.width,
                     scaleY: dim.h / containerRect.height,
                     dim: dim,
-                    targetObj: objectToEdit // Reference to what we are moving
+                    targetObj: objectToEdit
                 };
             }
             e.preventDefault();
@@ -448,7 +376,6 @@ export class CYOAEditor {
         const dy = e.clientY - this.dragStart.y;
         const { scaleX, scaleY, dim, targetObj } = this.dragContext;
         
-        // Update Data
         if (this.isDragging) {
             targetObj.coords.x = Math.round(this.initialRect.x + dx * scaleX);
             targetObj.coords.y = Math.round(this.initialRect.y + dy * scaleY);
@@ -457,8 +384,6 @@ export class CYOAEditor {
             targetObj.coords.h = Math.max(20, Math.round(this.initialRect.h + dy * scaleY));
         }
         
-        // Visual Update (Direct DOM manipulation for performance)
-        // Determine ID based on type
         let domId = targetObj.items ? `group-${targetObj.id}` : `btn-${targetObj.id}`;
         const element = document.getElementById(domId);
         
@@ -467,12 +392,11 @@ export class CYOAEditor {
             Object.assign(element.style, style);
         }
         
-        // Update inputs live
         if (this.activeTab === 'group') this.updateGroupInputs();
         else this.updateChoiceInputs();
     }
 
-    handleMouseUp(e) {
+    handleMouseUp() {
         document.querySelectorAll('.dragging').forEach(el => el.classList.remove('dragging'));
         this.isDragging = false;
         this.isResizing = false;
@@ -481,30 +405,22 @@ export class CYOAEditor {
 
     handleKeyDown(e) {
         if (!this.enabled) return;
-        // Delete support
         if (e.key === 'Delete') {
              const tag = document.activeElement.tagName;
              if (tag !== 'INPUT' && tag !== 'TEXTAREA') {
                  if (this.activeTab === 'choice') this.deleteSelectedItem();
-                 // if (this.activeTab === 'group') this.deleteSelectedGroup(); // Not implemented yet safely
              }
         }
     }
 
-    // ==================== SELECTION LOGIC ====================
-
     selectChoice(item, element) {
         this.selectedItem = item;
-        
-        // Visuals
         document.querySelectorAll('.editor-selected').forEach(el => el.classList.remove('editor-selected'));
         if(element) element.classList.add('editor-selected');
         
-        // UI State
         document.getElementById('choice-empty-state').style.display = 'none';
         document.getElementById('choice-props').style.display = 'block';
         
-        // Populate inputs
         this.updateChoiceInputs();
         this.ruleBuilder.loadItem(item, this.engine.findGroupForItem(item.id));
     }
@@ -518,20 +434,15 @@ export class CYOAEditor {
 
     selectGroup(group) {
         this.selectedGroup = group;
-
-        // Visuals
         document.querySelectorAll('.info-zone.editor-selected').forEach(el => el.classList.remove('editor-selected'));
         const el = document.getElementById(`group-${group.id}`);
         if(el) el.classList.add('editor-selected');
 
-        // UI State
         document.getElementById('group-empty-state').style.display = 'none';
         document.getElementById('group-props').style.display = 'block';
         
         this.updateGroupInputs();
     }
-
-    // ==================== FORM HANDLING: CHOICE ====================
 
     updateChoiceInputs() {
         if (!this.selectedItem) return;
@@ -543,45 +454,13 @@ export class CYOAEditor {
         document.getElementById('edit-title').value = item.title || '';
         document.getElementById('edit-description').value = item.description || '';
         
-        document.getElementById('edit-x').value = Math.round(item.coords?.x || 0);
-        document.getElementById('edit-y').value = Math.round(item.coords?.y || 0);
-        document.getElementById('edit-w').value = Math.round(item.coords?.w || 0);
-        document.getElementById('edit-h').value = Math.round(item.coords?.h || 0);
+        ['x','y','w','h'].forEach(k => {
+            document.getElementById(`edit-${k}`).value = Math.round(item.coords?.[k] || 0);
+        });
 
+        this.updateCodePreview();
         if (this.triggerLabelCheck) this.triggerLabelCheck();
     }
-
-    setupChoiceListeners() {
-        const update = (key, val, isNum = false) => {
-            if (!this.selectedItem) return;
-            if (isNum) val = parseInt(val) || 0;
-            
-            // Nested coords check
-            if (['x','y','w','h'].includes(key)) {
-                if (!this.selectedItem.coords) this.selectedItem.coords = {};
-                this.selectedItem.coords[key] = val;
-            } else {
-                this.selectedItem[key] = val;
-            }
-            this.renderer.renderButtons(); // Re-render to see changes
-        };
-
-        const map = {
-            'edit-id': 'id',
-            'edit-title': 'title',
-            'edit-description': 'description',
-            'edit-x': 'x', 'edit-y': 'y', 'edit-w': 'w', 'edit-h': 'h'
-        };
-
-        for (const [id, key] of Object.entries(map)) {
-            const el = document.getElementById(id);
-            if (!el) continue;
-            const isNum = ['x','y','w','h'].includes(key);
-            el.addEventListener('input', (e) => update(key, e.target.value, isNum));
-        }
-    }
-
-    // ==================== FORM HANDLING: GROUP ====================
 
     updateGroupInputs() {
         if (!this.selectedGroup) return;
@@ -591,19 +470,58 @@ export class CYOAEditor {
         document.getElementById('group-title').value = g.title || '';
         document.getElementById('group-description').value = g.description || '';
         
-        document.getElementById('group-x').value = Math.round(g.coords?.x || 0);
-        document.getElementById('group-y').value = Math.round(g.coords?.y || 0);
-        document.getElementById('group-w').value = Math.round(g.coords?.w || 0);
-        document.getElementById('group-h').value = Math.round(g.coords?.h || 0);
-        
+        ['x','y','w','h'].forEach(k => {
+            document.getElementById(`group-${k}`).value = Math.round(g.coords?.[k] || 0);
+        });
+
+        this.updateCodePreview();
         if (this.triggerLabelCheck) this.triggerLabelCheck();
     }
 
+    updateCodePreview() {
+        if (this.selectedItem) {
+            const el = document.getElementById('edit-raw-json');
+            if (el && document.activeElement !== el) {
+                el.value = JSON.stringify(this.selectedItem, null, 2);
+            }
+        }
+        if (this.selectedGroup) {
+            const rulesEl = document.getElementById('group-rules-json');
+            if (rulesEl && document.activeElement !== rulesEl) {
+                rulesEl.value = JSON.stringify(this.selectedGroup.rules || {}, null, 2);
+            }
+        }
+    }
+
+    setupChoiceListeners() {
+        const update = (key, val, isNum) => {
+            if (!this.selectedItem) return;
+            if (isNum) val = parseInt(val) || 0;
+            if (['x','y','w','h'].includes(key)) {
+                if (!this.selectedItem.coords) this.selectedItem.coords = {};
+                this.selectedItem.coords[key] = val;
+            } else {
+                this.selectedItem[key] = val;
+            }
+            this.renderer.renderButtons();
+            this.updateCodePreview();
+        };
+
+        const inputs = ['edit-id', 'edit-title', 'edit-description', 'edit-x', 'edit-y', 'edit-w', 'edit-h'];
+        inputs.forEach(id => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            const key = id.split('-').pop();
+            const realKey = (id === 'edit-description') ? 'description' : key;
+            const isNum = ['x','y','w','h'].includes(key);
+            el.addEventListener('input', (e) => update(realKey, e.target.value, isNum));
+        });
+    }
+
     setupGroupListeners() {
-        const update = (key, val, isNum = false) => {
+        const update = (key, val, isNum) => {
             if (!this.selectedGroup) return;
             if (isNum) val = parseInt(val) || 0;
-            
             if (['x','y','w','h'].includes(key)) {
                 if (!this.selectedGroup.coords) this.selectedGroup.coords = {};
                 this.selectedGroup.coords[key] = val;
@@ -611,29 +529,54 @@ export class CYOAEditor {
                 this.selectedGroup[key] = val;
             }
             this.renderer.renderButtons();
+            this.updateCodePreview();
         };
 
-        const map = {
-            'group-id': 'id',
-            'group-title': 'title',
-            'group-description': 'description',
-            'group-x': 'x', 'group-y': 'y', 'group-w': 'w', 'group-h': 'h'
-        };
-
-        for (const [id, key] of Object.entries(map)) {
+        const inputs = ['group-id', 'group-title', 'group-description', 'group-x', 'group-y', 'group-w', 'group-h'];
+        inputs.forEach(id => {
             const el = document.getElementById(id);
-            if (!el) continue;
+            if (!el) return;
+            const key = id.split('-').pop();
+            const realKey = (id === 'group-description') ? 'description' : key;
             const isNum = ['x','y','w','h'].includes(key);
-            el.addEventListener('input', (e) => update(key, e.target.value, isNum));
+            el.addEventListener('input', (e) => update(realKey, e.target.value, isNum));
+        });
+    }
+
+    setupJsonListeners() {
+        const choiceJson = document.getElementById('edit-raw-json');
+        if (choiceJson) {
+            choiceJson.addEventListener('change', (e) => {
+                try {
+                    const data = JSON.parse(e.target.value);
+                    if (this.selectedItem) {
+                        Object.assign(this.selectedItem, data);
+                        this.renderer.renderButtons();
+                        this.updateChoiceInputs();
+                        this.ruleBuilder.loadItem(this.selectedItem, this.selectedGroup);
+                    }
+                } catch(err) { console.error("JSON Error", err); }
+            });
+        }
+
+        const rulesJson = document.getElementById('group-rules-json');
+        if (rulesJson) {
+            rulesJson.addEventListener('change', (e) => {
+                try {
+                    const data = JSON.parse(e.target.value);
+                    if (this.selectedGroup) {
+                        this.selectedGroup.rules = data;
+                        this.renderer.renderButtons(); 
+                        this.engine.recalculate(); 
+                    }
+                } catch(err) { console.error("Rules JSON Error", err); }
+            });
         }
     }
 
-    // ==================== ACTIONS ====================
-
     deleteSelectedItem() {
         if (!this.selectedItem) return;
-        if (!confirm('Delete this item?')) return;
-        
+        if (!confirm('Delete item?')) return;
         const group = this.engine.findGroupForItem(this.selectedItem.id);
         if (group) {
             const idx = group.items.indexOf(this.selectedItem);
@@ -644,10 +587,8 @@ export class CYOAEditor {
     }
 
     addNewItem() {
-        // Add to currently selected group OR first group
         let group = this.selectedGroup || this.engine.config.groups[0];
         if (!group) return;
-
         const newItem = {
             id: `item_${Date.now()}`,
             title: 'New Item',
@@ -657,12 +598,50 @@ export class CYOAEditor {
         };
         group.items.push(newItem);
         this.renderer.renderButtons();
-        
-        // Select it
         setTimeout(() => {
             const el = document.getElementById(`btn-${newItem.id}`);
             if (el) this.selectChoice(newItem, el);
         }, 50);
+    }
+
+    // === GROUP ACTIONS ===
+    addNewGroup() {
+        const newGroup = {
+            id: `group_${Date.now()}`,
+            title: 'New Group',
+            description: '',
+            page: 0,
+            coords: { x: 50, y: 50, w: 300, h: 200 },
+            items: []
+        };
+        this.engine.config.groups.push(newGroup);
+        this.renderer.renderButtons();
+        setTimeout(() => {
+            const el = document.getElementById(`group-${newGroup.id}`);
+            if (el) this.selectGroup(newGroup);
+        }, 50);
+    }
+
+    deleteSelectedGroup() {
+        if (!this.selectedGroup) return;
+        if (this.selectedGroup.items && this.selectedGroup.items.length > 0) {
+            if (!confirm(`Group has ${this.selectedGroup.items.length} items. Delete group and ALL items?`)) return;
+        } else {
+            if (!confirm('Delete this group?')) return;
+        }
+
+        const idx = this.engine.config.groups.indexOf(this.selectedGroup);
+        if (idx > -1) {
+            this.engine.config.groups.splice(idx, 1);
+        }
+        
+        // Deselect
+        this.selectedGroup = null;
+        document.querySelectorAll('.info-zone.editor-selected').forEach(el => el.classList.remove('editor-selected'));
+        document.getElementById('group-props').style.display = 'none';
+        document.getElementById('group-empty-state').style.display = 'block';
+        
+        this.renderer.renderButtons();
     }
 
     exportConfig() {
