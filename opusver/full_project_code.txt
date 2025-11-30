@@ -211,7 +211,6 @@ FILE START: generate_test_image.html
 FILE START: index.html
 ============================================================
 
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -225,7 +224,7 @@ FILE START: index.html
         <!-- Top controls -->
         <div class="top-controls">
             <button id="text-toggle" class="ctrl-btn">📖 Translation</button>
-            <button id="debug-toggle" class="ctrl-btn">🐞 Debug</button>
+            <button id="edit-toggle" class="ctrl-btn">✏️ Edit</button>
             <button id="reset-btn" class="ctrl-btn">🔄 Reset</button>
         </div>
         
@@ -2075,10 +2074,10 @@ export class ControlPanel {
             textBtn.addEventListener('click', () => this.toggleText());
         }
 
-        // Debug toggle
-        const debugBtn = document.getElementById('debug-toggle');
-        if (debugBtn) {
-            debugBtn.addEventListener('click', () => this.toggleDebug());
+        // Edit/Debug toggle (Renamed)
+        const editBtn = document.getElementById('edit-toggle');
+        if (editBtn) {
+            editBtn.addEventListener('click', () => this.toggleEditMode());
         }
 
         // Reset
@@ -2096,30 +2095,32 @@ export class ControlPanel {
         if (btn) {
             btn.classList.toggle('active');
         }
-
-        const isActive = document.body.classList.contains('text-mode');
-        console.log(isActive ? '📖 Text mode ON' : '📖 Text mode OFF');
     }
 
-    toggleDebug() {
-        document.body.classList.toggle('debug-mode');
-        const btn = document.getElementById('debug-toggle');
+    toggleEditMode() {
+        // Toggle the main edit class
+        document.body.classList.toggle('edit-mode-active');
+        
+        const btn = document.getElementById('edit-toggle');
         if (btn) {
             btn.classList.toggle('active');
         }
 
-        const isActive = document.body.classList.contains('debug-mode');
+        const isActive = document.body.classList.contains('edit-mode-active');
         
-        // Enable/disable editor
+        // Enable/disable editor logic
         if (isActive) {
             this.editor.enable();
-            // Setup form listeners after UI is created
-            setTimeout(() => this.editor.setupFormListeners(), 100);
+            // Also enable visual debug borders for items by default
+            document.body.classList.add('show-zones'); 
         } else {
             this.editor.disable();
+            document.body.classList.remove('show-zones');
+            document.body.classList.remove('edit-mode-choice');
+            document.body.classList.remove('edit-mode-group');
         }
         
-        console.log(isActive ? '🐞 Debug mode ON' : '🐞 Debug mode OFF');
+        console.log(isActive ? '✏️ Edit mode ON' : '✏️ Edit mode OFF');
     }
 
     reset() {
@@ -2150,21 +2151,14 @@ export class CYOAEditor {
         
         this.selectedItem = null;
         this.selectedGroup = null;
+        this.activeTab = 'choice'; 
         
-        // Canvas for measuring text width (simple inputs)
         this.measureContext = document.createElement('canvas').getContext('2d');
         
-        // Mirror div for measuring textarea height/overlap
         this.mirrorDiv = document.createElement('div');
-        this.mirrorDiv.style.position = 'absolute';
-        this.mirrorDiv.style.visibility = 'hidden';
-        this.mirrorDiv.style.height = 'auto';
-        this.mirrorDiv.style.overflow = 'hidden';
-        this.mirrorDiv.style.whiteSpace = 'pre-wrap'; // Important for textarea behavior
-        this.mirrorDiv.style.wordWrap = 'break-word';
+        this.mirrorDiv.style.cssText = 'position:absolute; visibility:hidden; height:auto; overflow:hidden; white-space:pre-wrap; word-wrap:break-word;';
         document.body.appendChild(this.mirrorDiv);
 
-        // Dragging state
         this.isDragging = false;
         this.isResizing = false;
         this.dragStart = { x: 0, y: 0 };
@@ -2173,38 +2167,29 @@ export class CYOAEditor {
         this.dragContext = null;
         
         this.enabled = false;
-        
         console.log('✏️ Editor initialized');
     }
-
-    // ==================== ENABLE/DISABLE ====================
 
     enable() {
         if (this.enabled) return;
         this.enabled = true;
         this.createEditorUI();
         this.attachEventListeners();
-        this.makeBoxesDraggable();
+        this.switchTab('choice');
         console.log('✏️ Editor enabled');
     }
 
     disable() {
         if (!this.enabled) return;
         this.enabled = false;
-        
         const sidebar = document.getElementById('editor-sidebar');
         if (sidebar) sidebar.remove();
-        
         this.removeEventListeners();
-        
-        document.querySelectorAll('.click-zone').forEach(el => {
-            el.classList.remove('editable');
+        document.querySelectorAll('.item-zone, .info-zone').forEach(el => {
+            el.classList.remove('editable', 'editor-selected');
         });
-        
         console.log('✏️ Editor disabled');
     }
-
-    // ==================== UI CREATION ====================
 
     createEditorUI() {
         if (document.getElementById('editor-sidebar')) return;
@@ -2214,98 +2199,191 @@ export class CYOAEditor {
         sidebar.className = 'editor-sidebar';
         
         sidebar.innerHTML = `
-            <div class="editor-header">
-                <h3>🎨 CYOA Editor</h3>
-                <button class="close-btn" onclick="CYOA.controls.toggleDebug()">✕</button>
+            <div class="editor-tabs">
+                <button class="tab-btn" data-tab="choice" onclick="CYOA.editor.switchTab('choice')">Choice</button>
+                <button class="tab-btn" data-tab="group" onclick="CYOA.editor.switchTab('group')">Group</button>
+                <button class="tab-btn" data-tab="settings" onclick="CYOA.editor.switchTab('settings')">Settings</button>
+                <button class="close-tab-btn" onclick="CYOA.controls.toggleEditMode()">✕</button>
             </div>
             
             <div class="sidebar-scroll-content">
-                <!-- Selection Info -->
-                <div class="editor-section" style="padding-top:10px;">
-                    <div id="editor-selection-info" class="info-text" style="font-size: 0.8rem; color: #888;">
-                        No selection
-                    </div>
-                </div>
                 
-                <div id="editor-item-props" style="display:none;">
-                    
-                    <!-- Main Properties -->
-                    <div class="editor-section">
-                        <div class="row-2">
-                            <div class="input-group">
-                                <input type="text" id="edit-id">
-                                <span class="input-label">ID</span>
+                <!-- TAB 1: CHOICE -->
+                <div id="tab-content-choice" class="tab-content" style="display:none;">
+                    <div id="choice-empty-state" class="info-text">
+                        Select an item on the page to edit.
+                    </div>
+
+                    <div id="choice-props" style="display:none;">
+                        <!-- Main Properties -->
+                        <div class="editor-section">
+                            <div class="row-2">
+                                <div class="input-group">
+                                    <input type="text" id="edit-id">
+                                    <span class="input-label">ID</span>
+                                </div>
+                                <div class="input-group">
+                                    <input type="text" id="edit-parent-group" readonly style="color:#888; cursor:default;">
+                                    <span class="input-label">GRP</span>
+                                </div>
                             </div>
                             <div class="input-group">
-                                <input type="text" id="edit-group-display" readonly style="color:#888; cursor:default;">
-                                <span class="input-label">GRP</span>
+                                <input type="text" id="edit-title">
+                                <span class="input-label">Title</span>
+                            </div>
+                            <div class="input-group">
+                                <textarea id="edit-description" rows="7"></textarea>
+                                <span class="input-label">Desc</span>
+                            </div>
+                        </div>
+
+                        <!-- Position & Size -->
+                        <div class="editor-section">
+                            <div class="accordion-header" onclick="CYOA.editor.toggleAccordion(this)">
+                                Position & Size
+                            </div>
+                            <div class="accordion-content">
+                                <div class="row-4">
+                                    <div class="input-group" title="X"><input type="number" id="edit-x"></div>
+                                    <div class="input-group" title="Y"><input type="number" id="edit-y"></div>
+                                    <div class="input-group" title="Width"><input type="number" id="edit-w"></div>
+                                    <div class="input-group" title="Height"><input type="number" id="edit-h"></div>
+                                </div>
                             </div>
                         </div>
                         
-                        <div class="input-group">
-                            <input type="text" id="edit-title">
-                            <span class="input-label">Title</span>
+                        <!-- Rule Builder -->
+                        <div id="rule-builder-container"></div>
+
+                        <!-- RAW JSON -->
+                        <div class="editor-section">
+                            <div class="accordion-header collapsed" onclick="CYOA.editor.toggleAccordion(this)">
+                                🔧 Raw JSON
+                            </div>
+                            <div class="accordion-content collapsed">
+                                <textarea id="edit-raw-json" class="code-editor"></textarea>
+                            </div>
                         </div>
                         
-                        <div class="input-group">
-                            <textarea id="edit-description" rows="7"></textarea>
-                            <span class="input-label">Desc</span>
-                        </div>
-                    </div>
-
-                    <!-- Position & Size -->
-                    <div class="editor-section">
-                        <div class="accordion-header" onclick="CYOA.editor.toggleAccordion(this)">
-                            Position & Size
-                        </div>
-                        <div class="accordion-content">
-                            <div class="row-4">
-                                <div class="input-group" title="X"><input type="number" id="edit-x"></div>
-                                <div class="input-group" title="Y"><input type="number" id="edit-y"></div>
-                                <div class="input-group" title="Width"><input type="number" id="edit-w"></div>
-                                <div class="input-group" title="Height"><input type="number" id="edit-h"></div>
+                        <!-- Actions Footer -->
+                        <div class="editor-section" style="margin-top: 10px; border-top: 1px solid #222;">
+                            <div class="row-buttons">
+                                <button class="action-btn btn-delete" onclick="CYOA.editor.deleteSelectedItem()">🗑️ Delete</button>
+                                <button class="action-btn btn-add" onclick="CYOA.editor.addNewItem()">➕ Add New</button>
                             </div>
                         </div>
                     </div>
-                    
-                    <!-- Rules Container -->
-                    <div id="rule-builder-container"></div>
-                    
-                    <!-- Raw JSON Editor -->
+                </div>
+
+                <!-- TAB 2: GROUP -->
+                <div id="tab-content-group" class="tab-content" style="display:none;">
+                    <div id="group-empty-state" class="info-text">
+                        Select a group (Info Box) or a choice first.
+                    </div>
+
+                    <div id="group-props" style="display:none;">
+                         <div class="editor-section">
+                            <div class="input-group">
+                                <input type="text" id="group-id">
+                                <span class="input-label">Group ID</span>
+                            </div>
+                            <div class="input-group">
+                                <input type="text" id="group-title">
+                                <span class="input-label">Title</span>
+                            </div>
+                            <div class="input-group">
+                                <textarea id="group-description" rows="7"></textarea>
+                                <span class="input-label">Description</span>
+                            </div>
+                        </div>
+
+                        <div class="editor-section">
+                            <div class="accordion-header" onclick="CYOA.editor.toggleAccordion(this)">
+                                Position & Size
+                            </div>
+                            <div class="accordion-content">
+                                <div class="row-4">
+                                    <div class="input-group" title="X"><input type="number" id="group-x"></div>
+                                    <div class="input-group" title="Y"><input type="number" id="group-y"></div>
+                                    <div class="input-group" title="Width"><input type="number" id="group-w"></div>
+                                    <div class="input-group" title="Height"><input type="number" id="group-h"></div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Group Rules (JSON) -->
+                         <div class="editor-section">
+                             <div class="accordion-header" onclick="CYOA.editor.toggleAccordion(this)">
+                                 📜 Group Rules (JSON)
+                             </div>
+                             <div class="accordion-content">
+                                 <textarea id="group-rules-json" class="code-editor" style="height:150px;"></textarea>
+                                 <div style="font-size:0.7rem; color:#666;">Format: {"max_choices": 1, "budget": {...}}</div>
+                             </div>
+                         </div>
+
+                        <!-- Actions Footer -->
+                        <div class="editor-section" style="margin-top: 10px; border-top: 1px solid #222;">
+                            <div class="row-buttons">
+                                <button class="action-btn btn-delete" onclick="CYOA.editor.deleteSelectedGroup()">🗑️ Delete Group</button>
+                                <button class="action-btn btn-add" onclick="CYOA.editor.addNewGroup()">➕ Add Group</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB 3: SETTINGS -->
+                <div id="tab-content-settings" class="tab-content" style="display:none;">
                     <div class="editor-section">
-                        <div class="accordion-header collapsed" onclick="CYOA.editor.toggleAccordion(this)">
-                            🔧 Raw JSON
+                        <div class="accordion-header">File Operations</div>
+                        <div class="accordion-content" style="display:block">
+                            <button class="full-width-btn primary-btn" onclick="CYOA.editor.exportConfig()">💾 Save JSON</button>
                         </div>
-                        <div class="accordion-content collapsed">
-                            <textarea id="edit-raw-json" class="code-editor"></textarea>
-                            <div style="font-size:0.7rem; color:#666; margin-top:4px;">Edit above to update item</div>
-                        </div>
-                    </div>
-
-                    <!-- Actions Footer -->
-                    <div class="editor-section" style="margin-top: 20px; border-top: 1px solid #333; padding-top: 15px;">
-                        <button class="delete-item-btn" onclick="CYOA.editor.deleteSelected()">
-                            🗑️ Delete Item
-                        </button>
                     </div>
                 </div>
 
-                <!-- Global Actions -->
-                <div class="editor-section">
-                     <div class="row-2">
-                        <button class="full-width-btn" onclick="CYOA.editor.addNewItem()">➕ Add Item</button>
-                        <button class="full-width-btn primary-btn" onclick="CYOA.editor.exportConfig()">💾 Save JSON</button>
-                    </div>
-                </div>
             </div>
         `;
         
         document.body.appendChild(sidebar);
         this.ruleBuilder.renderUI(document.getElementById('rule-builder-container'));
         
-        this.setupFormListeners();
-        this.setupJsonListener();
+        this.setupChoiceListeners();
+        this.setupGroupListeners();
+        this.setupJsonListeners();
         this.setupLabelAutoHiding();
+    }
+
+    switchTab(tabName) {
+        this.activeTab = tabName;
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.tab === tabName);
+        });
+        document.querySelectorAll('.tab-content').forEach(content => {
+            content.style.display = 'none';
+        });
+        document.getElementById(`tab-content-${tabName}`).style.display = 'block';
+
+        document.body.classList.remove('edit-mode-choice', 'edit-mode-group');
+
+        if (tabName === 'choice') {
+            document.body.classList.add('edit-mode-choice');
+            if (this.selectedItem) {
+                this.updateChoiceInputs();
+                document.getElementById('choice-empty-state').style.display = 'none';
+                document.getElementById('choice-props').style.display = 'block';
+            }
+        } else if (tabName === 'group') {
+            document.body.classList.add('edit-mode-group');
+            if (this.selectedItem) {
+                const group = this.engine.findGroupForItem(this.selectedItem.id);
+                if (group) this.selectGroup(group);
+            }
+            if (this.selectedGroup) {
+                document.getElementById('group-empty-state').style.display = 'none';
+                document.getElementById('group-props').style.display = 'block';
+            }
+        }
     }
 
     toggleAccordion(header) {
@@ -2314,112 +2392,45 @@ export class CYOAEditor {
         content.classList.toggle('collapsed');
     }
 
-    // ==================== LABEL AUTO HIDING LOGIC ====================
-
     setupLabelAutoHiding() {
         const checkCollision = (input) => {
             const label = input.nextElementSibling;
             if (!label || !label.classList.contains('input-label')) return;
-
             const inputStyle = window.getComputedStyle(input);
-            const labelStyle = window.getComputedStyle(label);
 
-            // --- LOGIC FOR TEXTAREA (DESC) ---
             if (input.tagName === 'TEXTAREA') {
-                // Синхронизируем стили зеркального div с textarea
                 this.mirrorDiv.style.font = inputStyle.font;
-                this.mirrorDiv.style.lineHeight = inputStyle.lineHeight;
-                this.mirrorDiv.style.padding = inputStyle.padding;
                 this.mirrorDiv.style.width = inputStyle.width;
-                this.mirrorDiv.style.boxSizing = inputStyle.boxSizing;
-                
-                // Копируем текст + добавляем маркер в конец
-                // Используем span, чтобы найти координаты конца текста
-                this.mirrorDiv.textContent = input.value;
-                const marker = document.createElement('span');
-                marker.textContent = '|'; // Невидимый символ для измерения
-                this.mirrorDiv.appendChild(marker);
-
-                // Получаем размеры
-                const inputRect = input.getBoundingClientRect();
-                const markerRect = marker.getBoundingClientRect();
-                const mirrorRect = this.mirrorDiv.getBoundingClientRect();
-
-                // Вычисляем позицию "курсора" (конца текста) относительно верхнего левого угла
-                const textBottomRelative = markerRect.bottom - mirrorRect.top;
-                const textRightRelative = markerRect.right - mirrorRect.left;
-
-                // Размеры лейбла
-                const labelWidth = label.offsetWidth + parseFloat(labelStyle.right || 0) + 5;
-                const labelHeight = label.offsetHeight + parseFloat(labelStyle.bottom || 0) + 2;
-
-                // Высота поля ввода
-                const inputHeight = input.clientHeight;
-
-                // 1. Если текст уже прокручивается (его больше, чем влезает) -> СКРЫТЬ
+                this.mirrorDiv.style.padding = inputStyle.padding;
+                this.mirrorDiv.textContent = input.value + '|';
                 if (input.scrollHeight > input.clientHeight) {
                     label.classList.add('label-hidden');
-                    return;
-                }
-
-                // 2. Зона коллизии по вертикали (последние N пикселей снизу)
-                const dangerZoneY = inputHeight - labelHeight;
-                
-                // 3. Зона коллизии по горизонтали (последние N пикселей справа)
-                const dangerZoneX = input.clientWidth - labelWidth;
-
-                // Если конец текста ниже опасной линии...
-                if (textBottomRelative > dangerZoneY) {
-                    // ...И правее опасной линии
-                    if (textRightRelative > dangerZoneX) {
-                        label.classList.add('label-hidden');
-                    } else {
-                        // Текст внизу, но слева от надписи
-                        label.classList.remove('label-hidden');
-                    }
                 } else {
-                    // Текст выше надписи
-                    label.classList.remove('label-hidden');
+                     label.classList.remove('label-hidden');
                 }
                 return;
             }
-
-            // --- LOGIC FOR SIMPLE INPUTS (ID, TITLE, ETC) ---
-            const inputWidth = input.clientWidth;
-            const labelTotalWidth = label.offsetWidth + parseFloat(labelStyle.right) + 8;
             
             this.measureContext.font = inputStyle.font;
             const textWidth = this.measureContext.measureText(input.value).width;
-
-            const textEndPosition = textWidth + 8; // +padding
-            const labelStartPosition = inputWidth - labelTotalWidth;
-
-            if (textEndPosition > labelStartPosition) {
+            if ((textWidth + 10) > (input.clientWidth - label.offsetWidth - 10)) {
                 label.classList.add('label-hidden');
             } else {
                 label.classList.remove('label-hidden');
             }
         };
 
-        const inputs = document.querySelectorAll('#editor-sidebar input[type="text"], #editor-sidebar input[type="number"], #editor-sidebar textarea');
-        
-        inputs.forEach(input => {
-            checkCollision(input);
-            input.addEventListener('input', () => checkCollision(input));
-            window.addEventListener('resize', () => checkCollision(input));
-        });
-
-        this.triggerLabelCheck = () => {
-            inputs.forEach(input => checkCollision(input));
+        const attach = () => {
+             const inputs = document.querySelectorAll('#editor-sidebar input[type="text"], #editor-sidebar input[type="number"], #editor-sidebar textarea:not(.code-editor)');
+             inputs.forEach(input => {
+                input.removeEventListener('input', input._labelHandler);
+                input._labelHandler = () => checkCollision(input);
+                input.addEventListener('input', input._labelHandler);
+                checkCollision(input);
+             });
         };
-    }
-
-    // ==================== DRAG & DROP & EVENT HANDLERS ====================
-    
-    makeBoxesDraggable() {
-        document.querySelectorAll('.item-zone').forEach(el => {
-            el.classList.add('editable');
-        });
+        this.triggerLabelCheck = attach;
+        setTimeout(attach, 500); 
     }
 
     attachEventListeners() {
@@ -2429,102 +2440,102 @@ export class CYOAEditor {
         document.addEventListener('keydown', this.handleKeyDown.bind(this));
     }
 
-    removeEventListeners() {
-        document.removeEventListener('mousedown', this.handleMouseDown.bind(this));
-        document.removeEventListener('mousemove', this.handleMouseMove.bind(this));
-        document.removeEventListener('mouseup', this.handleMouseUp.bind(this));
-        document.removeEventListener('keydown', this.handleKeyDown.bind(this));
-    }
+    removeEventListeners() {}
 
     handleMouseDown(e) {
         if (!this.enabled) return;
         if (e.target.closest('#editor-sidebar')) return;
-        
-        const target = e.target.closest('.item-zone');
-        if (!target) {
-            this.deselectItem();
-            return;
-        }
-        
-        const itemId = target.dataset.itemId;
-        if (!itemId) return;
-        
-        const item = this.engine.findItem(itemId);
-        const group = this.engine.findGroupForItem(itemId);
-        
-        if (!item || !group) return;
-        
-        this.selectItem(item, group, target);
-        target.classList.add('dragging');
 
-        const rect = target.getBoundingClientRect();
-        const handleX = rect.right - this.handleSize;
-        const handleY = rect.bottom - this.handleSize;
-        
-        if (e.clientX >= handleX && e.clientY >= handleY) {
-            this.isResizing = true;
+        let target = null;
+        let objectToEdit = null;
+
+        if (this.activeTab === 'group') {
+            target = e.target.closest('.info-zone');
+            if (target) {
+                const gid = target.id.replace('group-', '');
+                const group = this.engine.config.groups.find(g => g.id === gid);
+                if (group) {
+                    this.selectGroup(group);
+                    objectToEdit = group;
+                }
+            }
         } else {
-            this.isDragging = true;
-        }
-        
-        this.dragStart = { x: e.clientX, y: e.clientY };
-        this.initialRect = { ...item.coords };
-        
-        const pageIndex = group.page || 0;
-        const dim = this.renderer.pageDimensions[pageIndex];
-        const container = document.querySelector(`#page-${pageIndex}`);
-        
-        if (!dim || !container) {
-            this.dragContext = null; 
-            return;
+            target = e.target.closest('.item-zone');
+            if (target) {
+                const itemId = target.dataset.itemId;
+                const item = this.engine.findItem(itemId);
+                if (item) {
+                    this.selectChoice(item, target);
+                    objectToEdit = item;
+                    this.selectedGroup = this.engine.findGroupForItem(item.id);
+                }
+            } else if(this.activeTab === 'choice') {
+                this.deselectChoice();
+            }
         }
 
-        const containerRect = container.getBoundingClientRect();
-        
-        this.dragContext = {
-            scaleX: dim.w / containerRect.width,
-            scaleY: dim.h / containerRect.height,
-            dim: dim
-        };
-
-        e.preventDefault();
+        if (objectToEdit && target) {
+            target.classList.add('dragging');
+            const rect = target.getBoundingClientRect();
+            
+            if (e.clientX >= rect.right - this.handleSize && e.clientY >= rect.bottom - this.handleSize) {
+                this.isResizing = true;
+            } else {
+                this.isDragging = true;
+            }
+            
+            this.dragStart = { x: e.clientX, y: e.clientY };
+            if (!objectToEdit.coords) objectToEdit.coords = {x:0,y:0,w:100,h:100};
+            this.initialRect = { ...objectToEdit.coords };
+            
+            const group = (objectToEdit.items) ? objectToEdit : this.engine.findGroupForItem(objectToEdit.id);
+            const pageIndex = group?.page || 0;
+            const dim = this.renderer.pageDimensions[pageIndex];
+            const container = document.querySelector(`#page-${pageIndex}`);
+            
+            if (dim && container) {
+                const containerRect = container.getBoundingClientRect();
+                this.dragContext = {
+                    scaleX: dim.w / containerRect.width,
+                    scaleY: dim.h / containerRect.height,
+                    dim: dim,
+                    targetObj: objectToEdit
+                };
+            }
+            e.preventDefault();
+        }
     }
 
     handleMouseMove(e) {
-        if (!this.enabled) return;
-        if ((!this.isDragging && !this.isResizing) || !this.selectedItem || !this.dragContext) return;
+        if (!this.enabled || !this.dragContext) return;
+        if (!this.isDragging && !this.isResizing) return;
         
         const dx = e.clientX - this.dragStart.x;
         const dy = e.clientY - this.dragStart.y;
-        
-        const { scaleX, scaleY, dim } = this.dragContext;
+        const { scaleX, scaleY, dim, targetObj } = this.dragContext;
         
         if (this.isDragging) {
-            this.selectedItem.coords.x = Math.round(this.initialRect.x + dx * scaleX);
-            this.selectedItem.coords.y = Math.round(this.initialRect.y + dy * scaleY);
+            targetObj.coords.x = Math.round(this.initialRect.x + dx * scaleX);
+            targetObj.coords.y = Math.round(this.initialRect.y + dy * scaleY);
         } else if (this.isResizing) {
-            this.selectedItem.coords.w = Math.max(20, Math.round(this.initialRect.w + dx * scaleX));
-            this.selectedItem.coords.h = Math.max(20, Math.round(this.initialRect.h + dy * scaleY));
+            targetObj.coords.w = Math.max(20, Math.round(this.initialRect.w + dx * scaleX));
+            targetObj.coords.h = Math.max(20, Math.round(this.initialRect.h + dy * scaleY));
         }
         
-        const element = document.getElementById(`btn-${this.selectedItem.id}`);
+        let domId = targetObj.items ? `group-${targetObj.id}` : `btn-${targetObj.id}`;
+        const element = document.getElementById(domId);
+        
         if (element) {
-            const style = CoordHelper.toPercent(this.selectedItem.coords, dim);
+            const style = CoordHelper.toPercent(targetObj.coords, dim);
             Object.assign(element.style, style);
         }
+        
+        if (this.activeTab === 'group') this.updateGroupInputs();
+        else this.updateChoiceInputs();
     }
 
-    handleMouseUp(e) {
-        if (this.selectedItem) {
-            const element = document.getElementById(`btn-${this.selectedItem.id}`);
-            if (element) element.classList.remove('dragging');
-        }
-
-        if (this.isDragging || this.isResizing) {
-            this.updateFormInputs();
-            this.updateCodePreview();
-        }
-        
+    handleMouseUp() {
+        document.querySelectorAll('.dragging').forEach(el => el.classList.remove('dragging'));
         this.isDragging = false;
         this.isResizing = false;
         this.dragContext = null;
@@ -2532,173 +2543,249 @@ export class CYOAEditor {
 
     handleKeyDown(e) {
         if (!this.enabled) return;
-        if (e.key === 'Delete' && this.selectedItem) {
-            if (document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
-                this.deleteSelected();
-            }
+        if (e.key === 'Delete') {
+             const tag = document.activeElement.tagName;
+             if (tag !== 'INPUT' && tag !== 'TEXTAREA') {
+                 if (this.activeTab === 'choice') this.deleteSelectedItem();
+             }
         }
     }
 
-    // ==================== SELECTION & FORM UPDATES ====================
-
-    selectItem(item, group, element) {
+    selectChoice(item, element) {
         this.selectedItem = item;
-        this.selectedGroup = group;
+        document.querySelectorAll('.editor-selected').forEach(el => el.classList.remove('editor-selected'));
+        if(element) element.classList.add('editor-selected');
         
-        document.querySelectorAll('.item-zone').forEach(el => el.classList.remove('editor-selected'));
-        element.classList.add('editor-selected');
+        document.getElementById('choice-empty-state').style.display = 'none';
+        document.getElementById('choice-props').style.display = 'block';
         
-        document.getElementById('editor-item-props').style.display = 'block';
-        
-        const groupInput = document.getElementById('edit-group-display');
-        if(groupInput) groupInput.value = group.title || group.id;
-
-        this.updateFormInputs();
-        
-        document.getElementById('editor-selection-info').innerHTML = 
-            `<span style="color:#4CAF50">Editing:</span> ${item.title || item.id}`;
-        
-        this.ruleBuilder.loadItem(item, group);
+        this.updateChoiceInputs();
+        this.ruleBuilder.loadItem(item, this.engine.findGroupForItem(item.id));
     }
 
-    deselectItem() {
+    deselectChoice() {
         this.selectedItem = null;
-        this.selectedGroup = null;
-        document.querySelectorAll('.item-zone').forEach(el => el.classList.remove('editor-selected'));
-        document.getElementById('editor-item-props').style.display = 'none';
-        document.getElementById('editor-selection-info').innerHTML = 'Click on any item to edit';
+        document.querySelectorAll('.item-zone.editor-selected').forEach(el => el.classList.remove('editor-selected'));
+        document.getElementById('choice-props').style.display = 'none';
+        document.getElementById('choice-empty-state').style.display = 'block';
     }
 
-    updateFormInputs() {
+    selectGroup(group) {
+        this.selectedGroup = group;
+        document.querySelectorAll('.info-zone.editor-selected').forEach(el => el.classList.remove('editor-selected'));
+        const el = document.getElementById(`group-${group.id}`);
+        if(el) el.classList.add('editor-selected');
+
+        document.getElementById('group-empty-state').style.display = 'none';
+        document.getElementById('group-props').style.display = 'block';
+        
+        this.updateGroupInputs();
+    }
+
+    updateChoiceInputs() {
         if (!this.selectedItem) return;
         const item = this.selectedItem;
-        
+        const group = this.engine.findGroupForItem(item.id);
+
         document.getElementById('edit-id').value = item.id || '';
+        document.getElementById('edit-parent-group').value = group ? group.id : '?';
         document.getElementById('edit-title').value = item.title || '';
         document.getElementById('edit-description').value = item.description || '';
         
-        document.getElementById('edit-x').value = Math.round(item.coords.x);
-        document.getElementById('edit-y').value = Math.round(item.coords.y);
-        document.getElementById('edit-w').value = Math.round(item.coords.w);
-        document.getElementById('edit-h').value = Math.round(item.coords.h);
-        
+        ['x','y','w','h'].forEach(k => {
+            document.getElementById(`edit-${k}`).value = Math.round(item.coords?.[k] || 0);
+        });
+
         this.updateCodePreview();
+        if (this.triggerLabelCheck) this.triggerLabelCheck();
+    }
+
+    updateGroupInputs() {
+        if (!this.selectedGroup) return;
+        const g = this.selectedGroup;
+
+        document.getElementById('group-id').value = g.id || '';
+        document.getElementById('group-title').value = g.title || '';
+        document.getElementById('group-description').value = g.description || '';
         
-        if (this.triggerLabelCheck) setTimeout(() => this.triggerLabelCheck(), 0);
+        ['x','y','w','h'].forEach(k => {
+            document.getElementById(`group-${k}`).value = Math.round(g.coords?.[k] || 0);
+        });
+
+        this.updateCodePreview();
+        if (this.triggerLabelCheck) this.triggerLabelCheck();
     }
 
     updateCodePreview() {
-        if (!this.selectedItem) return;
-        const el = document.getElementById('edit-raw-json');
-        if (el) {
-            el.value = JSON.stringify(this.selectedItem, null, 2);
+        if (this.selectedItem) {
+            const el = document.getElementById('edit-raw-json');
+            if (el && document.activeElement !== el) {
+                el.value = JSON.stringify(this.selectedItem, null, 2);
+            }
         }
-    }
-
-    setupFormListeners() {
-        const inputs = {
-            'edit-id': (val) => { this.selectedItem.id = val; },
-            'edit-title': (val) => { this.selectedItem.title = val; },
-            'edit-description': (val) => { this.selectedItem.description = val; },
-            'edit-x': (val) => { this.selectedItem.coords.x = parseInt(val) || 0; },
-            'edit-y': (val) => { this.selectedItem.coords.y = parseInt(val) || 0; },
-            'edit-w': (val) => { this.selectedItem.coords.w = parseInt(val) || 20; },
-            'edit-h': (val) => { this.selectedItem.coords.h = parseInt(val) || 20; }
-        };
-        
-        for (const [id, handler] of Object.entries(inputs)) {
-            const el = document.getElementById(id);
-            if (el) {
-                el.addEventListener('input', (e) => {
-                    if (this.selectedItem) {
-                        handler(e.target.value);
-                        this.renderer.renderButtons();
-                        this.updateCodePreview();
-                    }
-                });
+        if (this.selectedGroup) {
+            const rulesEl = document.getElementById('group-rules-json');
+            if (rulesEl && document.activeElement !== rulesEl) {
+                rulesEl.value = JSON.stringify(this.selectedGroup.rules || {}, null, 2);
             }
         }
     }
 
-    setupJsonListener() {
-        const jsonArea = document.getElementById('edit-raw-json');
-        if (jsonArea) {
-            jsonArea.addEventListener('input', (e) => {
+    setupChoiceListeners() {
+        const update = (key, val, isNum) => {
+            if (!this.selectedItem) return;
+            if (isNum) val = parseInt(val) || 0;
+            if (['x','y','w','h'].includes(key)) {
+                if (!this.selectedItem.coords) this.selectedItem.coords = {};
+                this.selectedItem.coords[key] = val;
+            } else {
+                this.selectedItem[key] = val;
+            }
+            this.renderer.renderButtons();
+            this.updateCodePreview();
+        };
+
+        const inputs = ['edit-id', 'edit-title', 'edit-description', 'edit-x', 'edit-y', 'edit-w', 'edit-h'];
+        inputs.forEach(id => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            const key = id.split('-').pop();
+            const realKey = (id === 'edit-description') ? 'description' : key;
+            const isNum = ['x','y','w','h'].includes(key);
+            el.addEventListener('input', (e) => update(realKey, e.target.value, isNum));
+        });
+    }
+
+    setupGroupListeners() {
+        const update = (key, val, isNum) => {
+            if (!this.selectedGroup) return;
+            if (isNum) val = parseInt(val) || 0;
+            if (['x','y','w','h'].includes(key)) {
+                if (!this.selectedGroup.coords) this.selectedGroup.coords = {};
+                this.selectedGroup.coords[key] = val;
+            } else {
+                this.selectedGroup[key] = val;
+            }
+            this.renderer.renderButtons();
+            this.updateCodePreview();
+        };
+
+        const inputs = ['group-id', 'group-title', 'group-description', 'group-x', 'group-y', 'group-w', 'group-h'];
+        inputs.forEach(id => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            const key = id.split('-').pop();
+            const realKey = (id === 'group-description') ? 'description' : key;
+            const isNum = ['x','y','w','h'].includes(key);
+            el.addEventListener('input', (e) => update(realKey, e.target.value, isNum));
+        });
+    }
+
+    setupJsonListeners() {
+        const choiceJson = document.getElementById('edit-raw-json');
+        if (choiceJson) {
+            choiceJson.addEventListener('change', (e) => {
                 try {
-                    const newData = JSON.parse(e.target.value);
-                    if (this.selectedItem && this.selectedGroup) {
-                        Object.keys(this.selectedItem).forEach(key => delete this.selectedItem[key]);
-                        Object.assign(this.selectedItem, newData);
-                        
+                    const data = JSON.parse(e.target.value);
+                    if (this.selectedItem) {
+                        Object.assign(this.selectedItem, data);
                         this.renderer.renderButtons();
-                        
-                        const fields = {
-                            'edit-id': newData.id,
-                            'edit-title': newData.title,
-                            'edit-description': newData.description,
-                            'edit-x': newData.coords?.x,
-                            'edit-y': newData.coords?.y,
-                            'edit-w': newData.coords?.w,
-                            'edit-h': newData.coords?.h
-                        };
-                        
-                        for (const [id, val] of Object.entries(fields)) {
-                            const el = document.getElementById(id);
-                            if (el) el.value = val !== undefined ? val : '';
-                        }
-                        
+                        this.updateChoiceInputs();
                         this.ruleBuilder.loadItem(this.selectedItem, this.selectedGroup);
-                        
-                        const newEl = document.getElementById(`btn-${newData.id}`);
-                        if (newEl) newEl.classList.add('editor-selected');
-                        
-                        if (this.triggerLabelCheck) this.triggerLabelCheck();
                     }
-                } catch (err) { }
+                } catch(err) { console.error("JSON Error", err); }
+            });
+        }
+
+        const rulesJson = document.getElementById('group-rules-json');
+        if (rulesJson) {
+            rulesJson.addEventListener('change', (e) => {
+                try {
+                    const data = JSON.parse(e.target.value);
+                    if (this.selectedGroup) {
+                        this.selectedGroup.rules = data;
+                        this.renderer.renderButtons(); 
+                        this.engine.recalculate(); 
+                    }
+                } catch(err) { console.error("Rules JSON Error", err); }
             });
         }
     }
 
-    // ==================== ACTIONS ====================
-
-    deleteSelected() {
-        if (!this.selectedItem || !this.selectedGroup) return;
-        if (!confirm(`Delete "${this.selectedItem.title || this.selectedItem.id}"?`)) return;
-        
-        const index = this.selectedGroup.items.indexOf(this.selectedItem);
-        if (index > -1) this.selectedGroup.items.splice(index, 1);
-        
-        this.deselectItem();
+    deleteSelectedItem() {
+        if (!this.selectedItem) return;
+        if (!confirm('Delete item?')) return;
+        const group = this.engine.findGroupForItem(this.selectedItem.id);
+        if (group) {
+            const idx = group.items.indexOf(this.selectedItem);
+            if (idx > -1) group.items.splice(idx, 1);
+        }
+        this.deselectChoice();
         this.renderer.renderButtons();
-        console.log('🗑️ Item deleted');
     }
 
     addNewItem() {
-        let group = this.engine.config.groups[0];
+        let group = this.selectedGroup || this.engine.config.groups[0];
         if (!group) return;
-        
         const newItem = {
-            id: `new_item_${Date.now()}`,
+            id: `item_${Date.now()}`,
             title: 'New Item',
-            description: 'Description',
-            coords: { x: 100, y: 100, w: 200, h: 100 },
+            description: '',
+            coords: { x: 50, y: 50, w: 200, h: 100 },
             cost: []
         };
-        
         group.items.push(newItem);
         this.renderer.renderButtons();
+        setTimeout(() => {
+            const el = document.getElementById(`btn-${newItem.id}`);
+            if (el) this.selectChoice(newItem, el);
+        }, 50);
+    }
+
+    // === GROUP ACTIONS ===
+    addNewGroup() {
+        const newGroup = {
+            id: `group_${Date.now()}`,
+            title: 'New Group',
+            description: '',
+            page: 0,
+            coords: { x: 50, y: 50, w: 300, h: 200 },
+            items: []
+        };
+        this.engine.config.groups.push(newGroup);
+        this.renderer.renderButtons();
+        setTimeout(() => {
+            const el = document.getElementById(`group-${newGroup.id}`);
+            if (el) this.selectGroup(newGroup);
+        }, 50);
+    }
+
+    deleteSelectedGroup() {
+        if (!this.selectedGroup) return;
+        if (this.selectedGroup.items && this.selectedGroup.items.length > 0) {
+            if (!confirm(`Group has ${this.selectedGroup.items.length} items. Delete group and ALL items?`)) return;
+        } else {
+            if (!confirm('Delete this group?')) return;
+        }
+
+        const idx = this.engine.config.groups.indexOf(this.selectedGroup);
+        if (idx > -1) {
+            this.engine.config.groups.splice(idx, 1);
+        }
         
-        const element = document.getElementById(`btn-${newItem.id}`);
-        if (element) this.selectItem(newItem, group, element);
+        // Deselect
+        this.selectedGroup = null;
+        document.querySelectorAll('.info-zone.editor-selected').forEach(el => el.classList.remove('editor-selected'));
+        document.getElementById('group-props').style.display = 'none';
+        document.getElementById('group-empty-state').style.display = 'block';
         
-        console.log('➕ New item added');
+        this.renderer.renderButtons();
     }
 
     exportConfig() {
         const config = this.engine.config;
         const blob = new Blob([JSON.stringify(config, null, 2)], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
-        
         const a = document.createElement('a');
         a.href = url;
         a.download = `${config.meta?.title || 'cyoa'}_edited.json`;
@@ -3075,32 +3162,23 @@ export class RuleBuilder {
         `;
     }
 
-    // ==================== LOAD ITEM ====================
-
     loadItem(item, group) {
         this.currentItem = item;
         this.currentGroup = group;
-        
         this.renderCosts();
         this.renderRequirements();
         this.renderIncompatible();
     }
 
-    // ==================== COST ====================
-
     renderCosts() {
         if (!this.currentItem) return;
-        
         const container = document.getElementById('cost-list');
         if (!container) return;
-        
         const costs = this.currentItem.cost || [];
-        
         if (costs.length === 0) {
-            container.innerHTML = '<div style="color:#666; font-size:0.8rem; text-align:center; padding:5px;">No costs</div>';
+            container.innerHTML = '<div style="color:#666; font-size:0.8rem; text-align:center; padding:2px;">No costs</div>';
             return;
         }
-        
         container.innerHTML = costs.map((cost, index) => `
             <div class="compact-row">
                 <select onchange="CYOA.editor.ruleBuilder.updateCostCurrency(${index}, this.value)" title="Currency">
@@ -3108,7 +3186,7 @@ export class RuleBuilder {
                 </select>
                 <input type="text" value="${cost.value !== undefined ? cost.value : (cost.formula || 0)}" 
                        onchange="CYOA.editor.ruleBuilder.updateCostValueOrFormula(${index}, this.value)"
-                       placeholder="Val/Formula">
+                       placeholder="Val">
                 <button class="icon-btn" onclick="CYOA.editor.ruleBuilder.removeCost(${index})">×</button>
             </div>
         `).join('');
@@ -3126,13 +3204,8 @@ export class RuleBuilder {
     addCost() {
         if (!this.currentItem) return;
         if (!this.currentItem.cost) this.currentItem.cost = [];
-        
         const firstCurrency = this.engine.config.points?.[0]?.id || 'points';
-        this.currentItem.cost.push({
-            currency: firstCurrency,
-            value: -1
-        });
-        
+        this.currentItem.cost.push({ currency: firstCurrency, value: -1 });
         this.renderCosts();
         this.updateParent();
     }
@@ -3152,39 +3225,30 @@ export class RuleBuilder {
 
     updateCostValueOrFormula(index, value) {
         if (!this.currentItem?.cost?.[index]) return;
-        
-        // Try to parse as int
         if (!isNaN(value) && value.trim() !== '') {
             this.currentItem.cost[index].value = parseInt(value);
             delete this.currentItem.cost[index].formula;
         } else {
-            // Assume formula
             this.currentItem.cost[index].formula = value;
             delete this.currentItem.cost[index].value;
         }
         this.updateParent();
     }
 
-    // ==================== REQUIREMENTS ====================
-
     renderRequirements() {
         if (!this.currentItem) return;
-        
         const container = document.getElementById('requirements-list');
         if (!container) return;
-        
         const reqs = this.currentItem.requirements || [];
-        
         if (reqs.length === 0) {
-            container.innerHTML = '<div style="color:#666; font-size:0.8rem; text-align:center; padding:5px;">No requirements</div>';
+            container.innerHTML = '<div style="color:#666; font-size:0.8rem; text-align:center; padding:2px;">No requirements</div>';
             return;
         }
-        
         container.innerHTML = reqs.map((req, index) => `
             <div class="compact-row" style="grid-template-columns: 1fr 24px;">
                 <input type="text" value="${req}" 
                        onchange="CYOA.editor.ruleBuilder.updateRequirement(${index}, this.value)"
-                       placeholder="item_id or formula">
+                       placeholder="item_id">
                 <button class="icon-btn" onclick="CYOA.editor.ruleBuilder.removeRequirement(${index})">×</button>
             </div>
         `).join('');
@@ -3193,7 +3257,6 @@ export class RuleBuilder {
     addRequirement() {
         if (!this.currentItem) return;
         if (!this.currentItem.requirements) this.currentItem.requirements = [];
-        
         this.currentItem.requirements.push('');
         this.renderRequirements();
         this.updateParent();
@@ -3212,21 +3275,15 @@ export class RuleBuilder {
         this.updateParent();
     }
 
-    // ==================== INCOMPATIBLE ====================
-
     renderIncompatible() {
         if (!this.currentItem) return;
-        
         const container = document.getElementById('incompatible-list');
         if (!container) return;
-        
         const incomp = this.currentItem.incompatible || [];
-        
         if (incomp.length === 0) {
-            container.innerHTML = '<div style="color:#666; font-size:0.8rem; text-align:center; padding:5px;">No incompatibilities</div>';
+            container.innerHTML = '<div style="color:#666; font-size:0.8rem; text-align:center; padding:2px;">No incompatibilities</div>';
             return;
         }
-        
         container.innerHTML = incomp.map((id, index) => `
             <div class="compact-row" style="grid-template-columns: 1fr 24px;">
                 <input type="text" value="${id}" 
@@ -3240,7 +3297,6 @@ export class RuleBuilder {
     addIncompatible() {
         if (!this.currentItem) return;
         if (!this.currentItem.incompatible) this.currentItem.incompatible = [];
-        
         this.currentItem.incompatible.push('');
         this.renderIncompatible();
         this.updateParent();
@@ -3259,10 +3315,7 @@ export class RuleBuilder {
         this.updateParent();
     }
 
-    // ==================== UPDATE PARENT ====================
-
     updateParent() {
-        // Notify editor to update UI
         if (window.CYOA?.editor) {
             window.CYOA.editor.updateCodePreview();
             window.CYOA.editor.engine.recalculate();
@@ -3553,961 +3606,142 @@ FILE START: src\utils\evaluator.js
 FILE START: styles\main.css
 ============================================================
 
-/* ================================
-   CYOA Interactive Player Styles
-   ================================ */
+/* ==========================================================================
+   CYOA INTERACTIVE STYLES
+   NOTE: Please keep CSS rules in SINGLE LINE format for compactness.
+   Example: .class { property: value; property: value; }
+   ========================================================================== */
 
 /* === RESET & BASE === */
-
-* {
-    box-sizing: border-box;
-}
-
-body {
-    margin: 0;
-    padding: 0 0 120px 0;
-    background: #1a1a1a;
-    color: #eee;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    overflow-x: hidden;
-}
-
-#loading {
-    transition: opacity 0.3s;
-}
-
-#loading.hidden {
-    opacity: 0;
-    pointer-events: none;
-}
+* { box-sizing: border-box; }
+body { margin: 0; padding: 0 0 120px 0; background: #1a1a1a; color: #eee; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; overflow-x: hidden; }
+#loading { transition: opacity 0.3s; }
+#loading.hidden { opacity: 0; pointer-events: none; }
 
 /* === TOP CONTROLS === */
+.top-controls { position: fixed; top: 10px; right: 10px; z-index: 3000; display: flex; gap: 10px; }
+.ctrl-btn { background: #333; color: #fff; border: 1px solid #555; padding: 8px 15px; cursor: pointer; border-radius: 4px; transition: all 0.2s; opacity: 0.85; font-weight: bold; }
+.ctrl-btn:hover { opacity: 1; background: #444; transform: translateY(-1px); }
+.ctrl-btn.active { background: #0066cc; border-color: #0088ff; opacity: 1; }
 
-.top-controls {
-    position: fixed;
-    top: 10px;
-    right: 10px;
-    z-index: 3000;
-    display: flex;
-    gap: 10px;
-}
+/* === GAME WRAPPER & PAGE === */
+#game-wrapper { position: relative; max-width: 100%; margin: 0 auto; display: flex; flex-direction: column; align-items: center; }
+.page-container { position: relative; margin-bottom: 0; line-height: 0; box-shadow: 0 0 30px rgba(0,0,0,0.5); max-width: 100%; }
+.page-image { display: block; max-width: 100%; height: auto; user-select: none; }
+.page-layer { position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 10; pointer-events: none; }
 
-.ctrl-btn {
-    background: #333;
-    color: #fff;
-    border: 1px solid #555;
-    padding: 8px 15px;
-    cursor: pointer;
-    font-size: 14px;
-    font-weight: bold;
-    border-radius: 4px;
-    transition: all 0.2s;
-    opacity: 0.85;
-}
-
-.ctrl-btn:hover {
-    opacity: 1;
-    background: #444;
-    transform: translateY(-1px);
-}
-
-.ctrl-btn.active {
-    background: #0066cc;
-    border-color: #0088ff;
-    opacity: 1;
-}
-
-/* === GAME WRAPPER === */
-
-#game-wrapper {
-    position: relative;
-    max-width: 100%;
-    margin: 0 auto;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-}
-
-/* === PAGE CONTAINER === */
-
-.page-container {
-    position: relative;
-    margin-bottom: 0;
-    line-height: 0;
-    box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
-    max-width: 100%;
-}
-
-.page-image {
-    display: block;
-    max-width: 100%;
-    height: auto;
-    user-select: none;
-}
-
-.page-layer {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    z-index: 10;
-    pointer-events: none;
-}
-
-/* === CLICK ZONES === */
-
-.click-zone {
-    position: absolute;
-    cursor: pointer;
-    z-index: 100;
-    pointer-events: auto;
-    box-sizing: border-box;
-    border-radius: 12px;
-    transition: all 0.2s;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-    justify-content: flex-end;
-}
-
-.click-zone:hover {
-    background: rgba(255, 255, 255, 0.07);
-    box-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
-}
-
-.click-zone.selected {
-    background: rgba(0, 255, 0, 0.1);
-    border: none;
-    box-shadow: 
-        0 0 15px 2px #0f0,
-        inset 0 0 20px 5px rgba(0, 255, 0, 0.3);
-}
-
-.click-zone.disabled {
-    cursor: not-allowed;
-    background-image: repeating-linear-gradient(
-        45deg,
-        rgba(0, 0, 0, 0.4),
-        rgba(0, 0, 0, 0.4) 10px,
-        rgba(50, 50, 50, 0.6) 10px,
-        rgba(50, 50, 50, 0.6) 20px
-    );
-    box-shadow: 
-        inset 0 0 20px 10px rgba(0, 0, 0, 0.8),
-        0 0 20px 5px rgba(0, 0, 0, 0.9);
-}
-
-/* Info zones (non-clickable, for tooltips) */
-.info-zone {
-    z-index: 50;
-    pointer-events: none;
-    border: none;
-}
-
-.info-zone .text-content {
-    pointer-events: auto;
-}
+/* === CLICK ZONES & BUTTONS === */
+.click-zone { position: absolute; cursor: pointer; z-index: 100; pointer-events: auto; border-radius: 12px; transition: all 0.2s; overflow: hidden; display: flex; flex-direction: column; justify-content: flex-end; }
+.click-zone:hover { background: rgba(255,255,255,0.07); box-shadow: 0 0 10px rgba(255,255,255,0.1); }
+.click-zone.selected { background: rgba(0,255,0,0.1); box-shadow: 0 0 15px 2px #0f0, inset 0 0 20px 5px rgba(0,255,0,0.3); }
+.click-zone.disabled { cursor: not-allowed; background-image: repeating-linear-gradient(45deg, rgba(0,0,0,0.4), rgba(0,0,0,0.4) 10px, rgba(50,50,50,0.6) 10px, rgba(50,50,50,0.6) 20px); box-shadow: inset 0 0 20px 10px rgba(0,0,0,0.8); }
+.info-zone { z-index: 50; pointer-events: none; border: none; }
+.info-zone .text-content { pointer-events: auto; }
 
 /* === TEXT LAYER === */
+.text-content { display: none; background: rgba(0,0,0,0.85); color: #ddd; padding: 10px; font-size: 14px; line-height: 1.4; max-height: 100%; overflow-y: auto; pointer-events: none; backdrop-filter: blur(2px); border-top: 1px solid #444; }
+.text-content strong { display: block; color: #fff; font-size: 1.1em; margin-bottom: 4px; border-bottom: 1px solid #555; }
+body.text-mode .text-content { display: block; pointer-events: auto; }
 
-.text-content {
-    display: none;
-    background: rgba(0, 0, 0, 0.85);
-    color: #ddd;
-    padding: 10px;
-    font-size: 14px;
-    line-height: 1.4;
-    max-height: 100%;
-    overflow-y: auto;
-    pointer-events: none;
-    text-shadow: none;
-    backdrop-filter: blur(2px);
-    border-top: 1px solid #444;
-}
-
-.text-content strong {
-    display: block;
-    color: #fff;
-    font-size: 1.1em;
-    margin-bottom: 4px;
-    border-bottom: 1px solid #555;
-    padding-bottom: 2px;
-}
-
-/* Show text in translation mode */
-body.text-mode .text-content {
-    display: block;
-    pointer-events: auto;
-}
-
-/* === BUDGET BADGES === */
-
-.group-budget-badge {
-    position: absolute;
-    transform: translate(-50%, -50%);
-    background: #000;
-    border: 2px solid #ffd700;
-    color: #ffd700;
-    padding: 8px 20px;
-    border-radius: 8px;
-    font-weight: 800;
-    font-size: 18px;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    z-index: 200;
-    pointer-events: none;
-    white-space: nowrap;
-    box-shadow: 
-        0 0 20px 2px rgba(255, 215, 0, 0.6),
-        inset 0 0 20px rgba(255, 215, 0, 0.2);
-    text-shadow: 0 0 10px rgba(255, 215, 0, 0.8);
-    transition: all 0.3s ease;
-}
-
-.group-budget-badge.empty {
-    border-color: #444;
-    color: #666;
-    background: rgba(0, 0, 0, 0.8);
-    box-shadow: none;
-    text-shadow: none;
-}
-
-/* === DEBUG MODE === */
-
-body.debug-mode .click-zone {
-    border: 2px solid rgba(255, 0, 0, 0.8) !important;
-    background: rgba(255, 0, 0, 0.1) !important;
-    border-radius: 0 !important;
-    box-shadow: none !important;
-}
-
-body.debug-mode .click-zone::after {
-    content: attr(id);
-    position: absolute;
-    top: 0;
-    left: 0;
-    background: red;
-    color: white;
-    font-size: 10px;
-    padding: 2px 4px;
-    z-index: 101;
-    pointer-events: none;
-}
-
-body.debug-mode .info-zone {
-    border: 2px dashed orange !important;
-    background: rgba(255, 165, 0, 0.2) !important;
-}
-
-/* === POINTS BAR === */
-
-#points-bar {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    background: linear-gradient(
-        0deg,
-        rgba(16, 16, 16, 1) 0%,
-        rgba(16, 16, 16, 0.95) 100%
-    );
-    border-top: 1px solid #333;
-    padding: 15px;
-    display: flex;
-    justify-content: center;
-    gap: 40px;
-    flex-wrap: wrap;
-    box-shadow: 0 -5px 30px rgba(0, 0, 0, 0.8);
-    z-index: 2000;
-}
-
-.currency {
-    font-size: 1.2em;
-    font-weight: bold;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.currency span {
-    color: #00ff88;
-    font-family: 'Courier New', monospace;
-    font-size: 1.3em;
-    text-shadow: 0 0 5px rgba(0, 255, 100, 0.5);
-}
-
-.currency.negative span {
-    color: #ff4444;
-    text-shadow: 0 0 5px rgba(255, 50, 50, 0.5);
-}
+/* === BADGES & POINTS === */
+.group-budget-badge { position: absolute; transform: translate(-50%, -50%); background: #000; border: 2px solid #ffd700; color: #ffd700; padding: 8px 20px; border-radius: 8px; font-weight: 800; font-size: 18px; z-index: 200; pointer-events: none; white-space: nowrap; box-shadow: 0 0 20px 2px rgba(255,215,0,0.6); }
+.group-budget-badge.empty { border-color: #444; color: #666; background: rgba(0,0,0,0.8); box-shadow: none; }
+#points-bar { position: fixed; bottom: 0; left: 0; right: 0; background: #101010; border-top: 1px solid #333; padding: 15px; display: flex; justify-content: center; gap: 40px; box-shadow: 0 -5px 30px rgba(0,0,0,0.8); z-index: 2000; flex-wrap: wrap; }
+.currency { font-size: 1.2em; font-weight: bold; text-transform: uppercase; display: flex; align-items: center; gap: 10px; }
+.currency span { color: #00ff88; font-family: monospace; font-size: 1.3em; text-shadow: 0 0 5px rgba(0,255,100,0.5); }
+.currency.negative span { color: #ff4444; text-shadow: 0 0 5px rgba(255,50,50,0.5); }
 
 /* === TOOLTIP === */
-
-#tooltip {
-    position: fixed;
-    z-index: 3000;
-    background: rgba(10, 10, 10, 0.95);
-    border: 1px solid #444;
-    padding: 15px;
-    border-radius: 8px;
-    pointer-events: none;
-    font-size: 0.95em;
-    max-width: 380px;
-    line-height: 1.5;
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 1);
-    backdrop-filter: blur(8px);
-    color: #ccc;
-    opacity: 0;
-    transition: opacity 0s;
-}
-
-#tooltip.visible {
-    opacity: 1;
-    transition: opacity 0.2s ease;
-}
-
-#tooltip h4 {
-    margin: 0 0 8px 0;
-    color: #fff;
-    font-size: 1.1em;
-    border-bottom: 1px solid #333;
-    padding-bottom: 6px;
-}
-
-#tooltip .desc {
-    margin-top: 6px;
-    color: #bbb;
-    font-size: 0.9em;
-    white-space: pre-wrap;
-}
-
-#tooltip .cost {
-    color: #0f0;
-    font-weight: bold;
-    margin-top: 8px;
-    font-size: 1.05em;
-}
-
-#tooltip .cost.bad {
-    color: #f66;
-}
-
-#tooltip .cost.free {
-    color: #ffd700;
-}
-
-#tooltip .reqs {
-    margin-top: 10px;
-    padding-top: 5px;
-    border-top: 1px solid #333;
-    font-size: 0.85em;
-}
-
-.req-item {
-    display: block;
-    margin-bottom: 2px;
-}
-
-.req-item.ok {
-    color: #666;
-    text-decoration: line-through;
-}
-
-.req-item.fail {
-    color: #f88;
-    font-weight: bold;
-}
-
-.req-item.missing {
-    color: #fa0;
-}
-
-#tooltip .debug-info {
-    margin-top: 10px;
-    padding-top: 10px;
-    border-top: 1px dashed #555;
-    color: #777;
-    font-family: monospace;
-    font-size: 0.75em;
-}
-
-/* === RESPONSIVE === */
-
-@media (max-width: 768px) {
-    .top-controls {
-        top: 5px;
-        right: 5px;
-        gap: 5px;
-    }
-
-    .ctrl-btn {
-        padding: 6px 10px;
-        font-size: 12px;
-    }
-
-    #points-bar {
-        gap: 20px;
-        padding: 10px;
-    }
-
-    .currency {
-        font-size: 1em;
-    }
-
-    #tooltip {
-        max-width: 90vw;
-        font-size: 0.85em;
-    }
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-/* Editor Sidebar */
-.editor-sidebar {
-    position: fixed;
-    right: 0;
-    top: 0;
-    bottom: 0;
-    width: 350px;
-    background: #1e1e1e;
-    border-left: 2px solid #333;
-    box-shadow: -5px 0 20px rgba(0, 0, 0, 0.5);
-    z-index: 4000;
-    display: flex;
-    flex-direction: column;
-    overflow-y: auto;
-    padding: 0;
-}
-
-.editor-header {
-    background: #252525;
-    padding: 15px 20px;
-    border-bottom: 2px solid #333;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    position: sticky;
-    top: 0;
-    z-index: 10;
-}
-
-.editor-header h3 {
-    margin: 0;
-    color: #4CAF50;
-    font-size: 1.2rem;
-}
-
-.close-btn {
-    background: #d32f2f;
-    color: white;
-    border: none;
-    width: 30px;
-    height: 30px;
-    border-radius: 50%;
-    cursor: pointer;
-    font-size: 18px;
-    line-height: 1;
-}
-
-.close-btn:hover {
-    background: #b71c1c;
-}
-
-.editor-section {
-    padding: 20px;
-    border-bottom: 1px solid #333;
-}
-
-.editor-section h4 {
-    margin: 0 0 10px 0;
-    color: #4CAF50;
-    font-size: 1rem;
-}
-
-.info-text {
-    background: #252525;
-    padding: 10px;
-    border-radius: 4px;
-    font-size: 0.9rem;
-    color: #aaa;
-}
-
-/* Form Inputs */
-.editor-input,
-.editor-textarea {
-    width: 100%;
-    padding: 8px;
-    background: #252525;
-    border: 1px solid #444;
-    color: #eee;
-    border-radius: 4px;
-    margin-bottom: 10px;
-    font-family: inherit;
-    font-size: 0.9rem;
-}
-
-.editor-input:focus,
-.editor-textarea:focus {
-    outline: none;
-    border-color: #4CAF50;
-}
-
-.editor-textarea {
-    resize: vertical;
-    font-family: 'Courier New', monospace;
-}
-
-/* Coords Grid */
-.coords-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 10px;
-}
-
-.coords-grid label {
-    font-size: 0.85rem;
-    color: #888;
-    margin-bottom: 3px;
-}
-
-/* Buttons */
-.editor-btn {
-    width: 100%;
-    padding: 10px;
-    background: #4CAF50;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    font-weight: bold;
-    margin-bottom: 5px;
-    transition: background 0.2s;
-}
-
-.editor-btn:hover {
-    background: #45a049;
-}
-
-.delete-btn {
-    background: #d32f2f;
-}
-
-.delete-btn:hover {
-    background: #b71c1c;
-}
-
-.small-btn {
-    padding: 6px 10px;
-    background: #2196F3;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 0.85rem;
-    margin-top: 5px;
-}
-
-.small-btn:hover {
-    background: #1976D2;
-}
-
-/* Rule Builder */
-.rule-builder {
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-}
-
-.rule-section {
-    background: #252525;
-    padding: 10px;
-    border-radius: 4px;
-}
-
-.rule-section label {
-    display: block;
-    font-weight: bold;
-    margin-bottom: 8px;
-    color: #4CAF50;
-}
-
-.rule-item {
-    display: flex;
-    gap: 5px;
-    margin-bottom: 5px;
-    align-items: center;
-}
-
-.rule-item select,
-.rule-item input {
-    flex: 1;
-    padding: 6px;
-    background: #1e1e1e;
-    border: 1px solid #444;
-    color: #eee;
-    border-radius: 3px;
-    font-size: 0.85rem;
-}
-
-.delete-mini-btn {
-    background: #d32f2f;
-    color: white;
-    border: none;
-    width: 25px;
-    height: 25px;
-    border-radius: 50%;
-    cursor: pointer;
-    font-size: 16px;
-    line-height: 1;
-    flex-shrink: 0;
-}
-
-.delete-mini-btn:hover {
-    background: #b71c1c;
-}
-
-.empty-state {
-    color: #666;
-    font-style: italic;
-    font-size: 0.85rem;
-    padding: 5px;
-}
-
-/* Code Preview */
-.code-preview {
-    width: 100%;
-    height: 200px;
-    background: #0d0d0d;
-    color: #0f0;
-    font-family: 'Courier New', monospace;
-    font-size: 0.75rem;
-    border: 1px solid #333;
-    border-radius: 4px;
-    padding: 10px;
-    margin-bottom: 10px;
-    resize: vertical;
-}
-
-/* Editable Items */
-body.debug-mode .item-zone.editable {
-    cursor: move;
-}
-
-body.debug-mode .item-zone.editor-selected {
-    border: 3px solid #FFD700 !important;
-    box-shadow: 0 0 20px rgba(255, 215, 0, 0.5) !important;
-}
-
-body.debug-mode .item-zone.editor-selected::after {
-    content: '';
-    position: absolute;
-    right: 0;
-    bottom: 0;
-    width: 15px;
-    height: 15px;
-    background: #FFD700;
-    cursor: nwse-resize;
-    border: 2px solid #000;
-}
-
-/* Adjust main content when editor is open */
-body.debug-mode #game-wrapper {
-    margin-right: 350px;
-    transition: margin-right 0.3s;
-}
-
-/* Mobile Responsive */
-@media (max-width: 1200px) {
-    .editor-sidebar {
-        width: 100%;
-        max-width: 350px;
-    }
-    
-    body.debug-mode #game-wrapper {
-        margin-right: 0;
-    }
-}
-
-
-
-.click-zone.dragging {
-    transition: none !important; /* Убираем лаг/анимацию */
-    z-index: 9999 !important;    /* Чтобы элемент был поверх всего */
-    pointer-events: none;        /* Чтобы курсор не "спотыкался" об текст внутри */
-    opacity: 0.8;
-}
-
-
-/* ================================
-   COMPACT EDITOR STYLES (FINAL)
-   ================================ */
-
-/* Sidebar Layout */
-.editor-sidebar {
-    background: #1a1a1a;
-    width: 320px;
-    position: fixed;
-    right: 0;
-    top: 0;
-    bottom: 0;
-    z-index: 4000;
-    display: flex;
-    flex-direction: column;
-    box-shadow: -5px 0 20px rgba(0, 0, 0, 0.5);
-    border-left: 1px solid #333;
-}
-
-/* Adjust main content */
-body.debug-mode #game-wrapper {
-    margin-right: 320px;
-    transition: margin-right 0.3s;
-}
-
-/* Scrollable Content Area */
-.sidebar-scroll-content {
-    flex: 1;
-    overflow-y: auto;
-    overflow-x: hidden;
-    padding-bottom: 40px;
-    scrollbar-width: thin;
-    scrollbar-color: #444 #1a1a1a;
-}
-
-.editor-header {
-    background: #222;
-    padding: 10px 15px;
-    border-bottom: 1px solid #333;
-    flex-shrink: 0;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.editor-header h3 {
-    color: #4CAF50;
-    font-size: 1rem; 
-    margin: 0;
-}
-
-/* Section Wrapper */
-.editor-section {
-    padding: 0 10px;
-    margin-bottom: 5px;
-    border-bottom: none;
-    box-sizing: border-box;
-    width: 100%;
-}
-
-/* --- FLOATING LABEL INPUTS START --- */
-
-/* Контейнер теперь содержит рамку и фон, а не input */
-.input-group {
-    position: relative;
-    margin-bottom: 8px;
-    width: 100%;
-    box-sizing: border-box;
-    background: #252525;
-    border: 1px solid #333;
-    border-radius: 4px;
-    transition: border-color 0.2s, background 0.2s;
-}
-
-.input-group:focus-within {
-    border-color: #4CAF50;
-    background: #2a2a2a;
-}
-
-/* Input/Textarea прозрачные и лежат поверх лейбла */
-.input-group input,
-.input-group textarea {
-    width: 100%;
-    background: transparent; /* Прозрачный фон */
-    border: none; /* Рамка убрана */
-    color: #eee;
-    padding: 6px 8px;
-    padding-right: 6px; /* Не делаем большой отступ, текст может занимать всю ширину */
-    font-size: 0.9rem;
-    font-family: inherit;
-    box-sizing: border-box;
-    resize: vertical;
-    position: relative;
-    z-index: 2; /* Текст выше лейбла */
-}
-
-.input-group input:focus,
-.input-group textarea:focus {
-    outline: none;
-}
-
-/* Лейбл лежит под текстом (z-index 1) и выровнен вправо */
-.input-label {
-    position: absolute;
-    right: 8px;
-    color: #555;
-    font-size: 0.75rem;
-    pointer-events: none;
-    user-select: none;
-    font-weight: 600;
-    text-transform: uppercase;
-    z-index: 1; /* Под текстом */
-    transition: opacity 0.2s ease, transform 0.2s ease;
-    white-space: nowrap;
-}
-
-/* Центрирование лейбла для однострочных полей */
-.input-group input + .input-label {
-    top: 50%;
-    transform: translateY(-50%);
-}
-
-/* Лейбл для Textarea в правом нижнем углу */
-.input-group textarea + .input-label {
-    bottom: 6px;
-    right: 8px;
-    top: auto;
-}
-
-/* Класс скрытия, добавляемый JS */
-.input-label.label-hidden {
-    opacity: 0 !important;
-    transform: translateX(5px); /* Легкий сдвиг при скрытии */
-}
-.input-group input + .input-label.label-hidden {
-    transform: translateY(-50%) translateX(5px);
-}
-
-/* --- FLOATING LABEL INPUTS END --- */
-
-/* Grid Layouts */
-.row-2 {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 8px;
-    width: 100%;
-    box-sizing: border-box;
-}
-
-.row-4 {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 4px;
-    width: 100%;
-    box-sizing: border-box;
-}
-
-.row-4 .input-group input {
-    text-align: center;
-    padding: 6px 2px;
-}
-
-.row-4 .input-label {
-    display: none; /* В маленькой сетке лейблы не показываем */
-}
-
-/* Accordions */
-.accordion-header {
-    cursor: pointer;
-    padding: 8px 0;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    color: #4CAF50;
-    font-weight: bold;
-    font-size: 0.95rem;
-    user-select: none;
-    border-bottom: 1px solid #2a2a2a;
-}
-.accordion-header:hover { color: #66bb6a; }
-.accordion-header::after { content: '▼'; font-size: 0.7em; transition: transform 0.2s; }
+#tooltip { position: fixed; z-index: 3000; background: rgba(10,10,10,0.95); border: 1px solid #444; padding: 15px; border-radius: 8px; pointer-events: none; font-size: 0.95em; max-width: 380px; box-shadow: 0 10px 40px #000; backdrop-filter: blur(8px); opacity: 0; transition: opacity 0.2s; color: #ccc; }
+#tooltip.visible { opacity: 1; }
+#tooltip h4 { margin: 0 0 8px 0; color: #fff; border-bottom: 1px solid #333; padding-bottom: 6px; }
+#tooltip .cost { color: #0f0; font-weight: bold; margin-top: 8px; }
+#tooltip .cost.bad { color: #f66; }
+#tooltip .req-item.fail { color: #f88; font-weight: bold; }
+#tooltip .req-item.ok { color: #666; text-decoration: line-through; }
+#tooltip .debug-info { margin-top: 10px; padding-top: 10px; border-top: 1px dashed #555; color: #777; font-size: 0.75em; font-family: monospace; }
+
+/* === EDIT MODE VISUALS (Toggle via Edit Button) === */
+body.show-zones .click-zone { border: 2px solid rgba(255,0,0,0.5) !important; background: rgba(255,0,0,0.05) !important; border-radius: 0 !important; box-shadow: none !important; }
+body.show-zones .click-zone::after { content: attr(id); position: absolute; top: 0; left: 0; background: red; color: white; font-size: 10px; padding: 1px 3px; pointer-events: none; }
+body.show-zones .info-zone { border: 2px dashed rgba(255,165,0,0.4) !important; background: rgba(255,165,0,0.1) !important; }
+
+/* === EDIT MODE INTERACTION (Depends on active Tab) === */
+body.edit-mode-choice .item-zone { pointer-events: auto; cursor: move; }
+body.edit-mode-choice .info-zone { pointer-events: none; }
+body.edit-mode-group .info-zone { pointer-events: auto; cursor: move; z-index: 2000; } 
+body.edit-mode-group .item-zone { pointer-events: none; opacity: 0.5; }
+
+/* === SELECTION HIGHLIGHTS === */
+.item-zone.editor-selected { border: 3px solid #FFD700 !important; box-shadow: 0 0 20px rgba(255,215,0,0.5) !important; z-index: 3000; }
+.info-zone.editor-selected { border: 3px solid #4CAF50 !important; background: rgba(76,175,80,0.2) !important; z-index: 3000; }
+.editor-selected::after { content: ''; position: absolute; right: 0; bottom: 0; width: 15px; height: 15px; background: #fff; border: 1px solid #000; cursor: nwse-resize; pointer-events: none; }
+.click-zone.dragging { transition: none !important; z-index: 9999 !important; pointer-events: none; opacity: 0.8; }
+
+/* === EDITOR SIDEBAR LAYOUT === */
+.editor-sidebar { background: #1a1a1a; width: 340px; position: fixed; right: 0; top: 0; bottom: 0; z-index: 4000; display: flex; flex-direction: column; box-shadow: -5px 0 20px rgba(0,0,0,0.5); border-left: 1px solid #333; }
+body.edit-mode-active #game-wrapper { margin-right: 340px; transition: margin-right 0.3s; }
+
+/* === EDITOR TABS === */
+.editor-tabs { display: flex; background: #111; border-bottom: 1px solid #333; }
+.tab-btn { flex: 1; background: #111; border: none; color: #888; padding: 12px 0; cursor: pointer; font-weight: bold; font-size: 0.9rem; border-bottom: 2px solid transparent; transition: all 0.2s; }
+.tab-btn:hover { color: #ccc; background: #181818; }
+.tab-btn.active { color: #fff; background: #1a1a1a; border-bottom: 2px solid #4CAF50; }
+.close-tab-btn { background: #d32f2f; color: white; border: none; width: 40px; flex-shrink: 0; cursor: pointer; font-size: 16px; font-weight: bold; display: flex; align-items: center; justify-content: center; }
+.close-tab-btn:hover { background: #b71c1c; }
+
+/* === EDITOR CONTENT (Stable Gutter + Offset Padding) === */
+/* Padding right is reduced to 2px to account for the ~8px reserved gutter */
+.sidebar-scroll-content { flex: 1; overflow-y: auto; overflow-x: hidden; padding-bottom: 40px; padding-top: 15px; scrollbar-gutter: stable; scrollbar-width: thin; scrollbar-color: #444 transparent; }
+.editor-section { padding: 5px 2px 5px 10px; width: 100%; box-sizing: border-box; border-bottom: 1px solid #222; }
+.info-text { background: #252525; padding: 15px; border-radius: 4px; color: #aaa; font-size: 0.9rem; line-height: 1.4; text-align: center; margin: 10px; }
+
+/* === FLOATING LABEL INPUTS === */
+.input-group { position: relative; margin-bottom: 5px; width: 100%; background: #252525; border: 1px solid #333; border-radius: 4px; transition: border-color 0.2s; }
+.input-group:focus-within { border-color: #4CAF50; background: #2a2a2a; }
+.input-group input, .input-group textarea { width: 100%; background: transparent; border: none; color: #eee; padding: 6px 8px; font-size: 0.9rem; z-index: 2; position: relative; font-family: inherit; resize: vertical; display: block; }
+.input-group input:focus, .input-group textarea:focus { outline: none; }
+.input-label { position: absolute; right: 8px; color: #555; font-size: 0.75rem; pointer-events: none; font-weight: 600; text-transform: uppercase; z-index: 1; transition: opacity 0.2s; white-space: nowrap; }
+.input-group input + .input-label { top: 50%; transform: translateY(-50%); }
+.input-group textarea + .input-label { bottom: 6px; right: 8px; }
+.input-label.label-hidden { opacity: 0 !important; }
+
+/* === EDITOR UI HELPERS === */
+.row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; width: 100%; }
+.row-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; width: 100%; }
+.row-4 .input-group input { text-align: center; padding: 6px 2px; }
+.row-4 .input-label { display: none; }
+.accordion-header { cursor: pointer; padding: 6px 0; display: flex; justify-content: space-between; color: #4CAF50; font-weight: bold; border-bottom: 1px solid #222; user-select: none; font-size: 0.9em; }
+.accordion-header::after { content: '▼'; font-size: 0.8em; transition: transform 0.2s; }
 .accordion-header.collapsed::after { transform: rotate(-90deg); }
-
-.accordion-content { display: block; overflow: hidden; padding: 10px 0; }
+.accordion-content { display: block; overflow: hidden; padding: 5px 0; }
 .accordion-content.collapsed { display: none; }
+.row-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 5px; }
+.action-btn { width: 100%; padding: 10px; border-radius: 4px; cursor: pointer; font-weight: bold; color: white; border: none; font-size: 0.9rem; }
+.btn-delete { background: #500; border: 1px solid #700; }
+.btn-delete:hover { background: #700; }
+.btn-add { background: #333; border: 1px solid #444; }
+.btn-add:hover { background: #444; }
+.primary-btn { background: #2e7d32; color: white; border: none; width: 100%; padding: 10px; border-radius: 4px; font-weight: bold; }
 
-/* Code Editor */
-.code-editor {
-    width: 100%;
-    height: 300px;
-    background: #111;
-    color: #0f0;
-    font-family: 'Consolas', monospace;
-    font-size: 0.8rem;
-    border: 1px solid #333;
-    border-radius: 4px;
-    padding: 8px;
-    box-sizing: border-box;
-    white-space: pre;
-    overflow: auto;
-}
-
-/* Rule Lists & Buttons */
+/* === RULE BUILDER & SCROLLBARS === */
 .compact-list { display: flex; flex-direction: column; gap: 6px; width: 100%; }
-.compact-row {
-    display: grid;
-    grid-template-columns: 35% 1fr 24px;
-    gap: 4px;
-    align-items: center;
-    box-sizing: border-box;
-}
+.compact-row { display: grid; grid-template-columns: 35% 1fr 24px; gap: 4px; align-items: center; }
+.compact-row select, .compact-row input { background: #222; border: 1px solid #333; color: #ddd; padding: 4px; border-radius: 3px; width: 100%; }
+.icon-btn { background: #d32f2f; color: white; border: none; border-radius: 3px; width: 24px; height: 24px; cursor: pointer; }
+.full-width-btn { width: 100%; padding: 8px; background: #333; border: 1px solid #444; color: #ccc; cursor: pointer; border-radius: 4px; margin-top: 5px; font-weight: bold; font-size: 0.85rem; }
+.code-editor { width: 100%; height: 200px; background: #111; color: #0f0; font-family: monospace; font-size: 0.8rem; border: 1px solid #333; border-radius: 4px; padding: 5px; box-sizing: border-box; resize: vertical; }
+.code-editor:focus { outline: none !important; border-color: #4CAF50; box-shadow: none; }
+/* Resizer: 70% gradient as requested */
+::-webkit-resizer { background: linear-gradient(135deg, transparent 70%, #666 70%); }
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #444; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #666; }
 
-.compact-row select, .compact-row input {
-    background: #222; border: 1px solid #333; color: #ddd;
-    padding: 4px; border-radius: 3px; font-size: 0.85rem; width: 100%;
-}
-
-.icon-btn {
-    background: #d32f2f; color: white; border: none; border-radius: 3px;
-    width: 24px; height: 24px; display: flex; align-items: center; justify-content: center;
-    cursor: pointer; font-weight: bold;
-}
-.icon-btn:hover { background: #b71c1c; }
-
-.full-width-btn {
-    width: 100%; padding: 8px; background: #333; border: 1px solid #444; color: #ccc;
-    cursor: pointer; border-radius: 4px; margin-top: 5px; font-size: 0.85rem; box-sizing: border-box;
-}
-.full-width-btn:hover { background: #444; color: #fff; }
-
-.delete-item-btn {
-    background: #500; color: #faa; border: 1px solid #800; width: 100%;
-    padding: 10px; border-radius: 4px; cursor: pointer; margin-bottom: 10px;
-}
-.delete-item-btn:hover { background: #700; }
-
-.primary-btn { background: #2e7d32; color: white; border: none; }
-.primary-btn:hover { background: #388e3c; }
-
-.close-btn {
-    background: #d32f2f; color: white; border: none; width: 30px; height: 30px;
-    border-radius: 50%; cursor: pointer; font-size: 18px; line-height: 1;
-}
-
-/* Draggable Overrides */
-.click-zone.dragging {
-    transition: none !important;
-    z-index: 9999 !important;
-    pointer-events: none;
-    opacity: 0.8;
-}
+/* === MOBILE === */
+@media (max-width: 1200px) { .editor-sidebar { width: 100%; max-width: 340px; } body.edit-mode-active #game-wrapper { margin-right: 0; } }
+@media (max-width: 768px) { .top-controls { top: 5px; right: 5px; gap: 5px; } .ctrl-btn { padding: 6px 10px; font-size: 12px; } #points-bar { gap: 20px; padding: 10px; } }
 
 
 ============================================================

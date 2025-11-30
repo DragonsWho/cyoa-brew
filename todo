@@ -30,3 +30,54 @@ ID генератор подсократить до 5 символов.
 
 
 backpack - что бы скопировать потом билд
+
+предзагрузка только одной странички снизу. В смысле отображения и обдумывания, что бы большие CYOA не висли перерасчитывая все разом при каждом клике. 
+
+
+
+
+non-activate карточки - для заголовков.
+
+переименовать в "allowed choices" 
+
+
+Help страничка с описание хитрых комбинаций которые можно вставить как js. типа рандомных бросков, циклов, условий и тп - для которых нет своих кнопок в UI
+
+скопировать карточку - дублирует ее с новым ID
+
+перехватывать right click на карточках и показывать контекстное меню с доп функциями
+
+Can Be Selected Multiple Times
+
+Cannot Be Selected Manually
+
+Cannot Be Deselected Manually
+ 
+
+ 
+
+Force Other Choices to Be Active
+
+Deactivate Other Choices
+
+Discount Other Choices
+ 
+ 
+
+Change Allowed Choices for Rows  - типа позволяет увеличить или уменьшить число доступных выборов в группе на эту величину.
+  
+Scroll to Row
+
+
+можно быть в двух группах разом
+
+
+показать или скрыть points в pointbar. Например когда появляется новый тип очков.?
+
+Change Background Color
+Enable Background Music
+Mute Background Music
+
+Set Variable Status
+
+Change Word

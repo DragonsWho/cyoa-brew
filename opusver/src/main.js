@@ -34,6 +34,8 @@ async function init() {
         controls = new ControlPanel(engine, renderer);
 
         await renderer.renderAll();
+         
+        engine.recalculate();
 
         const loading = document.getElementById('loading');
         if (loading) {
