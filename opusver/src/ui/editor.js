@@ -14,6 +14,19 @@ export class CYOAEditor {
         this.selectedItem = null;
         this.selectedGroup = null;
         
+        // Canvas for measuring text width (simple inputs)
+        this.measureContext = document.createElement('canvas').getContext('2d');
+        
+        // Mirror div for measuring textarea height/overlap
+        this.mirrorDiv = document.createElement('div');
+        this.mirrorDiv.style.position = 'absolute';
+        this.mirrorDiv.style.visibility = 'hidden';
+        this.mirrorDiv.style.height = 'auto';
+        this.mirrorDiv.style.overflow = 'hidden';
+        this.mirrorDiv.style.whiteSpace = 'pre-wrap'; // Important for textarea behavior
+        this.mirrorDiv.style.wordWrap = 'break-word';
+        document.body.appendChild(this.mirrorDiv);
+
         // Dragging state
         this.isDragging = false;
         this.isResizing = false;
@@ -99,11 +112,11 @@ export class CYOAEditor {
                         
                         <div class="input-group">
                             <textarea id="edit-description" rows="7"></textarea>
-                            <span class="input-label" style="top: 8px;">Desc</span>
+                            <span class="input-label">Desc</span>
                         </div>
                     </div>
 
-                    <!-- Position & Size (Accordion) -->
+                    <!-- Position & Size -->
                     <div class="editor-section">
                         <div class="accordion-header" onclick="CYOA.editor.toggleAccordion(this)">
                             Position & Size
@@ -118,10 +131,10 @@ export class CYOAEditor {
                         </div>
                     </div>
                     
-                    <!-- Rules Container (Filled by RuleBuilder) -->
+                    <!-- Rules Container -->
                     <div id="rule-builder-container"></div>
                     
-                    <!-- Raw JSON Editor (Accordion) -->
+                    <!-- Raw JSON Editor -->
                     <div class="editor-section">
                         <div class="accordion-header collapsed" onclick="CYOA.editor.toggleAccordion(this)">
                             🔧 Raw JSON
@@ -153,9 +166,9 @@ export class CYOAEditor {
         document.body.appendChild(sidebar);
         this.ruleBuilder.renderUI(document.getElementById('rule-builder-container'));
         
-        // Setup listeners
         this.setupFormListeners();
         this.setupJsonListener();
+        this.setupLabelAutoHiding();
     }
 
     toggleAccordion(header) {
@@ -164,8 +177,108 @@ export class CYOAEditor {
         content.classList.toggle('collapsed');
     }
 
-    // ==================== DRAG & DROP ====================
+    // ==================== LABEL AUTO HIDING LOGIC ====================
 
+    setupLabelAutoHiding() {
+        const checkCollision = (input) => {
+            const label = input.nextElementSibling;
+            if (!label || !label.classList.contains('input-label')) return;
+
+            const inputStyle = window.getComputedStyle(input);
+            const labelStyle = window.getComputedStyle(label);
+
+            // --- LOGIC FOR TEXTAREA (DESC) ---
+            if (input.tagName === 'TEXTAREA') {
+                // Синхронизируем стили зеркального div с textarea
+                this.mirrorDiv.style.font = inputStyle.font;
+                this.mirrorDiv.style.lineHeight = inputStyle.lineHeight;
+                this.mirrorDiv.style.padding = inputStyle.padding;
+                this.mirrorDiv.style.width = inputStyle.width;
+                this.mirrorDiv.style.boxSizing = inputStyle.boxSizing;
+                
+                // Копируем текст + добавляем маркер в конец
+                // Используем span, чтобы найти координаты конца текста
+                this.mirrorDiv.textContent = input.value;
+                const marker = document.createElement('span');
+                marker.textContent = '|'; // Невидимый символ для измерения
+                this.mirrorDiv.appendChild(marker);
+
+                // Получаем размеры
+                const inputRect = input.getBoundingClientRect();
+                const markerRect = marker.getBoundingClientRect();
+                const mirrorRect = this.mirrorDiv.getBoundingClientRect();
+
+                // Вычисляем позицию "курсора" (конца текста) относительно верхнего левого угла
+                const textBottomRelative = markerRect.bottom - mirrorRect.top;
+                const textRightRelative = markerRect.right - mirrorRect.left;
+
+                // Размеры лейбла
+                const labelWidth = label.offsetWidth + parseFloat(labelStyle.right || 0) + 5;
+                const labelHeight = label.offsetHeight + parseFloat(labelStyle.bottom || 0) + 2;
+
+                // Высота поля ввода
+                const inputHeight = input.clientHeight;
+
+                // 1. Если текст уже прокручивается (его больше, чем влезает) -> СКРЫТЬ
+                if (input.scrollHeight > input.clientHeight) {
+                    label.classList.add('label-hidden');
+                    return;
+                }
+
+                // 2. Зона коллизии по вертикали (последние N пикселей снизу)
+                const dangerZoneY = inputHeight - labelHeight;
+                
+                // 3. Зона коллизии по горизонтали (последние N пикселей справа)
+                const dangerZoneX = input.clientWidth - labelWidth;
+
+                // Если конец текста ниже опасной линии...
+                if (textBottomRelative > dangerZoneY) {
+                    // ...И правее опасной линии
+                    if (textRightRelative > dangerZoneX) {
+                        label.classList.add('label-hidden');
+                    } else {
+                        // Текст внизу, но слева от надписи
+                        label.classList.remove('label-hidden');
+                    }
+                } else {
+                    // Текст выше надписи
+                    label.classList.remove('label-hidden');
+                }
+                return;
+            }
+
+            // --- LOGIC FOR SIMPLE INPUTS (ID, TITLE, ETC) ---
+            const inputWidth = input.clientWidth;
+            const labelTotalWidth = label.offsetWidth + parseFloat(labelStyle.right) + 8;
+            
+            this.measureContext.font = inputStyle.font;
+            const textWidth = this.measureContext.measureText(input.value).width;
+
+            const textEndPosition = textWidth + 8; // +padding
+            const labelStartPosition = inputWidth - labelTotalWidth;
+
+            if (textEndPosition > labelStartPosition) {
+                label.classList.add('label-hidden');
+            } else {
+                label.classList.remove('label-hidden');
+            }
+        };
+
+        const inputs = document.querySelectorAll('#editor-sidebar input[type="text"], #editor-sidebar input[type="number"], #editor-sidebar textarea');
+        
+        inputs.forEach(input => {
+            checkCollision(input);
+            input.addEventListener('input', () => checkCollision(input));
+            window.addEventListener('resize', () => checkCollision(input));
+        });
+
+        this.triggerLabelCheck = () => {
+            inputs.forEach(input => checkCollision(input));
+        };
+    }
+
+    // ==================== DRAG & DROP & EVENT HANDLERS ====================
+    
     makeBoxesDraggable() {
         document.querySelectorAll('.item-zone').forEach(el => {
             el.classList.add('editable');
@@ -188,8 +301,6 @@ export class CYOAEditor {
 
     handleMouseDown(e) {
         if (!this.enabled) return;
-
-        // Ignore clicks inside sidebar
         if (e.target.closest('#editor-sidebar')) return;
         
         const target = e.target.closest('.item-zone');
@@ -222,7 +333,6 @@ export class CYOAEditor {
         this.dragStart = { x: e.clientX, y: e.clientY };
         this.initialRect = { ...item.coords };
         
-        // Cache dimensions
         const pageIndex = group.page || 0;
         const dim = this.renderer.pageDimensions[pageIndex];
         const container = document.querySelector(`#page-${pageIndex}`);
@@ -260,7 +370,6 @@ export class CYOAEditor {
             this.selectedItem.coords.h = Math.max(20, Math.round(this.initialRect.h + dy * scaleY));
         }
         
-        // Direct style update for performance
         const element = document.getElementById(`btn-${this.selectedItem.id}`);
         if (element) {
             const style = CoordHelper.toPercent(this.selectedItem.coords, dim);
@@ -293,7 +402,7 @@ export class CYOAEditor {
         }
     }
 
-    // ==================== SELECTION ====================
+    // ==================== SELECTION & FORM UPDATES ====================
 
     selectItem(item, group, element) {
         this.selectedItem = item;
@@ -304,7 +413,6 @@ export class CYOAEditor {
         
         document.getElementById('editor-item-props').style.display = 'block';
         
-        // Update Readonly Group Field
         const groupInput = document.getElementById('edit-group-display');
         if(groupInput) groupInput.value = group.title || group.id;
 
@@ -324,8 +432,6 @@ export class CYOAEditor {
         document.getElementById('editor-selection-info').innerHTML = 'Click on any item to edit';
     }
 
-    // ==================== FORM UPDATES ====================
-
     updateFormInputs() {
         if (!this.selectedItem) return;
         const item = this.selectedItem;
@@ -340,6 +446,8 @@ export class CYOAEditor {
         document.getElementById('edit-h').value = Math.round(item.coords.h);
         
         this.updateCodePreview();
+        
+        if (this.triggerLabelCheck) setTimeout(() => this.triggerLabelCheck(), 0);
     }
 
     updateCodePreview() {
@@ -382,32 +490,34 @@ export class CYOAEditor {
                 try {
                     const newData = JSON.parse(e.target.value);
                     if (this.selectedItem && this.selectedGroup) {
-                        // Update object properties in place
                         Object.keys(this.selectedItem).forEach(key => delete this.selectedItem[key]);
                         Object.assign(this.selectedItem, newData);
                         
-                        // Refresh UI
                         this.renderer.renderButtons();
                         
-                        // Refresh Inputs without infinite loop
-                        // (We manually update fields instead of calling updateFormInputs which updates JSON)
-                        document.getElementById('edit-id').value = newData.id || '';
-                        document.getElementById('edit-title').value = newData.title || '';
-                        document.getElementById('edit-description').value = newData.description || '';
-                        document.getElementById('edit-x').value = newData.coords?.x || 0;
-                        document.getElementById('edit-y').value = newData.coords?.y || 0;
-                        document.getElementById('edit-w').value = newData.coords?.w || 0;
-                        document.getElementById('edit-h').value = newData.coords?.h || 0;
+                        const fields = {
+                            'edit-id': newData.id,
+                            'edit-title': newData.title,
+                            'edit-description': newData.description,
+                            'edit-x': newData.coords?.x,
+                            'edit-y': newData.coords?.y,
+                            'edit-w': newData.coords?.w,
+                            'edit-h': newData.coords?.h
+                        };
+                        
+                        for (const [id, val] of Object.entries(fields)) {
+                            const el = document.getElementById(id);
+                            if (el) el.value = val !== undefined ? val : '';
+                        }
                         
                         this.ruleBuilder.loadItem(this.selectedItem, this.selectedGroup);
                         
-                        // Re-select visually in case ID changed
                         const newEl = document.getElementById(`btn-${newData.id}`);
                         if (newEl) newEl.classList.add('editor-selected');
+                        
+                        if (this.triggerLabelCheck) this.triggerLabelCheck();
                     }
-                } catch (err) {
-                    // Invalid JSON, ignore or show error state
-                }
+                } catch (err) { }
             });
         }
     }

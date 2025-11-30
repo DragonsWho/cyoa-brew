@@ -702,15 +702,14 @@ body.debug-mode #game-wrapper {
 }
 
 
-
 /* ================================
-   COMPACT EDITOR STYLES (UPDATED)
+   COMPACT EDITOR STYLES (FINAL)
    ================================ */
 
 /* Sidebar Layout */
 .editor-sidebar {
     background: #1a1a1a;
-    width: 320px; /* Фиксированная ширина */
+    width: 320px;
     position: fixed;
     right: 0;
     top: 0;
@@ -722,9 +721,9 @@ body.debug-mode #game-wrapper {
     border-left: 1px solid #333;
 }
 
-/* Синхронизация отступа для картинки */
+/* Adjust main content */
 body.debug-mode #game-wrapper {
-    margin-right: 320px; /* Должно совпадать с шириной sidebar */
+    margin-right: 320px;
     transition: margin-right 0.3s;
 }
 
@@ -732,7 +731,7 @@ body.debug-mode #game-wrapper {
 .sidebar-scroll-content {
     flex: 1;
     overflow-y: auto;
-    overflow-x: hidden; /* Убираем гориз. скролл */
+    overflow-x: hidden;
     padding-bottom: 40px;
     scrollbar-width: thin;
     scrollbar-color: #444 #1a1a1a;
@@ -743,6 +742,9 @@ body.debug-mode #game-wrapper {
     padding: 10px 15px;
     border-bottom: 1px solid #333;
     flex-shrink: 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
 
 .editor-header h3 {
@@ -751,59 +753,96 @@ body.debug-mode #game-wrapper {
     margin: 0;
 }
 
-/* Common Section Styles */
+/* Section Wrapper */
 .editor-section {
     padding: 0 10px;
     margin-bottom: 5px;
     border-bottom: none;
-    box-sizing: border-box; /* Важно для устранения гориз. скролла */
+    box-sizing: border-box;
     width: 100%;
 }
 
-/* Floating Label Inputs */
+/* --- FLOATING LABEL INPUTS START --- */
+
+/* Контейнер теперь содержит рамку и фон, а не input */
 .input-group {
     position: relative;
     margin-bottom: 8px;
     width: 100%;
     box-sizing: border-box;
+    background: #252525;
+    border: 1px solid #333;
+    border-radius: 4px;
+    transition: border-color 0.2s, background 0.2s;
 }
 
+.input-group:focus-within {
+    border-color: #4CAF50;
+    background: #2a2a2a;
+}
+
+/* Input/Textarea прозрачные и лежат поверх лейбла */
 .input-group input,
 .input-group textarea {
     width: 100%;
-    background: #252525;
-    border: 1px solid #333;
+    background: transparent; /* Прозрачный фон */
+    border: none; /* Рамка убрана */
     color: #eee;
     padding: 6px 8px;
-    padding-right: 45px; /* Место под лейбл */
-    border-radius: 4px;
+    padding-right: 6px; /* Не делаем большой отступ, текст может занимать всю ширину */
     font-size: 0.9rem;
     font-family: inherit;
-    transition: border-color 0.2s;
     box-sizing: border-box;
     resize: vertical;
+    position: relative;
+    z-index: 2; /* Текст выше лейбла */
 }
 
 .input-group input:focus,
 .input-group textarea:focus {
     outline: none;
-    border-color: #4CAF50;
-    background: #2a2a2a;
 }
 
+/* Лейбл лежит под текстом (z-index 1) и выровнен вправо */
 .input-label {
     position: absolute;
     right: 8px;
-    top: 6px;
     color: #555;
     font-size: 0.75rem;
     pointer-events: none;
     user-select: none;
     font-weight: 600;
     text-transform: uppercase;
+    z-index: 1; /* Под текстом */
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    white-space: nowrap;
 }
 
-/* Compact Grid Layouts */
+/* Центрирование лейбла для однострочных полей */
+.input-group input + .input-label {
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+/* Лейбл для Textarea в правом нижнем углу */
+.input-group textarea + .input-label {
+    bottom: 6px;
+    right: 8px;
+    top: auto;
+}
+
+/* Класс скрытия, добавляемый JS */
+.input-label.label-hidden {
+    opacity: 0 !important;
+    transform: translateX(5px); /* Легкий сдвиг при скрытии */
+}
+.input-group input + .input-label.label-hidden {
+    transform: translateY(-50%) translateX(5px);
+}
+
+/* --- FLOATING LABEL INPUTS END --- */
+
+/* Grid Layouts */
 .row-2 {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -821,15 +860,13 @@ body.debug-mode #game-wrapper {
 }
 
 .row-4 .input-group input {
-    padding-right: 5px; 
     text-align: center;
-    padding-left: 2px;
+    padding: 6px 2px;
 }
 
 .row-4 .input-label {
-    display: none; /* Прячем лейблы в сетке 4, они там не влезут */
+    display: none; /* В маленькой сетке лейблы не показываем */
 }
-/* Или показываем их над полем, если нужно, но лучше использовать placeholder или заголовки */
 
 /* Accordions */
 .accordion-header {
@@ -844,30 +881,14 @@ body.debug-mode #game-wrapper {
     user-select: none;
     border-bottom: 1px solid #2a2a2a;
 }
-
 .accordion-header:hover { color: #66bb6a; }
+.accordion-header::after { content: '▼'; font-size: 0.7em; transition: transform 0.2s; }
+.accordion-header.collapsed::after { transform: rotate(-90deg); }
 
-.accordion-header::after {
-    content: '▼';
-    font-size: 0.7em;
-    transition: transform 0.2s;
-}
+.accordion-content { display: block; overflow: hidden; padding: 10px 0; }
+.accordion-content.collapsed { display: none; }
 
-.accordion-header.collapsed::after {
-    transform: rotate(-90deg);
-}
-
-.accordion-content {
-    display: block;
-    overflow: hidden;
-    padding: 10px 0;
-}
-
-.accordion-content.collapsed {
-    display: none;
-}
-
-/* Code Editor Area */
+/* Code Editor */
 .code-editor {
     width: 100%;
     height: 300px;
@@ -883,14 +904,8 @@ body.debug-mode #game-wrapper {
     overflow: auto;
 }
 
-/* Compact Rule Lists */
-.compact-list {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    width: 100%;
-}
-
+/* Rule Lists & Buttons */
+.compact-list { display: flex; flex-direction: column; gap: 6px; width: 100%; }
 .compact-row {
     display: grid;
     grid-template-columns: 35% 1fr 24px;
@@ -899,62 +914,42 @@ body.debug-mode #game-wrapper {
     box-sizing: border-box;
 }
 
-.compact-row select,
-.compact-row input {
-    background: #222;
-    border: 1px solid #333;
-    color: #ddd;
-    padding: 4px;
-    border-radius: 3px;
-    font-size: 0.85rem;
-    width: 100%;
-    box-sizing: border-box;
+.compact-row select, .compact-row input {
+    background: #222; border: 1px solid #333; color: #ddd;
+    padding: 4px; border-radius: 3px; font-size: 0.85rem; width: 100%;
 }
 
 .icon-btn {
-    background: #d32f2f;
-    color: white;
-    border: none;
-    border-radius: 3px;
-    width: 24px;
-    height: 24px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    font-weight: bold;
+    background: #d32f2f; color: white; border: none; border-radius: 3px;
+    width: 24px; height: 24px; display: flex; align-items: center; justify-content: center;
+    cursor: pointer; font-weight: bold;
 }
 .icon-btn:hover { background: #b71c1c; }
 
 .full-width-btn {
-    width: 100%;
-    padding: 8px;
-    background: #333;
-    border: 1px solid #444;
-    color: #ccc;
-    cursor: pointer;
-    border-radius: 4px;
-    margin-top: 5px;
-    font-size: 0.85rem;
-    box-sizing: border-box;
+    width: 100%; padding: 8px; background: #333; border: 1px solid #444; color: #ccc;
+    cursor: pointer; border-radius: 4px; margin-top: 5px; font-size: 0.85rem; box-sizing: border-box;
 }
 .full-width-btn:hover { background: #444; color: #fff; }
 
 .delete-item-btn {
-    background: #500;
-    color: #faa;
-    border: 1px solid #800;
-    width: 100%;
-    padding: 10px;
-    border-radius: 4px;
-    cursor: pointer;
-    margin-bottom: 10px;
+    background: #500; color: #faa; border: 1px solid #800; width: 100%;
+    padding: 10px; border-radius: 4px; cursor: pointer; margin-bottom: 10px;
 }
 .delete-item-btn:hover { background: #700; }
 
-.primary-btn {
-    background: #2e7d32;
-    color: white;
-    border: none;
-}
+.primary-btn { background: #2e7d32; color: white; border: none; }
 .primary-btn:hover { background: #388e3c; }
+
+.close-btn {
+    background: #d32f2f; color: white; border: none; width: 30px; height: 30px;
+    border-radius: 50%; cursor: pointer; font-size: 18px; line-height: 1;
+}
+
+/* Draggable Overrides */
+.click-zone.dragging {
+    transition: none !important;
+    z-index: 9999 !important;
+    pointer-events: none;
+    opacity: 0.8;
+}
