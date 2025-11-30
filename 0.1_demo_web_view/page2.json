@@ -1,0 +1,369 @@
+{
+  "meta": {
+    "pages": [
+      "page2.jpg"
+    ]
+  },
+  "points": [
+    {
+      "id": "sparks",
+      "name": "Loose Sparks of Power",
+      "start": 0
+    }
+  ],
+  "groups": [
+    {
+      "id": "magics",
+      "title": "Magics",
+            "rules": {           
+        "max_choices": 3
+      },
+      "description": "What would a Dark Lord be without their own personal, overwhelming power? Quickly dead, most often. You are more than capable of mastering any local system of magic you put your mind to studying, but for now you must decide which Dark Magics to imprint on your being to start with. You have THREE (3) free MAGIC choices, and any magic you acquire here will come to you with terrifying (for your opponents) ease. You can unlock more magics by completing Research. Three full working months of intensive study from you grants one (1) Research point. Unlocking a new Dark Magic, of which the ones shown here are only examples, costs sixteen (16) Research points.",
+      "coords": {
+        "x": 25,
+        "y": 16,
+        "w": 1852,
+        "h": 305
+      },
+      "items": [
+        {
+          "id": "fire_magic",
+          "title": "Fire",
+          "coords": {
+            "x": 25,
+            "y": 342,
+            "w": 602,
+            "h": 605
+          },
+          "description": "Sweltering heat and plumes of ash accompany torrents of fire that rise at your command. Pyromancy is the element of offense, raw and unrelenting. You can certainly grant such boons as resistance to heat, but your greatest tool for defending against physical attack is incinerating your enemies before they swing their sword at your head.",
+          "cost": [
+            {
+              "currency": "sparks",
+              "value": 0,
+              "condition": "isFree('magics', 3) ? 0 : -1"
+            }
+          ]
+        },
+        {
+          "id": "ice_magic",
+          "title": "Ice",
+          "coords": {
+            "x": 650,
+            "y": 342,
+            "w": 602,
+            "h": 605
+          },
+          "description": "Winter winds howl and hoarfrost climbs along every surface as sheets of ice and snow obey your command. Cryomancy is a mixed defensive and offensive element. It tends to struggle defending against fire and blunt impact, but it is more than made up for by the ability to let your armies ignore blizzards... or call them on your foes.",
+          "cost": [
+            {
+              "currency": "sparks",
+              "value": 0,
+              "condition": "isFree('magics', 3) ? 0 : -1"
+            }
+          ]
+        },
+        {
+          "id": "thunder_magic",
+          "title": "Thunder",
+          "coords": {
+            "x": 1275,
+            "y": 342,
+            "w": 602,
+            "h": 605
+          },
+          "description": "The heavens roar and split, sending gales of wind and bolts of lightning down at a flick of your wrist. Thunder is another powerfully offensive element, allowing for both bludgeoning wind and piercing electricity. It has somewhat less raw destructive power than fire, but controlling storms and wind can be an excellent strategic power all on its own.",
+          "cost": [
+            {
+              "currency": "sparks",
+              "value": 0,
+              "condition": "isFree('magics', 3) ? 0 : -1"
+            }
+          ]
+        },
+        {
+          "id": "earth_magic",
+          "title": "Earth",
+          "coords": {
+            "x": 25,
+            "y": 970,
+            "w": 602,
+            "h": 605
+          },
+          "description": "Stone cracks and mud flows like a river at your command. Geomancy is a powerfully defensive element overall with relatively slow attacks, but when its attacks land they carry immense force. Especially noteworthy is its power as a siege weapon- rare is the nonmagical fortresses that can survive the very earth beneath the walls turning against it.",
+          "cost": [
+            {
+              "currency": "sparks",
+              "value": 0,
+              "condition": "isFree('magics', 3) ? 0 : -1"
+            }
+          ]
+        },
+        {
+          "id": "nature_magic",
+          "title": "Nature",
+          "coords": {
+            "x": 650,
+            "y": 970,
+            "w": 602,
+            "h": 605
+          },
+          "description": "Branches strike like whips and roots rise from the ground like grasping claws at a snap of your fingers. Naturomancy is a flexible utility element, allowing you to manipulate flora to attack and starve your enemies. Almost more useful is having it grow more produce for your own troops. You can also communicate with and command animals, though not warp them.",
+          "cost": [
+            {
+              "currency": "sparks",
+              "value": 0,
+              "condition": "isFree('magics', 3) ? 0 : -1"
+            }
+          ]
+        },
+        {
+          "id": "darkness_magic",
+          "title": "Darkness",
+          "coords": {
+            "x": 1275,
+            "y": 970,
+            "w": 602,
+            "h": 605
+          },
+          "description": "Shadows twist and writhe, forming skeletal hands and spider-like claws as you desire. Umbramancy is an all-rounder of an element, attacking with spectral cold or tearing claws of shadow. You can even transport yourself and others through shadows, making for an excellent infiltration element.",
+          "cost": [
+            {
+              "currency": "sparks",
+              "value": 0,
+              "condition": "isFree('magics', 3) ? 0 : -1"
+            }
+          ]
+        },
+        {
+          "id": "fleshcrafting",
+          "title": "Fleshcrafting",
+          "coords": {
+            "x": 25,
+            "y": 1600,
+            "w": 602,
+            "h": 605
+          },
+          "description": "Flesh warps, bone bubbles, and the bodies of friend and foe alike change to your designs. Biomancy is a slow but potent utility element, allowing you to apply gruesome augmentations to existing creatures or piece together all new ones from parts. Sadly it does not allow for the creation of plagues or other micro-organisms, but goblins are a plague in themselves.",
+          "cost": [
+            {
+              "currency": "sparks",
+              "value": 0,
+              "condition": "isFree('magics', 3) ? 0 : -1"
+            }
+          ]
+        },
+        {
+          "id": "artifice",
+          "title": "Artifice",
+          "coords": {
+            "x": 650,
+            "y": 1600,
+            "w": 602,
+            "h": 605
+          },
+          "description": "Gears groan and shriek as you craft a new, terrible future for the world. Artifice is the art of creating magical items and devices, ranging from enchanted swords to autonomous siege engines. The primary limitations will be your industry and the ability of your minions to craft your designs, but be wary: that which you create is not bound to be loyal as Minions are.",
+          "cost": [
+            {
+              "currency": "sparks",
+              "value": 0,
+              "condition": "isFree('magics', 3) ? 0 : -1"
+            }
+          ]
+        },
+        {
+          "id": "ebonsteel",
+          "title": "Ebonsteel",
+          "coords": {
+            "x": 1275,
+            "y": 1600,
+            "w": 602,
+            "h": 605
+          },
+          "description": "A magical metal to compare to Mithril or Adamantine flows from your fingertips. Ebonsteel is a uniquely useful and biddable metal to you and your forces, and this magic allows you to create it from nothing to serve your needs. Ebonsteel armor and weapons are among the finest in all creation... if you don’t mind how they seduce the user to your will.",
+          "cost": [
+            {
+              "currency": "sparks",
+              "value": 0,
+              "condition": "isFree('magics', 3) ? 0 : -1"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "artifacts",
+      "title": "Artifacts",
+      "description": "Similarly, where would a Dark Lord be without their dread artifacts? Don't worry, they only curse people who take them from you. If lost, Dark Artifacts can be magically summoned to your side once per year. They can be gifted- temporarily or otherwise- to chosen servants if you so desire, allowing them the full benefits of their use. More Dark Artifacts can be made by either corrupting an existing Artifact with your innate power of Corruption or crafting a worthy item with your own hands. Only the greatest items can be declared artifacts. You have THREE (3) free ARTIFACT choices.",
+      "coords": {
+        "x": 25,
+        "y": 2215,
+        "w": 1852,
+        "h": 300
+      },
+      "items": [
+        {
+          "id": "devastation",
+          "title": "Devastation",
+          "coords": {
+            "x": 25,
+            "y": 2540,
+            "w": 602,
+            "h": 605
+          },
+          "description": "An indestructible, shape-shifting ebonsteel weapon that strikes with unnatural force and speed. As you first pick it up Devastation chooses three forms to take. Swapping between your weapon's forms is as easy as a flick of the wrist. Each form has a different role, but their use comes to you with unnatural ease and they all serve as a potent conduit for offensive magic.",
+          "cost": [
+            {
+              "currency": "sparks",
+              "value": 0,
+              "condition": "isFree('artifacts', 3) ? 0 : -1"
+            }
+          ]
+        },
+        {
+          "id": "dread_aegis",
+          "title": "Dread Aegis",
+          "coords": {
+            "x": 650,
+            "y": 2540,
+            "w": 602,
+            "h": 605
+          },
+          "description": "An ebonsteel shield, black as night and emblazoned with a terrible visage. The Aegis is indestructible, and is able to reflect harmful magics that strike it if you have the knack. Gazing upon the terrible faces carved into the black steel strikes fear and doubt into the hearts of those that are not Dark Lords, potentially eroding their will to resist over time.",
+          "cost": [
+            {
+              "currency": "sparks",
+              "value": 0,
+              "condition": "isFree('artifacts', 3) ? 0 : -1"
+            }
+          ]
+        },
+        {
+          "id": "armor_of_shadows",
+          "title": "Armor of Shadows",
+          "coords": {
+            "x": 1275,
+            "y": 2540,
+            "w": 602,
+            "h": 605
+          },
+          "description": "A suit of magical, self-repairing ebonsteel armor that stows itself in your shadow when not in use. When worn the armor increases your speed, strength, and toughness five fold, and if it is broken it will reform in your shadow within five minutes. The magical properties of this armor mean that any damage you take while wearing it is halved, no matter how terrible the blow.",
+          "cost": [
+            {
+              "currency": "sparks",
+              "value": 0,
+              "condition": "isFree('artifacts', 3) ? 0 : -1"
+            }
+          ]
+        },
+        {
+          "id": "staff_of_ruin",
+          "title": "Staff of Ruin",
+          "coords": {
+            "x": 25,
+            "y": 3175,
+            "w": 602,
+            "h": 605
+          },
+          "description": "An indestructible ebonsteel staff. When used as a focus, its dark power harmonize with your own, granting you greatly increased magical power when using it. With this staff, your magical assaults will go from terrifying to godly in strength. The magical energies will also grant you insight into magical research, allowing you to earn research points 10% faster.",
+          "cost": [
+            {
+              "currency": "sparks",
+              "value": 0,
+              "condition": "isFree('artifacts', 3) ? 0 : -1"
+            }
+          ]
+        },
+        {
+          "id": "orb_of_mists",
+          "title": "Orb of Mists",
+          "coords": {
+            "x": 650,
+            "y": 3175,
+            "w": 602,
+            "h": 605
+          },
+          "description": "An indestructible crystalline sphere filled with swirling smoke and fog. When properly installed in your stronghold it augments your dark powers with an additional well of magical power to call upon from any distance. Pondering its depths can reveal secrets of magic to you, allowing you to earn research points 20% faster.",
+          "cost": [
+            {
+              "currency": "sparks",
+              "value": 0,
+              "condition": "isFree('artifacts', 3) ? 0 : -1"
+            }
+          ]
+        },
+        {
+          "id": "book_of_secrets",
+          "title": "Book of Secrets",
+          "coords": {
+            "x": 1275,
+            "y": 3175,
+            "w": 602,
+            "h": 605
+          },
+          "description": "A leather-bound tome that crackles with eldritch power. If damaged, it will revert to a pristine state the moment it is not observed. It contains many dark and terrible secrets, allowing you to earn research points 30% faster. Its first pages contain a ritual that allows you to transfer the contents of any information storage to its pages, which never seem to run out.",
+          "cost": [
+            {
+              "currency": "sparks",
+              "value": 0,
+              "condition": "isFree('artifacts', 3) ? 0 : -1"
+            }
+          ]
+        },
+        {
+          "id": "blood_pact_quill",
+          "title": "Blood Pact Quill",
+          "coords": {
+            "x": 25,
+            "y": 3790,
+            "w": 602,
+            "h": 605
+          },
+          "description": "An indestructible spined quill that digs cruel thorns into the hand of any who write with it. The quill steals the blood- or nearest equivalent- of the writer for ink, and those who write with the Quill other than yourself can only write the truth. A contract signed in blood with the Quill cannot be broken unless by your decree.",
+          "cost": [
+            {
+              "currency": "sparks",
+              "value": 0,
+              "condition": "isFree('artifacts', 3) ? 0 : -1"
+            }
+          ]
+        },
+        {
+          "id": "mirror_of_many_things",
+          "title": "Mirror of Many Things",
+          "coords": {
+            "x": 650,
+            "y": 3790,
+            "w": 602,
+            "h": 605
+          },
+          "description": "An ornate mirror that shows an empty blackness instead of a reflection. You can use the mirror to scry any place you have seen, and can freely move the mirror's viewpoint to scout new and familiar lands from a bird's eye view. Once every month you can ask the mirror to find something, and it will never fail to find the object of your curiosity.",
+          "cost": [
+            {
+              "currency": "sparks",
+              "value": 0,
+              "condition": "isFree('artifacts', 3) ? 0 : -1"
+            }
+          ]
+        },
+        {
+          "id": "crown_of_whispers",
+          "title": "Crown of Whispers",
+          "coords": {
+            "x": 1275,
+            "y": 3790,
+            "w": 602,
+            "h": 605
+          },
+          "description": "An indestructible ebonsteel crown. This artifact gives you power over the mind- letting you hear the whispers of their thoughts, and whisper your own back. This grants telepathic communication for those within a thousand feet and, if you are subtle, the ability to manipulate minds not sharp enough to notice which thoughts are their own.",
+          "cost": [
+            {
+              "currency": "sparks",
+              "value": 0,
+              "condition": "isFree('artifacts', 3) ? 0 : -1"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

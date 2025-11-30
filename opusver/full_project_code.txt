@@ -1,0 +1,4107 @@
+
+============================================================
+FILE START: generate_test_image.html
+============================================================
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Image Generator</title>
+    <style>
+        body {
+            margin: 20px;
+            font-family: Arial, sans-serif;
+            background: #222;
+            color: #fff;
+        }
+        
+        h1 { color: #4CAF50; }
+        
+        .controls {
+            margin: 20px 0;
+            padding: 20px;
+            background: #333;
+            border-radius: 8px;
+        }
+        
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            border-radius: 4px;
+            margin-right: 10px;
+        }
+        
+        button:hover {
+            background: #45a049;
+        }
+        
+        canvas {
+            border: 2px solid #555;
+            display: block;
+            margin: 20px 0;
+            max-width: 100%;
+            background: white;
+        }
+        
+        .info {
+            background: #444;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        
+        code {
+            background: #555;
+            padding: 2px 6px;
+            border-radius: 3px;
+            color: #4CAF50;
+        }
+    </style>
+</head>
+<body>
+    <h1>🎨 Test Image Generator</h1>
+    
+    <div class="info">
+        <strong>Instructions:</strong>
+        <ol>
+            <li>Click "Generate Test Image" below</li>
+            <li>Right-click the image → "Save image as..."</li>
+            <li>Save to <code>config/test_image.png</code></li>
+            <li>Run <code>index.html</code> to see it in action!</li>
+        </ol>
+    </div>
+    
+    <div class="controls">
+        <button onclick="generateImage()">🎨 Generate Test Image</button>
+        <button onclick="downloadImage()">💾 Download Image</button>
+    </div>
+    
+    <canvas id="canvas" width="1920" height="1080"></canvas>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        function generateImage() {
+            // Background
+            const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            gradient.addColorStop(0, '#1a1a2e');
+            gradient.addColorStop(1, '#0f3460');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Title
+            ctx.fillStyle = '#eee';
+            ctx.font = 'bold 60px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('Test CYOA - Rule Examples', canvas.width / 2, 120);
+
+            // Groups with boxes
+            const groups = [
+                { title: 'Free Items', y: 220, items: 3, color: '#4CAF50' },
+                { title: 'Paid Items', y: 440, items: 3, color: '#FF9800' },
+                { title: 'Requirements', y: 660, items: 3, color: '#2196F3' },
+                { title: 'Incompatible', y: 880, items: 2, color: '#F44336' }
+            ];
+
+            groups.forEach(group => {
+                // Group background
+                ctx.fillStyle = 'rgba(255,255,255,0.05)';
+                ctx.fillRect(50, group.y, 1240, 200);
+
+                // Group title
+                ctx.fillStyle = group.color;
+                ctx.font = 'bold 24px Arial';
+                ctx.textAlign = 'left';
+                ctx.fillText(group.title, 70, group.y + 30);
+
+                // Item boxes
+                for (let i = 0; i < group.items; i++) {
+                    const x = 50 + i * 420;
+                    const y = group.y + 30;
+
+                    // Box
+                    ctx.strokeStyle = group.color;
+                    ctx.lineWidth = 3;
+                    ctx.strokeRect(x, y, 400, 150);
+
+                    // Item title
+                    ctx.fillStyle = '#fff';
+                    ctx.font = 'bold 20px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(`Item ${i + 1}`, x + 200, y + 80);
+                }
+            });
+
+            // Right column - Choose 1
+            ctx.fillStyle = 'rgba(255,255,255,0.05)';
+            ctx.fillRect(1310, 220, 560, 640);
+            
+            ctx.fillStyle = '#9C27B0';
+            ctx.font = 'bold 24px Arial';
+            ctx.textAlign = 'left';
+            ctx.fillText('Choose Only 1', 1330, 250);
+
+            for (let i = 0; i < 3; i++) {
+                const y = 220 + 30 + i * 170;
+                ctx.strokeStyle = '#9C27B0';
+                ctx.lineWidth = 3;
+                ctx.strokeRect(1330, y, 520, 150);
+                
+                ctx.fillStyle = '#fff';
+                ctx.font = 'bold 20px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText(`Choice ${String.fromCharCode(65 + i)}`, 1590, y + 80);
+            }
+
+            // Budget group
+            ctx.fillStyle = 'rgba(255,255,255,0.05)';
+            ctx.fillRect(1310, 880, 560, 200);
+            
+            ctx.fillStyle = '#FFD700';
+            ctx.font = 'bold 24px Arial';
+            ctx.textAlign = 'left';
+            ctx.fillText('Budget: 5 Free Picks', 1330, 910);
+
+            for (let i = 0; i < 2; i++) {
+                const x = 1330 + i * 270;
+                ctx.strokeStyle = '#FFD700';
+                ctx.lineWidth = 3;
+                ctx.strokeRect(x, 910, 250, 150);
+                
+                ctx.fillStyle = '#fff';
+                ctx.font = 'bold 20px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText(`Budget ${i + 1}`, x + 125, 990);
+            }
+
+            // Footer
+            ctx.fillStyle = '#666';
+            ctx.font = '16px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('Generated Test Image - Click items to select them!', canvas.width / 2, canvas.height - 30);
+
+            console.log('✅ Image generated!');
+        }
+
+        function downloadImage() {
+            const link = document.createElement('a');
+            link.download = 'test_image.png';
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+            console.log('💾 Download started!');
+        }
+
+        // Auto-generate on load
+        window.onload = () => {
+            generateImage();
+        };
+    </script>
+</body>
+</html>
+
+
+============================================================
+FILE START: index.html
+============================================================
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CYOA Interactive Player</title>
+    <link rel="stylesheet" href="styles/main.css">
+</head>
+<body>
+    <div id="app">
+        <!-- Top controls -->
+        <div class="top-controls">
+            <button id="text-toggle" class="ctrl-btn">📖 Translation</button>
+            <button id="debug-toggle" class="ctrl-btn">🐞 Debug</button>
+            <button id="reset-btn" class="ctrl-btn">🔄 Reset</button>
+        </div>
+        
+        <!-- Game content -->
+        <div id="game-wrapper"></div>
+        
+        <!-- Points bar -->
+        <div id="points-bar"></div>
+        
+        <!-- Tooltip -->
+        <div id="tooltip"></div>
+    </div>
+
+    <!-- Loading indicator -->
+    <div id="loading" style="
+        position: fixed; 
+        top: 50%; 
+        left: 50%; 
+        transform: translate(-50%, -50%);
+        font-size: 24px;
+        color: #fff;
+        text-align: center;
+    ">
+        Loading CYOA...<br>
+        <small style="color: #888; font-size: 14px;">
+            Check console (F12) if this takes too long
+        </small>
+    </div>
+
+    <script type="module" src="src/main.js"></script>
+</body>
+</html>
+
+
+============================================================
+FILE START: readme
+============================================================
+
+cyoa-interactive/
+├── index.html                 # Минимальный loader
+├── styles/
+│   ├── main.css              # Основные стили
+│   └── themes.css            # Темы оформления
+├── src/
+│   ├── core/
+│   │   ├── engine.js         # Игровая логика
+│   │   ├── state.js          # Управление состоянием
+│   │   └── rules.js          # Система правил
+│   ├── ui/
+│   │   ├── renderer.js       # Отрисовка страниц
+│   │   ├── tooltip.js        # Система подсказок
+│   │   └── controls.js       # Элементы управления
+│   └── utils/
+│       ├── coords.js         # Работа с координатами
+│       └── evaluator.js      # Безопасный eval
+├── config/
+│   ├── schema.json           # JSON Schema валидация
+│   └── example.json          # Пример конфига
+└── docs/
+    ├── llm-guide.md          # Руководство для LLM
+    └── rule-catalog.md       # Каталог правил
+
+
+
+
+    # CYOA Interactive System - Quick Start Guide
+
+Система для превращения статичных CYOA в интерактивные игры.
+
+## 🎯 Что это делает?
+
+1. Показывает оригинальную картинку CYOA
+2. Рисует прозрачные кнопки поверх карточек
+3. Считает очки автоматически
+4. Проверяет требования и несовместимости
+
+## 📁 Структура файлов
+
+```
+cyoa-interactive/
+├── README.md                  ← вы здесь
+├── index.html                 ← ЗАПУСКАТЬ ЭТОТ ФАЙЛ
+├── generate_test_image.html   ← генератор тестовой картинки
+├── styles/
+│   └── main.css
+├── src/
+│   ├── main.js
+│   ├── core/
+│   │   ├── engine.js
+│   │   ├── state.js
+│   │   └── rules.js
+│   ├── ui/
+│   │   ├── renderer.js
+│   │   ├── tooltip.js
+│   │   └── controls.js
+│   └── utils/
+│       └── coords.js
+└── config/
+    ├── test_config.json       ← тестовая конфигурация
+    └── test_image.png         ← тестовая картинка
+
+```
+
+## 🚀 Как запустить (3 способа)
+
+### Способ 1: Локальный сервер (РЕКОМЕНДУЕТСЯ)
+
+ES6 модули требуют HTTP сервер. Выберите один из вариантов:
+
+#### Python (если установлен):
+```bash
+# Python 3
+python -m http.server 8000
+
+# Python 2
+python -m SimpleHTTPServer 8000
+```
+
+#### Node.js (если установлен):
+```bash
+npx http-server -p 8000
+```
+
+#### VS Code:
+Установите расширение "Live Server" и нажмите "Go Live"
+
+Затем откройте: **http://localhost:8000**
+
+---
+
+### Способ 2: Без сервера (Firefox)
+
+Firefox разрешает модули с `file://`:
+
+1. Откройте Firefox
+2. Перетащите `index.html` в окно браузера
+3. ✅ Должно работать!
+
+---
+
+### Способ 3: Chrome с флагом (не рекомендуется)
+
+```bash
+chrome.exe --allow-file-access-from-files
+```
+
+⚠️ Небезопасно для постоянного использования!
+
+---
+
+## 📝 Как создать тестовую картинку
+
+### Вариант А: Автоматически
+
+1. Откройте `generate_test_image.html` в браузере
+2. Нажмите "Generate Test Image"
+3. Сохраните как `config/test_image.png`
+
+### Вариант Б: Вручную
+
+Создайте любую картинку 1920x1080px с несколькими зонами для кнопок.
+Можно в Paint, Photoshop, или онлайн на https://pixlr.com
+
+---
+
+## 🎮 Интерфейс управления
+
+После запуска вы увидите:
+
+| Кнопка | Что делает |
+|--------|------------|
+| 📖 Translation | Показать текст поверх карточек (для переводов) |
+| 🐞 Debug | Показать границы всех зон |
+| 🔄 Reset | Сбросить все выбранное |
+
+Внизу экрана - панель с очками.
+
+---
+
+## 🧪 Тестирование системы
+
+### Что должно работать в тестовом примере:
+
+✅ Клик по карточке выделяет её зелёным  
+✅ Очки пересчитываются автоматически  
+✅ Карточки с требованиями становятся доступны после выбора нужных  
+✅ Несовместимые карточки блокируются  
+✅ При наведении показывается подсказка  
+✅ "Choose 1" группа работает как радио-кнопка  
+
+---
+
+## 📊 Структура конфига
+
+Минимальный рабочий пример:
+
+```json
+{
+  "meta": {
+    "title": "Test CYOA",
+    "pages": ["config/test_image.png"]
+  },
+  "points": [
+    {
+      "id": "points",
+      "name": "Points",
+      "start": 10
+    }
+  ],
+  "groups": [
+    {
+      "id": "test_group",
+      "title": "Test Group",
+      "page": 0,
+      "items": [
+        {
+          "id": "item1",
+          "title": "Free Item",
+          "coords": {"x": 100, "y": 100, "w": 300, "h": 200},
+          "description": "This item is free!",
+          "cost": []
+        },
+        {
+          "id": "item2",
+          "title": "Costs 5 Points",
+          "coords": {"x": 450, "y": 100, "w": 300, "h": 200},
+          "description": "This costs 5 points",
+          "cost": [{"currency": "points", "value": -5}]
+        }
+      ]
+    }
+  ]
+}
+```
+
+---
+
+## 🐛 Устранение проблем
+
+### "Failed to load module" ошибка
+
+**Причина:** Браузер блокирует ES6 модули с `file://`
+
+**Решение:** Используйте локальный сервер (см. выше)
+
+---
+
+### Картинка не загружается
+
+**Проверьте:**
+1. Путь в `config.json` → `"pages": ["config/test_image.png"]`
+2. Файл существует в папке `config/`
+3. Имя файла написано правильно (регистр важен!)
+
+**Отладка:**
+Откройте консоль браузера (F12) и посмотрите ошибки сети
+
+---
+
+### Кнопки не реагируют
+
+**Откройте Debug Mode** (кнопка 🐞):
+- Должны появиться красные рамки вокруг зон
+- Если рамок нет - проблема с координатами
+
+**Проверьте координаты:**
+```json
+{
+  "coords": {
+    "x": 100,    // от 0 до ширины картинки
+    "y": 100,    // от 0 до высоты картинки  
+    "w": 300,    // ширина зоны
+    "h": 200     // высота зоны
+  }
+}
+```
+
+---
+
+### Очки считаются неправильно
+
+**Проверьте знак `value`:**
+- Отрицательное число = трата: `"value": -5`
+- Положительное число = получение: `"value": 5`
+- Ноль = бесплатно: `"value": 0`
+
+**Откройте консоль (F12)** и ищите ошибки
+
+---
+
+## 📖 Дальнейшее изучение
+
+После успешного запуска тестового примера:
+
+1. **Изучите** `docs/rule-catalog.md` - все доступные правила
+2. **Посмотрите** `config/test_config.json` - примеры всех механик
+3. **Измените** координаты и посмотрите как двигаются кнопки
+4. **Добавьте** свою картинку и создайте конфиг
+
+---
+
+## 🆘 Помощь
+
+**Консоль браузера (F12)** - ваш лучший друг!
+
+Полезные команды в консоли:
+```javascript
+// Посмотреть текущее состояние
+CYOA.engine.state
+
+// Посмотреть конфиг
+CYOA.engine.config
+
+// Выбрать карточку программно
+CYOA.engine.select('item_id')
+
+// Сбросить всё
+CYOA.engine.reset()
+```
+
+---
+
+## ✨ Следующие шаги
+
+1. ✅ Запустить тестовый пример
+2. ✅ Понять как работают координаты
+3. ✅ Изучить config структуру
+4. 📚 Прочитать `docs/rule-catalog.md`
+5. 🎨 Создать свою первую CYOA
+6. 🤖 Использовать LLM для автоматизации
+
+---
+
+**Готово к запуску! 🚀**
+
+Если что-то не работает - смотрите консоль браузера (F12) и ищите красный текст с ошибками.
+
+
+============================================================
+FILE START: config\example.json
+============================================================
+
+
+
+
+============================================================
+FILE START: config\schema.json
+============================================================
+
+
+
+
+============================================================
+FILE START: config\test_config.json
+============================================================
+
+{
+  "meta": {
+    "title": "Test CYOA - Rule Examples",
+    "author": "System Test",
+    "version": "1.0",
+    "pages": [
+      "config/test_image.png"
+    ]
+  },
+  "points": [
+    {
+      "id": "points",
+      "name": "Points",
+      "start": 10
+    },
+    {
+      "id": "gold",
+      "name": "Gold",
+      "start": 100
+    }
+  ],
+  "groups": [
+    {
+      "id": "intro",
+      "title": "Introduction",
+      "description": "Welcome to the test CYOA!\n\nThis demonstrates all available mechanics:\n- Simple costs\n- Requirements\n- Incompatibilities\n- Max choices\n- Budgets\n- Formulas",
+      "page": 0,
+      "coords": {
+        "x": 50,
+        "y": 50,
+        "w": 1820,
+        "h": 150
+      },
+      "items": []
+    },
+    {
+      "id": "free_items",
+      "title": "Free Items",
+      "description": "These items cost nothing. Click to select!",
+      "page": 0,
+      "coords": {
+        "x": 50,
+        "y": 220,
+        "w": 1820,
+        "h": 200
+      },
+      "items": [
+        {
+          "id": "free1",
+          "title": "Free Item 1",
+          "description": "This item is completely free.\nNo requirements, no costs.",
+          "coords": {
+            "x": 50,
+            "y": 250,
+            "w": 400,
+            "h": 150
+          },
+          "cost": []
+        },
+        {
+          "id": "free2",
+          "title": "Free Item 2",
+          "description": "Another free item.\nYou can select both!",
+          "coords": {
+            "x": 470,
+            "y": 250,
+            "w": 400,
+            "h": 150
+          },
+          "cost": []
+        },
+        {
+          "id": "bonus",
+          "title": "Bonus Points",
+          "description": "This actually GIVES you points!\nPositive cost = gain.",
+          "coords": {
+            "x": 890,
+            "y": 250,
+            "w": 400,
+            "h": 150
+          },
+          "cost": [
+            {
+              "currency": "points",
+              "value": 5
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "paid_items",
+      "title": "Paid Items",
+      "description": "These cost points. Watch the counter at the bottom!",
+      "page": 0,
+      "coords": {
+        "x": 50,
+        "y": 440,
+        "w": 1820,
+        "h": 200
+      },
+      "items": [
+        {
+          "id": "cheap",
+          "title": "Cheap Item",
+          "description": "Costs only 2 points.\nAffordable for everyone!",
+          "coords": {
+            "x": 50,
+            "y": 470,
+            "w": 400,
+            "h": 150
+          },
+          "cost": [
+            {
+              "currency": "points",
+              "value": -2
+            }
+          ]
+        },
+        {
+          "id": "expensive",
+          "title": "Expensive Item",
+          "description": "Costs 8 points.\nChoose wisely!",
+          "coords": {
+            "x": 470,
+            "y": 470,
+            "w": 400,
+            "h": 150
+          },
+          "cost": [
+            {
+              "currency": "points",
+              "value": -8
+            }
+          ]
+        },
+        {
+          "id": "dual_cost",
+          "title": "Dual Cost",
+          "description": "Costs both points AND gold.\nMultiple currencies!",
+          "coords": {
+            "x": 890,
+            "y": 470,
+            "w": 400,
+            "h": 150
+          },
+          "cost": [
+            {
+              "currency": "points",
+              "value": -3
+            },
+            {
+              "currency": "gold",
+              "value": -25
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "requirements",
+      "title": "Items with Requirements",
+      "description": "These require other items first.",
+      "page": 0,
+      "coords": {
+        "x": 50,
+        "y": 660,
+        "w": 1820,
+        "h": 200
+      },
+      "items": [
+        {
+          "id": "requires_free1",
+          "title": "Requires Free 1",
+          "description": "You must select 'Free Item 1' first.\n\nTry it: select Free Item 1, then this becomes available.",
+          "coords": {
+            "x": 50,
+            "y": 690,
+            "w": 400,
+            "h": 150
+          },
+          "cost": [],
+          "requirements": ["free1"]
+        },
+        {
+          "id": "requires_any",
+          "title": "Requires Any Free",
+          "description": "Requires Free Item 1 OR Free Item 2.\n\nFormula: free1 || free2",
+          "coords": {
+            "x": 470,
+            "y": 690,
+            "w": 400,
+            "h": 150
+          },
+          "cost": [],
+          "requirements": ["has('free1') || has('free2')"]
+        },
+        {
+          "id": "requires_both",
+          "title": "Requires Both",
+          "description": "Requires BOTH Cheap AND Expensive items.\n\nFormula: cheap && expensive",
+          "coords": {
+            "x": 890,
+            "y": 690,
+            "w": 400,
+            "h": 150
+          },
+          "cost": [],
+          "requirements": ["has('cheap') && has('expensive')"]
+        }
+      ]
+    },
+    {
+      "id": "incompatible",
+      "title": "Incompatible Items",
+      "description": "These cannot be selected together.",
+      "page": 0,
+      "coords": {
+        "x": 50,
+        "y": 880,
+        "w": 1820,
+        "h": 200
+      },
+      "items": [
+        {
+          "id": "fire",
+          "title": "Fire Magic",
+          "description": "Incompatible with Ice Magic.\nChoose your element!",
+          "coords": {
+            "x": 50,
+            "y": 910,
+            "w": 400,
+            "h": 150
+          },
+          "cost": [{"currency": "points", "value": -3}],
+          "incompatible": ["ice"]
+        },
+        {
+          "id": "ice",
+          "title": "Ice Magic",
+          "description": "Incompatible with Fire Magic.\nOpposite elements!",
+          "coords": {
+            "x": 470,
+            "y": 910,
+            "w": 400,
+            "h": 150
+          },
+          "cost": [{"currency": "points", "value": -3}],
+          "incompatible": ["fire"]
+        }
+      ]
+    },
+    {
+      "id": "max_choices",
+      "title": "Choose Only 1",
+      "description": "Radio button behavior - only one allowed.",
+      "page": 0,
+      "coords": {
+        "x": 1310,
+        "y": 220,
+        "w": 560,
+        "h": 640
+      },
+      "rules": {
+        "max_choices": 1
+      },
+      "items": [
+        {
+          "id": "choice_a",
+          "title": "Choice A",
+          "description": "Selecting this deselects B and C.",
+          "coords": {
+            "x": 1330,
+            "y": 250,
+            "w": 520,
+            "h": 150
+          },
+          "cost": []
+        },
+        {
+          "id": "choice_b",
+          "title": "Choice B",
+          "description": "Selecting this deselects A and C.",
+          "coords": {
+            "x": 1330,
+            "y": 420,
+            "w": 520,
+            "h": 150
+          },
+          "cost": []
+        },
+        {
+          "id": "choice_c",
+          "title": "Choice C",
+          "description": "Selecting this deselects A and B.",
+          "coords": {
+            "x": 1330,
+            "y": 590,
+            "w": 520,
+            "h": 150
+          },
+          "cost": []
+        }
+      ]
+    },
+    {
+      "id": "budget_group",
+      "title": "Budget Example",
+      "description": "This group has 5 free picks!\nAfter 5, items cost points.",
+      "page": 0,
+      "coords": {
+        "x": 1310,
+        "y": 880,
+        "w": 560,
+        "h": 200
+      },
+      "rules": {
+        "budget": {
+          "currency": "points",
+          "amount": 5,
+          "name": "Free Picks"
+        }
+      },
+      "items": [
+        {
+          "id": "budget1",
+          "title": "Budget Item 1",
+          "description": "Normally costs 2 points.\nFree if budget available!",
+          "coords": {
+            "x": 1330,
+            "y": 910,
+            "w": 250,
+            "h": 150
+          },
+          "cost": [{"currency": "points", "value": -2}]
+        },
+        {
+          "id": "budget2",
+          "title": "Budget Item 2",
+          "description": "Also costs 2 points.\nCovered by budget!",
+          "coords": {
+            "x": 1600,
+            "y": 910,
+            "w": 250,
+            "h": 150
+          },
+          "cost": [{"currency": "points", "value": -2}]
+        }
+      ]
+    }
+  ]
+}
+
+
+============================================================
+FILE START: docs\llm-guide.md
+============================================================
+
+# LLM Guide: CYOA Extraction
+
+## Your Task
+Extract game structure from CYOA images into JSON configuration.
+
+## Output Format
+
+```json
+{
+  "meta": {
+    "title": "Game Title",
+    "pages": ["page1.png", "page2.png"]
+  },
+  "points": [
+    {
+      "id": "points",
+      "name": "Points",
+      "start": 10
+    }
+  ],
+  "groups": [
+    {
+      "id": "group_id",
+      "title": "Group Title",
+      "description": "...",
+      "page": 0,
+      "coords": {"x": 10, "y": 20, "w": 30, "h": 40},
+      "rules": {
+        "max_choices": 3,
+        "budget": {
+          "currency": "points",
+          "amount": 5,
+          "name": "Free Picks"
+        }
+      },
+      "items": [...]
+    }
+  ]
+}
+```
+
+## Item Structure
+
+```json
+{
+  "id": "unique_id",
+  "title": "Item Name",
+  "description": "Full text",
+  "coords": {"x": 100, "y": 200, "w": 300, "h": 400},
+  "cost": [
+    {
+      "currency": "points",
+      "value": -5,
+      "formula": "count.this_group > 2 ? -2 : 0"
+    }
+  ],
+  "requirements": [
+    "other_item_id",
+    "item_a || item_b",
+    "count.companions >= 3"
+  ],
+  "incompatible": ["opposite_item"]
+}
+```
+
+## Pattern Recognition
+
+| Image Text | JSON Rule |
+|------------|-----------|
+| "Costs 5 points" | `"cost": [{"currency": "points", "value": -5}]` |
+| "+10 gold" | `"cost": [{"currency": "gold", "value": 10}]` |
+| "Requires: Magic" | `"requirements": ["magic"]` |
+| "Choose up to 3" | `"rules": {"max_choices": 3}` |
+| "3 free picks" | `"rules": {"budget": {"currency": "points", "amount": 3}}` |
+| "Incompatible with Fire" | `"incompatible": ["fire"]` |
+
+## Coordinate System
+
+Use **pixels from top-left** corner:
+```json
+{
+  "x": 100,    // left edge
+  "y": 200,    // top edge  
+  "w": 300,    // width
+  "h": 400     // height
+}
+```
+
+System auto-converts to percentages.
+
+## Common Mistakes
+
+❌ **Wrong:**
+```json
+{
+  "cost": [{"currency": "points", "value": 5}]  // Positive = gain!
+}
+```
+
+✅ **Correct:**
+```json
+{
+  "cost": [{"currency": "points", "value": -5}]  // Negative = spend
+}
+```
+
+---
+
+❌ **Wrong:**
+```json
+{
+  "requirements": ["item_a AND item_b"]  // Wrong syntax
+}
+```
+
+✅ **Correct:**
+```json
+{
+  "requirements": ["item_a && item_b"]  // Use &&
+}
+```
+
+
+============================================================
+FILE START: docs\rule-catalog.md
+============================================================
+
+### `docs/rule-catalog.md`
+
+# CYOA Rule Catalog for LLM
+
+## Overview
+This catalog defines all available game mechanics that can be extracted from CYOA images.
+Each rule is declarative and composable.
+
+---
+
+## 🪙 Currency System
+
+### Basic Currency
+```json
+{
+  "points": [
+    {
+      "id": "points",           // unique identifier
+      "name": "Points",          // display name
+      "start": 100,              // starting amount
+      "min": 0,                  // optional minimum (default: -Infinity)
+      "max": null                // optional maximum
+    }
+  ]
+}
+```
+
+**Examples from images:**
+- "You have 10 points to spend"
+- "Starting credits: 50"
+- "Budget: 7 Sparks of Power"
+
+---
+
+## 💰 Cost Rules
+
+### Rule: `simple_cost`
+Item costs a fixed amount.
+
+```json
+{
+  "cost": [
+    {
+      "currency": "points",
+      "value": -5              // negative = spend, positive = gain
+    }
+  ]
+}
+```
+
+**Pattern recognition:**
+- "Costs 5 points"
+- "-3 gold"
+- "Price: 2 sparks"
+
+---
+
+### Rule: `conditional_cost`
+Cost changes based on conditions.
+
+```json
+{
+  "cost": [
+    {
+      "currency": "points",
+      "base": -5,
+      "formula": "selected.length > 3 ? -2 : 0"
+    }
+  ]
+}
+```
+
+**Examples:**
+- "Costs 5 points, +2 if you have more than 3 perks"
+- "First pick free, then 3 points each"
+
+**Formula syntax:**
+```javascript
+// Available variables:
+selected.length        // number of selected items in this group
+selected.has("id")     // check if item is selected
+currency.points        // current currency value
+count.groupId          // items selected in specific group
+
+// Examples:
+"count.companions > 2 ? -5 : -3"
+"selected.length * -2"
+"currency.points < 10 ? -1 : -3"
+```
+
+---
+
+## 🔒 Requirement Rules
+
+### Rule: `requires_item`
+Requires another item to be selected.
+
+```json
+{
+  "requirements": ["item_id"]
+}
+```
+
+**Patterns:**
+- "Requires: Magic Affinity"
+- "Must have: Dragon Bond"
+- "Prerequisite: Arcane Knowledge"
+
+---
+
+### Rule: `requires_any`
+Requires at least one from a list.
+
+```json
+{
+  "requirements": [
+    "item_a || item_b || item_c"
+  ]
+}
+```
+
+**Patterns:**
+- "Requires one of: Fire, Ice, Lightning"
+- "Must have at least one combat ability"
+
+---
+
+### Rule: `requires_all`
+Requires all items from a list.
+
+```json
+{
+  "requirements": [
+    "item_a && item_b"
+  ]
+}
+```
+
+**Patterns:**
+- "Requires both: Sword Mastery AND Shield Training"
+
+---
+
+### Rule: `requires_count`
+Requires a certain number of items from a group.
+
+```json
+{
+  "requirements": [
+    "count.perks >= 3"
+  ]
+}
+```
+
+**Patterns:**
+- "Available after selecting 3 perks"
+- "Unlock at 5+ companions"
+
+---
+
+### Rule: `incompatible`
+Cannot be selected together.
+
+```json
+{
+  "incompatible": ["item_id"]
+}
+```
+
+**Patterns:**
+- "Incompatible with: X"
+- "Cannot take with: Y"
+- "Mutually exclusive"
+
+---
+
+## 📊 Group Rules
+
+### Rule: `max_choices`
+Limit selections in a group.
+
+```json
+{
+  "rules": {
+    "max_choices": 3,
+    "min_choices": 1          // optional
+  }
+}
+```
+
+**Patterns:**
+- "Choose up to 3"
+- "Pick 1-3 options"
+- "Select exactly 2"
+
+---
+
+### Rule: `pick_style`
+How selections work.
+
+```json
+{
+  "rules": {
+    "pick_style": "radio"     // only one at a time
+    // or
+    "pick_style": "checkbox"  // multiple allowed (default)
+  }
+}
+```
+
+---
+
+### Rule: `local_budget`
+Group has its own point pool.
+
+```json
+{
+  "rules": {
+    "budget": {
+      "currency": "points",
+      "amount": 10,
+      "name": "Perk Budget",
+      "applies_to": ["group_a", "group_b"]  // optional: share budget
+    }
+  }
+}
+```
+
+**Patterns:**
+- "This section has 5 free picks"
+- "10 point budget for powers"
+- "Shared pool: 8 choices across items and companions"
+
+---
+
+### Rule: `free_first_n`
+First N selections are free.
+
+```json
+{
+  "rules": {
+    "free_first": 2
+  }
+}
+```
+
+**Patterns:**
+- "First 2 picks free"
+- "One free choice included"
+
+Formula equivalent:
+```json
+{
+  "cost": [{
+    "currency": "points",
+    "base": -3,
+    "formula": "count.this_group < 2 ? 3 : 0"
+  }]
+}
+```
+
+---
+
+## 🎲 Advanced Rules
+
+### Rule: `scaling_cost`
+Cost increases with selections.
+
+```json
+{
+  "cost": [{
+    "currency": "points",
+    "formula": "-(2 ** count.this_group)"  // 2, 4, 8, 16...
+  }]
+}
+```
+
+**Patterns:**
+- "Each additional costs double"
+- "1st: 1 point, 2nd: 2 points, 3rd: 4 points..."
+
+---
+
+### Rule: `discount`
+Reduce cost based on conditions.
+
+```json
+{
+  "cost": [{
+    "currency": "points",
+    "base": -10,
+    "formula": "selected.has('merchant_perk') ? 5 : 0"
+  }]
+}
+```
+
+**Patterns:**
+- "50% off if you have Merchant"
+- "Free with Noble background"
+
+---
+
+### Rule: `toggle_effect`
+Selecting changes other items.
+
+```json
+{
+  "effects": [
+    {
+      "type": "modify_currency",
+      "currency": "mana",
+      "value": 100
+    },
+    {
+      "type": "unlock_item",
+      "target": "secret_path"
+    }
+  ]
+}
+```
+
+---
+
+## 🔄 Dynamic Rules (Custom JS)
+
+For unique mechanics not covered above:
+
+```json
+{
+  "custom_rule": {
+    "type": "javascript",
+    "code": "return selected.has('dragon') && currency.gold >= 1000;"
+  }
+}
+```
+
+**Use sparingly!** Try to compose existing rules first.
+
+---
+
+## 📝 LLM Extraction Instructions
+
+When analyzing a CYOA image:
+
+1. **Identify currencies:**
+   - Look for: "points", "budget", "credits", "gold"
+   - Extract starting amounts
+
+2. **Identify groups:**
+   - Usually separated by headers or visual sections
+   - Extract title and description
+
+3. **For each item/card:**
+   - Extract: title, description, position
+   - Look for cost indicators (-, Cost:, Price:)
+   - Find requirements (Requires:, Needs:, Must have:)
+   - Check for incompatibilities (Incompatible:, Cannot:)
+
+4. **For group rules:**
+   - "Choose X" → `max_choices`
+   - "Pick up to X" → `max_choices`
+   - "X free picks" → `budget` or `free_first`
+
+5. **Output format:**
+   ```json
+   {
+     "item_id": {
+       "title": "...",
+       "cost": [...],
+       "requirements": [...],
+       "incompatible": [...]
+     }
+   }
+   ```
+
+---
+
+## ⚠️ Common Patterns
+
+| Text Pattern | Rule | JSON |
+|--------------|------|------|
+| "Costs 5 points" | simple_cost | `"cost": [{"currency": "points", "value": -5}]` |
+| "Requires: Fire Magic" | requires_item | `"requirements": ["fire_magic"]` |
+| "Choose 3" | max_choices | `"rules": {"max_choices": 3}` |
+| "Incompatible with Ice" | incompatible | `"incompatible": ["ice_magic"]` |
+| "First pick free" | free_first | `"rules": {"free_first": 1}` |
+| "+10 mana" | gain_currency | `"cost": [{"currency": "mana", "value": 10}]` |
+
+---
+
+## 🧪 Validation
+
+Always ensure:
+- [ ] All referenced IDs exist
+- [ ] Costs are negative for spending
+- [ ] Requirements don't create impossible loops
+- [ ] Formulas are valid JavaScript
+- [ ] Coordinates are within image bounds
+
+ 
+
+
+============================================================
+FILE START: src\main.js
+============================================================
+
+/**
+ * CYOA Interactive System - Main Entry Point
+ * 
+ * This file initializes the entire system:
+ * 1. Loads config from JSON
+ * 2. Creates game engine
+ * 3. Creates UI renderer
+ * 4. Sets up controls
+ */
+ 
+
+import { GameEngine } from './core/engine.js';
+import { UIRenderer } from './ui/renderer.js';
+import { ControlPanel } from './ui/controls.js';
+
+// Global state
+let engine, renderer, controls;
+
+async function init() {
+    console.log('🚀 Starting CYOA Interactive System...');
+    
+    try {
+        const response = await fetch('config/test_config.json');
+        
+        if (!response.ok) {
+            throw new Error(`Config not found (${response.status})`);
+        }
+        
+        const config = await response.json();
+        console.log('✅ Config loaded:', config.meta?.title || 'Untitled');
+
+        engine = new GameEngine(config);
+        renderer = new UIRenderer(engine);
+        controls = new ControlPanel(engine, renderer);
+
+        await renderer.renderAll();
+
+        const loading = document.getElementById('loading');
+        if (loading) {
+            loading.classList.add('hidden');
+            setTimeout(() => loading.remove(), 300);
+        }
+
+        console.log('✨ CYOA loaded successfully!');
+        console.log('💡 Tip: Click 🐞 Debug to enter edit mode');
+
+    } catch (error) {
+        console.error('❌ Initialization failed:', error);
+        
+        const loading = document.getElementById('loading');
+        if (loading) {
+            loading.innerHTML = `
+                <div style="color: #ff4444;">
+                    ❌ Failed to load CYOA<br>
+                    <small>${error.message}</small><br><br>
+                    <small style="color: #888;">
+                        Check console (F12) for details<br>
+                        Make sure you're running via HTTP server
+                    </small>
+                </div>
+            `;
+        }
+    }
+}
+
+init();
+
+// Export for debugging via browser console
+window.CYOA = {
+    get engine() { return engine; },
+    get renderer() { return renderer; },
+    get controls() { return controls; },
+    get editor() { return controls?.editor; },
+    get state() { return engine?.state; },
+    get config() { return engine?.config; }
+};
+
+console.log('💡 Debug commands available:');
+console.log('  CYOA.engine.select("item_id")  - Select an item');
+console.log('  CYOA.engine.reset()            - Reset everything');
+console.log('  CYOA.editor.enable()           - Enable editor');
+console.log('  CYOA.state                     - View current state');
+
+
+============================================================
+FILE START: src\core\engine.js
+============================================================
+
+/**
+ * Game Engine - Core game logic and state management
+ */
+
+import { RuleEvaluator } from './rules.js';
+import { GameState } from './state.js';
+
+export class GameEngine {
+    constructor(config) {
+        this.config = config;
+        this.state = new GameState(config);
+        this.rules = new RuleEvaluator(this);
+        this.listeners = {};
+        
+        console.log('🎮 Engine initialized');
+    }
+
+    // ==================== SELECTION ====================
+
+    /**
+     * Select an item
+     * @param {string} itemId - Item ID to select
+     * @returns {boolean} Success
+     */
+    select(itemId) {
+        const item = this.findItem(itemId);
+        if (!item) {
+            console.warn(`Item not found: ${itemId}`);
+            return false;
+        }
+
+        const group = this.findGroupForItem(itemId);
+        if (!group) {
+            console.warn(`Group not found for: ${itemId}`);
+            return false;
+        }
+
+        // Check if can select
+        if (!this.canSelect(item, group)) {
+            console.log(`Cannot select ${itemId} (requirements not met)`);
+            return false;
+        }
+
+        // Handle max_choices (radio button behavior)
+        if (group.rules?.max_choices === 1) {
+            group.items.forEach(i => {
+                if (this.state.selected.has(i.id)) {
+                    this.state.selected.delete(i.id);
+                }
+            });
+        } else if (group.rules?.max_choices) {
+            const selectedInGroup = this.getSelectedInGroup(group);
+            if (selectedInGroup.length >= group.rules.max_choices) {
+                console.log(`Max choices reached in ${group.id}`);
+                return false;
+            }
+        }
+
+        this.state.selected.add(itemId);
+        this.recalculate();
+        this.emit('selection', { itemId, selected: true });
+        
+        console.log(`✓ Selected: ${item.title}`);
+        return true;
+    }
+
+    /**
+     * Deselect an item
+     */
+    deselect(itemId) {
+        if (!this.state.selected.has(itemId)) {
+            return false;
+        }
+
+        this.state.selected.delete(itemId);
+        this.recalculate();
+        this.emit('selection', { itemId, selected: false });
+        
+        const item = this.findItem(itemId);
+        console.log(`✗ Deselected: ${item?.title || itemId}`);
+        return true;
+    }
+
+    /**
+     * Toggle item selection
+     */
+    toggle(itemId) {
+        if (this.state.selected.has(itemId)) {
+            return this.deselect(itemId);
+        } else {
+            return this.select(itemId);
+        }
+    }
+
+    // ==================== VALIDATION ====================
+
+    /**
+     * Check if item can be selected
+     */
+    canSelect(item, group) {
+        if (!this.rules.checkRequirements(item)) {
+            return false;
+        }
+
+        if (!this.rules.checkIncompatible(item)) {
+            return false;
+        }
+
+        return true;
+    }
+
+    // ==================== CALCULATION ====================
+
+    /**
+     * Recalculate all costs and currencies
+     */
+    recalculate() {
+        // 1. Remove invalid selections
+        this.cleanupInvalidSelections();
+
+        // 2. Reset currencies
+        this.state.resetCurrencies();
+
+        // 3. Calculate with budgets
+        const groupDeltas = this.calculateGroupDeltas();
+        this.applyBudgets(groupDeltas);
+        this.applyDeltas(groupDeltas);
+
+        // 4. Notify listeners
+        this.emit('recalculate', { state: this.state });
+    }
+
+    /**
+     * Remove selections that no longer meet requirements
+     */
+    cleanupInvalidSelections() {
+        let changed = true;
+        let iterations = 0;
+        const MAX_ITERATIONS = 100;
+
+        while (changed && iterations < MAX_ITERATIONS) {
+            changed = false;
+            iterations++;
+
+            for (const itemId of Array.from(this.state.selected)) {
+                const item = this.findItem(itemId);
+                const group = this.findGroupForItem(itemId);
+
+                if (!item || !this.canSelect(item, group)) {
+                    this.state.selected.delete(itemId);
+                    changed = true;
+                }
+            }
+        }
+
+        if (iterations >= MAX_ITERATIONS) {
+            console.warn('⚠️ Dependency cleanup hit max iterations');
+        }
+    }
+
+    /**
+     * Calculate currency deltas per group
+     */
+    calculateGroupDeltas() {
+        const deltas = {};
+
+        for (const itemId of this.state.selected) {
+            const item = this.findItem(itemId);
+            const group = this.findGroupForItem(itemId);
+            
+            if (!item?.cost) continue;
+
+            if (!deltas[group.id]) {
+                deltas[group.id] = {};
+            }
+
+            for (const cost of item.cost) {
+                const value = this.rules.evaluateCost(cost, item, group);
+                const currencyId = cost.currency;
+
+                if (!deltas[group.id][currencyId]) {
+                    deltas[group.id][currencyId] = 0;
+                }
+
+                deltas[group.id][currencyId] += value;
+            }
+        }
+
+        return deltas;
+    }
+
+    /**
+     * Apply budget rules to deltas
+     */
+    applyBudgets(groupDeltas) {
+        for (const group of this.config.groups) {
+            if (!group.rules?.budget) continue;
+
+            const budget = group.rules.budget;
+            const targetGroups = [group.id, ...(budget.applies_to || [])];
+
+            // Calculate total spent
+            let totalSpent = 0;
+            for (const gid of targetGroups) {
+                if (groupDeltas[gid]?.[budget.currency] < 0) {
+                    totalSpent += Math.abs(groupDeltas[gid][budget.currency]);
+                }
+            }
+
+            // Apply coverage
+            const covered = Math.min(totalSpent, budget.amount);
+            let remaining = covered;
+
+            for (const gid of targetGroups) {
+                if (remaining <= 0) break;
+                
+                if (groupDeltas[gid]?.[budget.currency] < 0) {
+                    const debt = Math.abs(groupDeltas[gid][budget.currency]);
+                    const pay = Math.min(debt, remaining);
+                    groupDeltas[gid][budget.currency] += pay;
+                    remaining -= pay;
+                }
+            }
+
+            // Store budget state
+            this.state.budgets[group.id] = {
+                total: budget.amount,
+                used: covered,
+                remaining: budget.amount - covered
+            };
+        }
+    }
+
+    /**
+     * Apply deltas to currencies
+     */
+    applyDeltas(groupDeltas) {
+        for (const groupId in groupDeltas) {
+            for (const currencyId in groupDeltas[groupId]) {
+                if (this.state.currencies[currencyId] !== undefined) {
+                    this.state.currencies[currencyId] += groupDeltas[groupId][currencyId];
+                }
+            }
+        }
+    }
+
+    // ==================== HELPERS ====================
+
+    findItem(itemId) {
+        for (const group of this.config.groups) {
+            const item = group.items.find(i => i.id === itemId);
+            if (item) return item;
+        }
+        return null;
+    }
+
+    findGroupForItem(itemId) {
+        for (const group of this.config.groups) {
+            if (group.items.find(i => i.id === itemId)) {
+                return group;
+            }
+        }
+        return null;
+    }
+
+    getSelectedInGroup(group) {
+        return group.items.filter(i => this.state.selected.has(i.id));
+    }
+
+    // ==================== EVENTS ====================
+
+    on(event, callback) {
+        if (!this.listeners[event]) {
+            this.listeners[event] = [];
+        }
+        this.listeners[event].push(callback);
+    }
+
+    emit(event, data) {
+        if (this.listeners[event]) {
+            this.listeners[event].forEach(cb => cb(data));
+        }
+    }
+
+    // ==================== STATE MANAGEMENT ====================
+
+    reset() {
+        this.state.reset();
+        this.recalculate();
+        this.emit('reset');
+        console.log('🔄 State reset');
+    }
+
+    exportState() {
+        return this.state.export();
+    }
+
+    importState(stateData) {
+        this.state.import(stateData);
+        this.recalculate();
+        this.emit('import');
+    }
+}
+
+
+============================================================
+FILE START: src\core\rules.js
+============================================================
+
+/**
+ * Rule Evaluator - Handles requirements, costs, and formulas
+ */
+
+export class RuleEvaluator {
+    constructor(engine) {
+        this.engine = engine;
+    }
+
+    // ==================== REQUIREMENTS ====================
+
+    checkRequirements(item) {
+        if (!item.requirements) return true;
+
+        for (const req of item.requirements) {
+            if (!this.evaluateRequirement(req, item)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    evaluateRequirement(req, item) {
+        // Complex formula
+        if (req.includes('||') || req.includes('&&') || req.includes('(')) {
+            return this.evaluateFormula(req, item, null);
+        }
+
+        // Negation: !item_id
+        if (req.startsWith('!')) {
+            const targetId = req.slice(1).trim();
+            return !this.engine.state.selected.has(targetId);
+        }
+
+        // Simple: item_id
+        return this.engine.state.selected.has(req.trim());
+    }
+
+    // ==================== INCOMPATIBLE ====================
+
+    checkIncompatible(item) {
+        if (!item.incompatible) return true;
+
+        for (const badId of item.incompatible) {
+            if (this.engine.state.selected.has(badId)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    // ==================== COST EVALUATION ====================
+
+    evaluateCost(cost, item, group) {
+        let value = cost.value || cost.base || 0;
+
+        if (cost.formula) {
+            const formulaResult = this.evaluateFormula(cost.formula, item, group);
+            value += formulaResult;
+        }
+
+        if (cost.condition) {
+            const conditionResult = this.evaluateFormula(cost.condition, item, group);
+            value += conditionResult;
+        }
+
+        return value;
+    }
+
+    // ==================== FORMULA EVALUATION ====================
+
+    evaluateFormula(formula, item, group) {
+        try {
+            const context = this.createFormulaContext(item, group);
+            const func = new Function(...Object.keys(context), `return ${formula};`);
+            return func(...Object.values(context));
+        } catch (error) {
+            console.error('Formula error:', formula, error);
+            return 0;
+        }
+    }
+
+    createFormulaContext(item, group) {
+        const state = this.engine.state;
+
+        return {
+            // Helper: has(id)
+            has: (id) => state.selected.has(id),
+
+            // Helper: selected object
+            selected: {
+                has: (id) => state.selected.has(id),
+                length: state.selected.size
+            },
+
+            // Currencies
+            currency: { ...state.currencies },
+
+            // Counts per group
+            count: this.createCountHelper(group),
+
+            // Current group count
+            this_group: group ? this.engine.getSelectedInGroup(group).length : 0,
+
+            // Math functions
+            Math: Math
+        };
+    }
+
+    createCountHelper(currentGroup) {
+        const counts = {};
+
+        for (const group of this.engine.config.groups) {
+            counts[group.id] = this.engine.getSelectedInGroup(group).length;
+        }
+
+        if (currentGroup) {
+            counts.this_group = this.engine.getSelectedInGroup(currentGroup).length;
+        }
+
+        return counts;
+    }
+}
+
+
+============================================================
+FILE START: src\core\state.js
+============================================================
+
+/**
+ * Game State - Manages current selection and currencies
+ */
+
+export class GameState {
+    constructor(config) {
+        this.config = config;
+        this.reset();
+    }
+
+    reset() {
+        this.selected = new Set();
+        this.currencies = {};
+        this.budgets = {};
+        this.resetCurrencies();
+    }
+
+    resetCurrencies() {
+        if (!this.config.points) {
+            console.warn('No points defined in config');
+            return;
+        }
+
+        this.config.points.forEach(p => {
+            this.currencies[p.id] = p.start;
+        });
+    }
+
+    export() {
+        return {
+            selected: Array.from(this.selected),
+            currencies: { ...this.currencies },
+            budgets: { ...this.budgets },
+            timestamp: new Date().toISOString()
+        };
+    }
+
+    import(data) {
+        this.selected = new Set(data.selected || []);
+        this.currencies = { ...data.currencies };
+        this.budgets = { ...data.budgets };
+    }
+}
+
+
+============================================================
+FILE START: src\ui\controls.js
+============================================================
+
+/**
+ * Control Panel - Handles UI controls (buttons, settings)
+ */
+
+import { CYOAEditor } from './editor.js';
+
+export class ControlPanel {
+    constructor(engine, renderer) {
+        this.engine = engine;
+        this.renderer = renderer;
+        this.editor = new CYOAEditor(engine, renderer);
+
+        this.setupControls();
+        console.log('🎮 Controls initialized');
+    }
+
+    // ==================== SETUP ====================
+
+    setupControls() {
+        // Text toggle
+        const textBtn = document.getElementById('text-toggle');
+        if (textBtn) {
+            textBtn.addEventListener('click', () => this.toggleText());
+        }
+
+        // Debug toggle
+        const debugBtn = document.getElementById('debug-toggle');
+        if (debugBtn) {
+            debugBtn.addEventListener('click', () => this.toggleDebug());
+        }
+
+        // Reset
+        const resetBtn = document.getElementById('reset-btn');
+        if (resetBtn) {
+            resetBtn.addEventListener('click', () => this.reset());
+        }
+    }
+
+    // ==================== ACTIONS ====================
+
+    toggleText() {
+        document.body.classList.toggle('text-mode');
+        const btn = document.getElementById('text-toggle');
+        if (btn) {
+            btn.classList.toggle('active');
+        }
+
+        const isActive = document.body.classList.contains('text-mode');
+        console.log(isActive ? '📖 Text mode ON' : '📖 Text mode OFF');
+    }
+
+    toggleDebug() {
+        document.body.classList.toggle('debug-mode');
+        const btn = document.getElementById('debug-toggle');
+        if (btn) {
+            btn.classList.toggle('active');
+        }
+
+        const isActive = document.body.classList.contains('debug-mode');
+        
+        // Enable/disable editor
+        if (isActive) {
+            this.editor.enable();
+            // Setup form listeners after UI is created
+            setTimeout(() => this.editor.setupFormListeners(), 100);
+        } else {
+            this.editor.disable();
+        }
+        
+        console.log(isActive ? '🐞 Debug mode ON' : '🐞 Debug mode OFF');
+    }
+
+    reset() {
+        if (confirm('Reset all selections?')) {
+            this.engine.reset();
+            console.log('🔄 Reset complete');
+        }
+    }
+}
+
+
+============================================================
+FILE START: src\ui\editor.js
+============================================================
+
+/**
+ * CYOA Editor - Visual editing mode
+ */
+
+import { CoordHelper } from '../utils/coords.js';
+import { RuleBuilder } from './rule-builder.js';
+
+export class CYOAEditor {
+    constructor(engine, renderer) {
+        this.engine = engine;
+        this.renderer = renderer;
+        this.ruleBuilder = new RuleBuilder(engine);
+        
+        this.selectedItem = null;
+        this.selectedGroup = null;
+        this.isDragging = false;
+        this.isResizing = false;
+        this.dragStart = { x: 0, y: 0 };
+        this.initialRect = {};
+        this.handleSize = 10;
+        
+        this.enabled = false;
+        
+        console.log('✏️ Editor initialized');
+    }
+
+    // ==================== ENABLE/DISABLE ====================
+
+    enable() {
+        if (this.enabled) return;
+        this.enabled = true;
+        
+        // Show editor UI
+        this.createEditorUI();
+        
+        // Attach event listeners
+        this.attachEventListeners();
+        
+        // Make boxes draggable
+        this.makeBoxesDraggable();
+        
+        console.log('✏️ Editor enabled');
+    }
+
+    disable() {
+        if (!this.enabled) return;
+        this.enabled = false;
+        
+        // Hide editor UI
+        const sidebar = document.getElementById('editor-sidebar');
+        if (sidebar) sidebar.remove();
+        
+        // Remove event listeners
+        this.removeEventListeners();
+        
+        // Remove draggable classes
+        document.querySelectorAll('.click-zone').forEach(el => {
+            el.classList.remove('editable');
+        });
+        
+        console.log('✏️ Editor disabled');
+    }
+
+    // ==================== UI CREATION ====================
+
+    createEditorUI() {
+        // Check if already exists
+        if (document.getElementById('editor-sidebar')) return;
+        
+        const sidebar = document.createElement('div');
+        sidebar.id = 'editor-sidebar';
+        sidebar.className = 'editor-sidebar';
+        
+        sidebar.innerHTML = `
+            <div class="editor-header">
+                <h3>🎨 CYOA Editor</h3>
+                <button class="close-btn" onclick="CYOA.editor.disable()">✕</button>
+            </div>
+            
+            <div class="editor-section">
+                <h4>Selection</h4>
+                <div id="editor-selection-info" class="info-text">
+                    Click on any item to edit
+                </div>
+            </div>
+            
+            <div class="editor-section" id="editor-item-props" style="display:none;">
+                <h4>Item Properties</h4>
+                
+                <label>ID:</label>
+                <input type="text" id="edit-id" class="editor-input">
+                
+                <label>Title:</label>
+                <input type="text" id="edit-title" class="editor-input">
+                
+                <label>Description:</label>
+                <textarea id="edit-description" class="editor-textarea" rows="4"></textarea>
+                
+                <h4>Position & Size</h4>
+                <div class="coords-grid">
+                    <div>
+                        <label>X:</label>
+                        <input type="number" id="edit-x" class="editor-input">
+                    </div>
+                    <div>
+                        <label>Y:</label>
+                        <input type="number" id="edit-y" class="editor-input">
+                    </div>
+                    <div>
+                        <label>W:</label>
+                        <input type="number" id="edit-w" class="editor-input">
+                    </div>
+                    <div>
+                        <label>H:</label>
+                        <input type="number" id="edit-h" class="editor-input">
+                    </div>
+                </div>
+                
+                <h4>Rules</h4>
+                <div id="rule-builder-container"></div>
+                
+                <button class="editor-btn delete-btn" onclick="CYOA.editor.deleteSelected()">
+                    🗑️ Delete Item
+                </button>
+            </div>
+            
+            <div class="editor-section">
+                <h4>Actions</h4>
+                <button class="editor-btn" onclick="CYOA.editor.addNewItem()">
+                    ➕ Add New Item
+                </button>
+                <button class="editor-btn" onclick="CYOA.editor.exportConfig()">
+                    💾 Export JSON
+                </button>
+            </div>
+            
+            <div class="editor-section">
+                <h4>Generated Code</h4>
+                <textarea id="code-preview" class="code-preview" readonly></textarea>
+                <button class="editor-btn" onclick="CYOA.editor.copyCode()">
+                    📋 Copy Code
+                </button>
+            </div>
+        `;
+        
+        document.body.appendChild(sidebar);
+        
+        // Initialize rule builder UI
+        this.ruleBuilder.renderUI(document.getElementById('rule-builder-container'));
+    }
+
+    // ==================== DRAG & DROP ====================
+
+    makeBoxesDraggable() {
+        document.querySelectorAll('.item-zone').forEach(el => {
+            el.classList.add('editable');
+        });
+    }
+
+    attachEventListeners() {
+        document.addEventListener('mousedown', this.handleMouseDown.bind(this));
+        document.addEventListener('mousemove', this.handleMouseMove.bind(this));
+        document.addEventListener('mouseup', this.handleMouseUp.bind(this));
+        document.addEventListener('keydown', this.handleKeyDown.bind(this));
+    }
+
+    removeEventListeners() {
+        document.removeEventListener('mousedown', this.handleMouseDown.bind(this));
+        document.removeEventListener('mousemove', this.handleMouseMove.bind(this));
+        document.removeEventListener('mouseup', this.handleMouseUp.bind(this));
+        document.removeEventListener('keydown', this.handleKeyDown.bind(this));
+    }
+
+    handleMouseDown(e) {
+        if (!this.enabled) return;
+        
+        const target = e.target.closest('.item-zone');
+        if (!target) {
+            this.deselectItem();
+            return;
+        }
+        
+        const itemId = target.dataset.itemId;
+        if (!itemId) return;
+        
+        const item = this.engine.findItem(itemId);
+        const group = this.engine.findGroupForItem(itemId);
+        
+        if (!item || !group) return;
+        
+        this.selectItem(item, group, target);
+        
+        // Check if clicking resize handle
+        const rect = target.getBoundingClientRect();
+        const handleX = rect.right - this.handleSize;
+        const handleY = rect.bottom - this.handleSize;
+        
+        if (e.clientX >= handleX && e.clientY >= handleY) {
+            this.isResizing = true;
+        } else {
+            this.isDragging = true;
+        }
+        
+        this.dragStart = { x: e.clientX, y: e.clientY };
+        this.initialRect = { ...item.coords };
+        
+        e.preventDefault();
+    }
+
+    handleMouseMove(e) {
+        if (!this.enabled) return;
+        
+        if (!this.isDragging && !this.isResizing) return;
+        if (!this.selectedItem) return;
+        
+        const dx = e.clientX - this.dragStart.x;
+        const dy = e.clientY - this.dragStart.y;
+        
+        // Get page dimensions for percentage calculation
+        const group = this.selectedGroup;
+        const pageIndex = group.page || 0;
+        const dim = this.renderer.pageDimensions[pageIndex];
+        
+        if (!dim) return;
+        
+        const container = document.querySelector(`#page-${pageIndex}`);
+        const containerRect = container.getBoundingClientRect();
+        const scaleX = dim.w / containerRect.width;
+        const scaleY = dim.h / containerRect.height;
+        
+        if (this.isDragging) {
+            // Move
+            this.selectedItem.coords.x = Math.round(this.initialRect.x + dx * scaleX);
+            this.selectedItem.coords.y = Math.round(this.initialRect.y + dy * scaleY);
+        } else if (this.isResizing) {
+            // Resize
+            this.selectedItem.coords.w = Math.max(20, Math.round(this.initialRect.w + dx * scaleX));
+            this.selectedItem.coords.h = Math.max(20, Math.round(this.initialRect.h + dy * scaleY));
+        }
+        
+        this.updateFormInputs();
+        this.renderer.renderButtons();
+    }
+
+    handleMouseUp(e) {
+        this.isDragging = false;
+        this.isResizing = false;
+    }
+
+    handleKeyDown(e) {
+        if (!this.enabled) return;
+        
+        if (e.key === 'Delete' && this.selectedItem) {
+            if (document.activeElement.tagName !== 'INPUT' && 
+                document.activeElement.tagName !== 'TEXTAREA') {
+                this.deleteSelected();
+            }
+        }
+    }
+
+    // ==================== SELECTION ====================
+
+    selectItem(item, group, element) {
+        this.selectedItem = item;
+        this.selectedGroup = group;
+        
+        // Update UI
+        document.querySelectorAll('.item-zone').forEach(el => {
+            el.classList.remove('editor-selected');
+        });
+        element.classList.add('editor-selected');
+        
+        // Show properties panel
+        document.getElementById('editor-item-props').style.display = 'block';
+        
+        // Update form
+        this.updateFormInputs();
+        
+        // Update info
+        document.getElementById('editor-selection-info').innerHTML = `
+            <strong>Selected:</strong> ${item.title || item.id}<br>
+            <strong>Group:</strong> ${group.title || group.id}
+        `;
+        
+        // Update rule builder
+        this.ruleBuilder.loadItem(item, group);
+    }
+
+    deselectItem() {
+        this.selectedItem = null;
+        this.selectedGroup = null;
+        
+        document.querySelectorAll('.item-zone').forEach(el => {
+            el.classList.remove('editor-selected');
+        });
+        
+        document.getElementById('editor-item-props').style.display = 'none';
+        document.getElementById('editor-selection-info').innerHTML = 'Click on any item to edit';
+    }
+
+    // ==================== FORM UPDATES ====================
+
+    updateFormInputs() {
+        if (!this.selectedItem) return;
+        
+        const item = this.selectedItem;
+        
+        document.getElementById('edit-id').value = item.id || '';
+        document.getElementById('edit-title').value = item.title || '';
+        document.getElementById('edit-description').value = item.description || '';
+        
+        document.getElementById('edit-x').value = Math.round(item.coords.x);
+        document.getElementById('edit-y').value = Math.round(item.coords.y);
+        document.getElementById('edit-w').value = Math.round(item.coords.w);
+        document.getElementById('edit-h').value = Math.round(item.coords.h);
+        
+        // Update code preview
+        this.updateCodePreview();
+    }
+
+    updateCodePreview() {
+        if (!this.selectedItem) return;
+        
+        const code = JSON.stringify(this.selectedItem, null, 2);
+        document.getElementById('code-preview').value = code;
+    }
+
+    // Setup form listeners
+    setupFormListeners() {
+        const inputs = {
+            'edit-id': (val) => { this.selectedItem.id = val; },
+            'edit-title': (val) => { this.selectedItem.title = val; },
+            'edit-description': (val) => { this.selectedItem.description = val; },
+            'edit-x': (val) => { this.selectedItem.coords.x = parseInt(val) || 0; },
+            'edit-y': (val) => { this.selectedItem.coords.y = parseInt(val) || 0; },
+            'edit-w': (val) => { this.selectedItem.coords.w = parseInt(val) || 20; },
+            'edit-h': (val) => { this.selectedItem.coords.h = parseInt(val) || 20; }
+        };
+        
+        for (const [id, handler] of Object.entries(inputs)) {
+            const el = document.getElementById(id);
+            if (el) {
+                el.addEventListener('input', (e) => {
+                    if (this.selectedItem) {
+                        handler(e.target.value);
+                        this.renderer.renderButtons();
+                        this.updateCodePreview();
+                    }
+                });
+            }
+        }
+    }
+
+    // ==================== ACTIONS ====================
+
+    deleteSelected() {
+        if (!this.selectedItem || !this.selectedGroup) return;
+        
+        if (!confirm(`Delete "${this.selectedItem.title || this.selectedItem.id}"?`)) {
+            return;
+        }
+        
+        const index = this.selectedGroup.items.indexOf(this.selectedItem);
+        if (index > -1) {
+            this.selectedGroup.items.splice(index, 1);
+        }
+        
+        this.deselectItem();
+        this.renderer.renderButtons();
+        
+        console.log('🗑️ Item deleted');
+    }
+
+    addNewItem() {
+        // Find first group or create one
+        let group = this.engine.config.groups[0];
+        
+        if (!group) {
+            console.error('No groups available');
+            return;
+        }
+        
+        const newItem = {
+            id: `new_item_${Date.now()}`,
+            title: 'New Item',
+            description: 'Edit me!',
+            coords: { x: 100, y: 100, w: 300, h: 200 },
+            cost: []
+        };
+        
+        group.items.push(newItem);
+        this.renderer.renderButtons();
+        
+        // Select the new item
+        const element = document.getElementById(`btn-${newItem.id}`);
+        if (element) {
+            this.selectItem(newItem, group, element);
+        }
+        
+        console.log('➕ New item added');
+    }
+
+    exportConfig() {
+        const config = this.engine.config;
+        const json = JSON.stringify(config, null, 2);
+        
+        const blob = new Blob([json], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${config.meta?.title || 'cyoa'}_edited.json`;
+        a.click();
+        
+        URL.revokeObjectURL(url);
+        
+        console.log('💾 Config exported');
+    }
+
+    copyCode() {
+        const code = document.getElementById('code-preview').value;
+        navigator.clipboard.writeText(code).then(() => {
+            alert('Code copied to clipboard!');
+        });
+    }
+}
+
+
+============================================================
+FILE START: src\ui\renderer.js
+============================================================
+
+/**
+ * UI Renderer - Handles all visual rendering
+ */
+
+import { CoordHelper } from '../utils/coords.js';
+import { TooltipManager } from './tooltip.js';
+
+export class UIRenderer {
+    constructor(engine) {
+        this.engine = engine;
+        this.pageDimensions = [];
+        this.tooltip = new TooltipManager(engine);
+
+        // Listen to engine events
+        this.engine.on('selection', () => this.updateUI());
+        this.engine.on('recalculate', () => this.updateUI());
+        this.engine.on('reset', () => this.updateUI());
+
+        console.log('🎨 Renderer initialized');
+    }
+
+    // ==================== MAIN RENDER ====================
+
+    async renderAll() {
+        await this.renderPages();
+        this.renderButtons();
+        this.renderPointsBar();
+        console.log('✅ All elements rendered');
+    }
+
+    // ==================== PAGES ====================
+
+    async renderPages() {
+        const wrapper = document.getElementById('game-wrapper');
+        wrapper.innerHTML = '';
+        this.pageDimensions = [];
+
+        const pages = this.engine.config.meta?.pages || [];
+        
+        if (pages.length === 0) {
+            console.warn('No pages defined in config');
+            return;
+        }
+
+        console.log(`📄 Loading ${pages.length} page(s)...`);
+
+        const loadPromises = pages.map((src, index) => {
+            return new Promise((resolve) => {
+                const container = document.createElement('div');
+                container.className = 'page-container';
+                container.id = `page-${index}`;
+
+                const img = document.createElement('img');
+                img.className = 'page-image';
+                img.src = src;
+                img.alt = `Page ${index + 1}`;
+
+                const layer = document.createElement('div');
+                layer.className = 'page-layer';
+                layer.id = `layer-${index}`;
+
+                container.appendChild(img);
+                container.appendChild(layer);
+                wrapper.appendChild(container);
+
+                img.onload = () => {
+                    this.pageDimensions[index] = {
+                        w: img.naturalWidth,
+                        h: img.naturalHeight
+                    };
+                    console.log(`✓ Page ${index} loaded: ${img.naturalWidth}x${img.naturalHeight}`);
+                    resolve();
+                };
+
+                img.onerror = () => {
+                    console.error(`✗ Failed to load page ${index}: ${src}`);
+                    this.pageDimensions[index] = { w: 1920, h: 1080 };
+                    resolve();
+                };
+            });
+        });
+
+        await Promise.all(loadPromises);
+    }
+
+    // ==================== BUTTONS ====================
+
+    renderButtons() {
+        const groups = this.engine.config.groups || [];
+        
+        console.log(`🔘 Rendering buttons for ${groups.length} group(s)...`);
+
+        groups.forEach(group => {
+            const pageIndex = group.page !== undefined ? group.page : 0;
+            const layer = document.getElementById(`layer-${pageIndex}`);
+            
+            if (!layer) {
+                console.warn(`Layer not found for page ${pageIndex}`);
+                return;
+            }
+
+            const dim = this.pageDimensions[pageIndex];
+            if (!dim) {
+                console.warn(`Dimensions not found for page ${pageIndex}`);
+                return;
+            }
+
+            // Budget badge
+            if (group.rules?.budget && group.coords) {
+                this.renderBudgetBadge(group, layer, dim);
+            }
+
+            // Group info zone
+            if (group.coords) {
+                this.renderGroupZone(group, layer, dim);
+            }
+
+            // Items
+            if (group.items) {
+                group.items.forEach(item => {
+                    if (item.coords) {
+                        this.renderItemButton(item, group, layer, dim);
+                    }
+                });
+            }
+        });
+    }
+
+    // ==================== BUDGET BADGE ====================
+
+    renderBudgetBadge(group, layer, dim) {
+        const badge = document.createElement('div');
+        badge.className = 'group-budget-badge';
+        badge.id = `budget-${group.id}`;
+
+        const style = CoordHelper.toPercent(group.coords, dim);
+        const leftVal = parseFloat(style.left);
+        const widthVal = parseFloat(style.width);
+        const topVal = parseFloat(style.top);
+
+        badge.style.left = (leftVal + widthVal / 2) + '%';
+        badge.style.top = topVal + '%';
+
+        layer.appendChild(badge);
+        this.updateBudgetBadge(group);
+    }
+
+    updateBudgetBadge(group) {
+        const badge = document.getElementById(`budget-${group.id}`);
+        if (!badge) return;
+
+        const budgetState = this.engine.state.budgets[group.id];
+        if (!budgetState) {
+            // Initial state before calculation
+            const budget = group.rules.budget;
+            badge.textContent = `${budget.name || budget.currency}: ${budget.amount}/${budget.amount}`;
+            return;
+        }
+
+        const { total, remaining } = budgetState;
+        const budget = group.rules.budget;
+        badge.textContent = `${budget.name || budget.currency}: ${remaining}/${total}`;
+        badge.classList.toggle('empty', remaining === 0);
+    }
+
+    // ==================== GROUP ZONE ====================
+
+    renderGroupZone(group, layer, dim) {
+        const zone = document.createElement('div');
+        zone.className = 'click-zone info-zone';
+        zone.id = `group-${group.id}`;
+
+        Object.assign(zone.style, CoordHelper.toPercent(group.coords, dim));
+
+        // Text layer for translation mode
+        if (group.title || group.description) {
+            zone.appendChild(this.createTextLayer(
+                group.title || '',
+                group.description || ''
+            ));
+        }
+
+        layer.appendChild(zone);
+    }
+
+    // ==================== ITEM BUTTON ====================
+
+    renderItemButton(item, group, layer, dim) {
+        const button = document.createElement('div');
+        button.className = 'click-zone item-zone';
+        button.id = `btn-${item.id}`;
+        button.dataset.itemId = item.id;
+        button.dataset.groupId = group.id;
+
+        Object.assign(button.style, CoordHelper.toPercent(item.coords, dim));
+
+        // Text layer
+        if (item.title || item.description) {
+            button.appendChild(this.createTextLayer(
+                item.title || '',
+                item.description || ''
+            ));
+        }
+
+        // Click handler
+        button.onclick = () => {
+            this.engine.toggle(item.id);
+        };
+
+        // Tooltip
+        this.tooltip.attach(button, item, group);
+
+        layer.appendChild(button);
+    }
+
+    // ==================== TEXT LAYER ====================
+
+    createTextLayer(title, description) {
+        const div = document.createElement('div');
+        div.className = 'text-content';
+
+        const cleanDesc = description ? 
+            description.replace(/\n/g, '<br>') : '';
+
+        div.innerHTML = `
+            ${title ? `<strong>${title}</strong>` : ''}
+            ${cleanDesc ? `<span>${cleanDesc}</span>` : ''}
+        `;
+
+        return div;
+    }
+
+    // ==================== POINTS BAR ====================
+
+    renderPointsBar() {
+        const bar = document.getElementById('points-bar');
+        bar.innerHTML = '';
+
+        const points = this.engine.config.points || [];
+
+        points.forEach(p => {
+            const div = document.createElement('div');
+            div.className = 'currency';
+            div.id = `curr-${p.id}`;
+            div.innerHTML = `
+                ${p.name}: 
+                <span>${this.engine.state.currencies[p.id] || p.start}</span>
+            `;
+            bar.appendChild(div);
+        });
+    }
+
+    // ==================== UPDATE UI ====================
+
+    updateUI() {
+        this.updateButtons();
+        this.updatePointsBar();
+        this.updateBudgets();
+    }
+
+    updateButtons() {
+        document.querySelectorAll('.item-zone').forEach(el => {
+            const itemId = el.dataset.itemId;
+            const groupId = el.dataset.groupId;
+
+            const item = this.engine.findItem(itemId);
+            const group = this.engine.findGroupForItem(itemId);
+
+            if (!item || !group) return;
+
+            const isSelected = this.engine.state.selected.has(itemId);
+            const canSelect = this.engine.canSelect(item, group);
+
+            // Update classes
+            el.classList.toggle('selected', isSelected);
+            el.classList.toggle('disabled', !canSelect && !isSelected);
+        });
+    }
+
+    updatePointsBar() {
+        for (const currencyId in this.engine.state.currencies) {
+            const span = document.querySelector(`#curr-${currencyId} span`);
+            if (span) {
+                const value = this.engine.state.currencies[currencyId];
+                span.textContent = value;
+                span.parentElement.classList.toggle('negative', value < 0);
+            }
+        }
+    }
+
+    updateBudgets() {
+        for (const groupId in this.engine.state.budgets) {
+            const group = this.engine.config.groups.find(g => g.id === groupId);
+            if (group) {
+                this.updateBudgetBadge(group);
+            }
+        }
+    }
+}
+
+
+============================================================
+FILE START: src\ui\rule-builder.js
+============================================================
+
+/**
+ * Rule Builder - Visual rule editor
+ */
+
+export class RuleBuilder {
+    constructor(engine) {
+        this.engine = engine;
+        this.currentItem = null;
+        this.currentGroup = null;
+    }
+
+    // ==================== RENDER UI ====================
+
+    renderUI(container) {
+        container.innerHTML = `
+            <div class="rule-builder">
+                <!-- Cost Section -->
+                <div class="rule-section">
+                    <label>💰 Cost:</label>
+                    <div id="cost-list"></div>
+                    <button class="small-btn" onclick="CYOA.editor.ruleBuilder.addCost()">+ Add Cost</button>
+                </div>
+                
+                <!-- Requirements Section -->
+                <div class="rule-section">
+                    <label>✅ Requirements:</label>
+                    <div id="requirements-list"></div>
+                    <button class="small-btn" onclick="CYOA.editor.ruleBuilder.addRequirement()">+ Add Requirement</button>
+                </div>
+                
+                <!-- Incompatible Section -->
+                <div class="rule-section">
+                    <label>❌ Incompatible:</label>
+                    <div id="incompatible-list"></div>
+                    <button class="small-btn" onclick="CYOA.editor.ruleBuilder.addIncompatible()">+ Add Incompatible</button>
+                </div>
+            </div>
+        `;
+    }
+
+    // ==================== LOAD ITEM ====================
+
+    loadItem(item, group) {
+        this.currentItem = item;
+        this.currentGroup = group;
+        
+        this.renderCosts();
+        this.renderRequirements();
+        this.renderIncompatible();
+    }
+
+    // ==================== COST ====================
+
+    renderCosts() {
+        if (!this.currentItem) return;
+        
+        const container = document.getElementById('cost-list');
+        if (!container) return;
+        
+        const costs = this.currentItem.cost || [];
+        
+        if (costs.length === 0) {
+            container.innerHTML = '<div class="empty-state">No costs</div>';
+            return;
+        }
+        
+        container.innerHTML = costs.map((cost, index) => `
+            <div class="rule-item">
+                <select onchange="CYOA.editor.ruleBuilder.updateCostCurrency(${index}, this.value)">
+                    ${this.getCurrencyOptions(cost.currency)}
+                </select>
+                <input type="number" value="${cost.value || 0}" 
+                       onchange="CYOA.editor.ruleBuilder.updateCostValue(${index}, this.value)"
+                       placeholder="Value">
+                <input type="text" value="${cost.formula || ''}" 
+                       onchange="CYOA.editor.ruleBuilder.updateCostFormula(${index}, this.value)"
+                       placeholder="Formula (optional)">
+                <button class="delete-mini-btn" onclick="CYOA.editor.ruleBuilder.removeCost(${index})">×</button>
+            </div>
+        `).join('');
+    }
+
+    getCurrencyOptions(selected) {
+        const currencies = this.engine.config.points || [];
+        return currencies.map(c => 
+            `<option value="${c.id}" ${c.id === selected ? 'selected' : ''}>
+                ${c.name}
+            </option>`
+        ).join('');
+    }
+
+    addCost() {
+        if (!this.currentItem) return;
+        
+        if (!this.currentItem.cost) {
+            this.currentItem.cost = [];
+        }
+        
+        const firstCurrency = this.engine.config.points?.[0]?.id || 'points';
+        
+        this.currentItem.cost.push({
+            currency: firstCurrency,
+            value: -5
+        });
+        
+        this.renderCosts();
+        this.updateParent();
+    }
+
+    removeCost(index) {
+        if (!this.currentItem?.cost) return;
+        this.currentItem.cost.splice(index, 1);
+        this.renderCosts();
+        this.updateParent();
+    }
+
+    updateCostCurrency(index, value) {
+        if (!this.currentItem?.cost?.[index]) return;
+        this.currentItem.cost[index].currency = value;
+        this.updateParent();
+    }
+
+    updateCostValue(index, value) {
+        if (!this.currentItem?.cost?.[index]) return;
+        this.currentItem.cost[index].value = parseInt(value) || 0;
+        this.updateParent();
+    }
+
+    updateCostFormula(index, value) {
+        if (!this.currentItem?.cost?.[index]) return;
+        if (value.trim()) {
+            this.currentItem.cost[index].formula = value;
+        } else {
+            delete this.currentItem.cost[index].formula;
+        }
+        this.updateParent();
+    }
+
+    // ==================== REQUIREMENTS ====================
+
+    renderRequirements() {
+        if (!this.currentItem) return;
+        
+        const container = document.getElementById('requirements-list');
+        if (!container) return;
+        
+        const reqs = this.currentItem.requirements || [];
+        
+        if (reqs.length === 0) {
+            container.innerHTML = '<div class="empty-state">No requirements</div>';
+            return;
+        }
+        
+        container.innerHTML = reqs.map((req, index) => `
+            <div class="rule-item">
+                <input type="text" value="${req}" 
+                       onchange="CYOA.editor.ruleBuilder.updateRequirement(${index}, this.value)"
+                       placeholder="item_id or formula">
+                <button class="delete-mini-btn" onclick="CYOA.editor.ruleBuilder.removeRequirement(${index})">×</button>
+            </div>
+        `).join('');
+    }
+
+    addRequirement() {
+        if (!this.currentItem) return;
+        
+        if (!this.currentItem.requirements) {
+            this.currentItem.requirements = [];
+        }
+        
+        this.currentItem.requirements.push('item_id');
+        this.renderRequirements();
+        this.updateParent();
+    }
+
+    removeRequirement(index) {
+        if (!this.currentItem?.requirements) return;
+        this.currentItem.requirements.splice(index, 1);
+        this.renderRequirements();
+        this.updateParent();
+    }
+
+    updateRequirement(index, value) {
+        if (!this.currentItem?.requirements) return;
+        this.currentItem.requirements[index] = value;
+        this.updateParent();
+    }
+
+    // ==================== INCOMPATIBLE ====================
+
+    renderIncompatible() {
+        if (!this.currentItem) return;
+        
+        const container = document.getElementById('incompatible-list');
+        if (!container) return;
+        
+        const incomp = this.currentItem.incompatible || [];
+        
+        if (incomp.length === 0) {
+            container.innerHTML = '<div class="empty-state">No incompatibilities</div>';
+            return;
+        }
+        
+        container.innerHTML = incomp.map((id, index) => `
+            <div class="rule-item">
+                <input type="text" value="${id}" 
+                       onchange="CYOA.editor.ruleBuilder.updateIncompatible(${index}, this.value)"
+                       placeholder="item_id">
+                <button class="delete-mini-btn" onclick="CYOA.editor.ruleBuilder.removeIncompatible(${index})">×</button>
+            </div>
+        `).join('');
+    }
+
+    addIncompatible() {
+        if (!this.currentItem) return;
+        
+        if (!this.currentItem.incompatible) {
+            this.currentItem.incompatible = [];
+        }
+        
+        this.currentItem.incompatible.push('item_id');
+        this.renderIncompatible();
+        this.updateParent();
+    }
+
+    removeIncompatible(index) {
+        if (!this.currentItem?.incompatible) return;
+        this.currentItem.incompatible.splice(index, 1);
+        this.renderIncompatible();
+        this.updateParent();
+    }
+
+    updateIncompatible(index, value) {
+        if (!this.currentItem?.incompatible) return;
+        this.currentItem.incompatible[index] = value;
+        this.updateParent();
+    }
+
+    // ==================== UPDATE PARENT ====================
+
+    updateParent() {
+        // Notify editor to update UI
+        if (window.CYOA?.editor) {
+            window.CYOA.editor.updateCodePreview();
+            window.CYOA.editor.engine.recalculate();
+            window.CYOA.editor.renderer.updateUI();
+        }
+    }
+}
+
+
+============================================================
+FILE START: src\ui\tooltip.js
+============================================================
+
+/**
+ * Tooltip Manager - Handles hover tooltips
+ */
+
+export class TooltipManager {
+    constructor(engine) {
+        this.engine = engine;
+        this.tooltipEl = document.getElementById('tooltip');
+        this.currentItem = null;
+        this.currentGroup = null;
+        this.timer = null;
+
+        console.log('💬 Tooltip manager initialized');
+    }
+
+    // ==================== ATTACH ====================
+
+    attach(element, item, group) {
+        element.addEventListener('mouseenter', (e) => {
+            this.currentItem = item;
+            this.currentGroup = group;
+            this.updateContent(item, group);
+            this.updatePosition(e);
+
+            // Delay show
+            this.timer = setTimeout(() => {
+                // Don't show if text mode is active
+                if (!document.body.classList.contains('text-mode')) {
+                    this.show();
+                }
+            }, 500);
+        });
+
+        element.addEventListener('mousemove', (e) => {
+            this.updatePosition(e);
+        });
+
+        element.addEventListener('mouseleave', () => {
+            this.hide();
+            this.currentItem = null;
+            this.currentGroup = null;
+            clearTimeout(this.timer);
+        });
+    }
+
+    // ==================== SHOW/HIDE ====================
+
+    show() {
+        this.tooltipEl.classList.add('visible');
+    }
+
+    hide() {
+        this.tooltipEl.classList.remove('visible');
+    }
+
+    // ==================== CONTENT ====================
+
+    updateContent(item, group) {
+        const isDebug = document.body.classList.contains('debug-mode');
+        let html = `<h4>${item.title}</h4>`;
+
+        // Cost
+        if (item.cost && item.cost.length > 0) {
+            html += this.renderCost(item, group);
+        }
+
+        // Requirements
+        html += this.renderRequirements(item, group);
+
+        // Description (only if not in text mode)
+        if (!document.body.classList.contains('text-mode') && item.description) {
+            html += `<div class="desc">${item.description}</div>`;
+        }
+
+        // Debug info
+        if (isDebug) {
+            html += `<div class="debug-info">ID: ${item.id}<br>Group: ${group.id}</div>`;
+        }
+
+        this.tooltipEl.innerHTML = html;
+    }
+
+    // ==================== COST ====================
+
+    renderCost(item, group) {
+        let html = '';
+
+        item.cost.forEach(c => {
+            const finalVal = this.engine.rules.evaluateCost(c, item, group);
+            const sign = finalVal > 0 ? '+' : '';
+            
+            let colorClass = finalVal < 0 ? 'bad' : '';
+            if (finalVal === 0) colorClass = 'free';
+
+            html += `<div class="cost ${colorClass}">${c.currency}: ${sign}${finalVal}</div>`;
+        });
+
+        return html;
+    }
+
+    // ==================== REQUIREMENTS ====================
+
+    renderRequirements(item, group) {
+        let reqsHtml = '';
+
+        // Incompatible
+        if (item.incompatible) {
+            item.incompatible.forEach(badId => {
+                if (this.engine.state.selected.has(badId)) {
+                    const badItem = this.engine.findItem(badId);
+                    reqsHtml += `<span class="req-item fail">❌ Incompatible with: ${badItem?.title || badId}</span>`;
+                }
+            });
+        }
+
+        // Max choices
+        const isSelected = this.engine.state.selected.has(item.id);
+        if (!isSelected && group.rules?.max_choices) {
+            const currentCount = this.engine.getSelectedInGroup(group).length;
+            if (currentCount >= group.rules.max_choices) {
+                reqsHtml += `<span class="req-item fail">⛔ Max limit reached (${group.rules.max_choices})</span>`;
+            }
+        }
+
+        // Requirements
+        if (item.requirements) {
+            item.requirements.forEach(req => {
+                reqsHtml += this.renderRequirement(req);
+            });
+        }
+
+        if (reqsHtml) {
+            return `<div class="reqs">${reqsHtml}</div>`;
+        }
+
+        return '';
+    }
+
+    renderRequirement(req) {
+        let isMet = false;
+        let displayText = req;
+
+        // Complex formula
+        if (req.includes('(') || req.includes('||') || req.includes('&&')) {
+            isMet = this.engine.rules.evaluateRequirement(req, null);
+            
+            // Make it readable
+            displayText = displayText.replace(/has\(['"](.+?)['"]\)/g, (match, id) => {
+                const item = this.engine.findItem(id);
+                return item?.title || id;
+            });
+            displayText = displayText
+                .replace(/\|\|/g, " <b style='color:#fff'>OR</b> ")
+                .replace(/&&/g, " <b style='color:#fff'>AND</b> ");
+        } else {
+            // Simple requirement
+            const isNot = req.startsWith('!');
+            const cleanId = isNot ? req.slice(1) : req;
+            isMet = this.engine.rules.evaluateRequirement(req, null);
+            
+            const targetItem = this.engine.findItem(cleanId);
+            displayText = (isNot ? "NOT " : "") + (targetItem?.title || cleanId);
+        }
+
+        if (!isMet) {
+            return `<span class="req-item missing">⚠️ Requires: ${displayText}</span>`;
+        } else {
+            return `<span class="req-item ok">✔ ${displayText}</span>`;
+        }
+    }
+
+    // ==================== POSITION ====================
+
+    updatePosition(e) {
+        const tt = this.tooltipEl;
+        const ttH = tt.offsetHeight;
+        const ttW = tt.offsetWidth;
+
+        let top = e.clientY + 20;
+        let left = e.clientX + 20;
+
+        // Keep in viewport
+        if (left + ttW > window.innerWidth) {
+            left = window.innerWidth - ttW - 20;
+        }
+
+        if (top + ttH > window.innerHeight) {
+            top = e.clientY - ttH - 10;
+        }
+
+        tt.style.top = top + 'px';
+        tt.style.left = left + 'px';
+    }
+}
+
+
+============================================================
+FILE START: src\utils\coords.js
+============================================================
+
+/**
+ * Coordinate Helper - Converts between pixels and percentages
+ */
+
+export class CoordHelper {
+    /**
+     * Convert coordinates to percentage
+     * @param {Object|Array} coords - {x, y, w, h} or [x, y, w, h]
+     * @param {Object} dimensions - {w, h} of image
+     * @returns {Object} CSS style object
+     */
+    static toPercent(coords, dimensions) {
+        if (!coords || !dimensions) {
+            return { display: 'none' };
+        }
+
+        // Normalize to object
+        const raw = Array.isArray(coords)
+            ? { x: coords[0], y: coords[1], w: coords[2], h: coords[3] }
+            : { ...coords };
+
+        // Auto-detect: if any value > 100, assume pixels
+        const isPixels = raw.x > 100 || raw.y > 100 || raw.w > 100 || raw.h > 100;
+
+        if (isPixels) {
+            return {
+                left: (raw.x / dimensions.w * 100) + '%',
+                top: (raw.y / dimensions.h * 100) + '%',
+                width: (raw.w / dimensions.w * 100) + '%',
+                height: (raw.h / dimensions.h * 100) + '%'
+            };
+        }
+
+        // Already percentages
+        return {
+            left: raw.x + '%',
+            top: raw.y + '%',
+            width: raw.w + '%',
+            height: raw.h + '%'
+        };
+    }
+
+    /**
+     * Convert coordinates to pixels
+     */
+    static toPixels(coords, dimensions) {
+        const raw = Array.isArray(coords)
+            ? { x: coords[0], y: coords[1], w: coords[2], h: coords[3] }
+            : { ...coords };
+
+        const isPixels = raw.x > 100 || raw.y > 100 || raw.w > 100 || raw.h > 100;
+
+        if (isPixels) {
+            return raw;
+        }
+
+        return {
+            x: raw.x / 100 * dimensions.w,
+            y: raw.y / 100 * dimensions.h,
+            w: raw.w / 100 * dimensions.w,
+            h: raw.h / 100 * dimensions.h
+        };
+    }
+}
+
+
+============================================================
+FILE START: src\utils\evaluator.js
+============================================================
+
+
+
+
+============================================================
+FILE START: styles\main.css
+============================================================
+
+/* ================================
+   CYOA Interactive Player Styles
+   ================================ */
+
+/* === RESET & BASE === */
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    padding: 0 0 120px 0;
+    background: #1a1a1a;
+    color: #eee;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    overflow-x: hidden;
+}
+
+#loading {
+    transition: opacity 0.3s;
+}
+
+#loading.hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* === TOP CONTROLS === */
+
+.top-controls {
+    position: fixed;
+    top: 10px;
+    right: 10px;
+    z-index: 3000;
+    display: flex;
+    gap: 10px;
+}
+
+.ctrl-btn {
+    background: #333;
+    color: #fff;
+    border: 1px solid #555;
+    padding: 8px 15px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: bold;
+    border-radius: 4px;
+    transition: all 0.2s;
+    opacity: 0.85;
+}
+
+.ctrl-btn:hover {
+    opacity: 1;
+    background: #444;
+    transform: translateY(-1px);
+}
+
+.ctrl-btn.active {
+    background: #0066cc;
+    border-color: #0088ff;
+    opacity: 1;
+}
+
+/* === GAME WRAPPER === */
+
+#game-wrapper {
+    position: relative;
+    max-width: 100%;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+/* === PAGE CONTAINER === */
+
+.page-container {
+    position: relative;
+    margin-bottom: 0;
+    line-height: 0;
+    box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
+    max-width: 100%;
+}
+
+.page-image {
+    display: block;
+    max-width: 100%;
+    height: auto;
+    user-select: none;
+}
+
+.page-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 10;
+    pointer-events: none;
+}
+
+/* === CLICK ZONES === */
+
+.click-zone {
+    position: absolute;
+    cursor: pointer;
+    z-index: 100;
+    pointer-events: auto;
+    box-sizing: border-box;
+    border-radius: 12px;
+    transition: all 0.2s;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+}
+
+.click-zone:hover {
+    background: rgba(255, 255, 255, 0.07);
+    box-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
+}
+
+.click-zone.selected {
+    background: rgba(0, 255, 0, 0.1);
+    border: none;
+    box-shadow: 
+        0 0 15px 2px #0f0,
+        inset 0 0 20px 5px rgba(0, 255, 0, 0.3);
+}
+
+.click-zone.disabled {
+    cursor: not-allowed;
+    background-image: repeating-linear-gradient(
+        45deg,
+        rgba(0, 0, 0, 0.4),
+        rgba(0, 0, 0, 0.4) 10px,
+        rgba(50, 50, 50, 0.6) 10px,
+        rgba(50, 50, 50, 0.6) 20px
+    );
+    box-shadow: 
+        inset 0 0 20px 10px rgba(0, 0, 0, 0.8),
+        0 0 20px 5px rgba(0, 0, 0, 0.9);
+}
+
+/* Info zones (non-clickable, for tooltips) */
+.info-zone {
+    z-index: 50;
+    pointer-events: none;
+    border: none;
+}
+
+.info-zone .text-content {
+    pointer-events: auto;
+}
+
+/* === TEXT LAYER === */
+
+.text-content {
+    display: none;
+    background: rgba(0, 0, 0, 0.85);
+    color: #ddd;
+    padding: 10px;
+    font-size: 14px;
+    line-height: 1.4;
+    max-height: 100%;
+    overflow-y: auto;
+    pointer-events: none;
+    text-shadow: none;
+    backdrop-filter: blur(2px);
+    border-top: 1px solid #444;
+}
+
+.text-content strong {
+    display: block;
+    color: #fff;
+    font-size: 1.1em;
+    margin-bottom: 4px;
+    border-bottom: 1px solid #555;
+    padding-bottom: 2px;
+}
+
+/* Show text in translation mode */
+body.text-mode .text-content {
+    display: block;
+    pointer-events: auto;
+}
+
+/* === BUDGET BADGES === */
+
+.group-budget-badge {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    background: #000;
+    border: 2px solid #ffd700;
+    color: #ffd700;
+    padding: 8px 20px;
+    border-radius: 8px;
+    font-weight: 800;
+    font-size: 18px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    z-index: 200;
+    pointer-events: none;
+    white-space: nowrap;
+    box-shadow: 
+        0 0 20px 2px rgba(255, 215, 0, 0.6),
+        inset 0 0 20px rgba(255, 215, 0, 0.2);
+    text-shadow: 0 0 10px rgba(255, 215, 0, 0.8);
+    transition: all 0.3s ease;
+}
+
+.group-budget-badge.empty {
+    border-color: #444;
+    color: #666;
+    background: rgba(0, 0, 0, 0.8);
+    box-shadow: none;
+    text-shadow: none;
+}
+
+/* === DEBUG MODE === */
+
+body.debug-mode .click-zone {
+    border: 2px solid rgba(255, 0, 0, 0.8) !important;
+    background: rgba(255, 0, 0, 0.1) !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+}
+
+body.debug-mode .click-zone::after {
+    content: attr(id);
+    position: absolute;
+    top: 0;
+    left: 0;
+    background: red;
+    color: white;
+    font-size: 10px;
+    padding: 2px 4px;
+    z-index: 101;
+    pointer-events: none;
+}
+
+body.debug-mode .info-zone {
+    border: 2px dashed orange !important;
+    background: rgba(255, 165, 0, 0.2) !important;
+}
+
+/* === POINTS BAR === */
+
+#points-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: linear-gradient(
+        0deg,
+        rgba(16, 16, 16, 1) 0%,
+        rgba(16, 16, 16, 0.95) 100%
+    );
+    border-top: 1px solid #333;
+    padding: 15px;
+    display: flex;
+    justify-content: center;
+    gap: 40px;
+    flex-wrap: wrap;
+    box-shadow: 0 -5px 30px rgba(0, 0, 0, 0.8);
+    z-index: 2000;
+}
+
+.currency {
+    font-size: 1.2em;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.currency span {
+    color: #00ff88;
+    font-family: 'Courier New', monospace;
+    font-size: 1.3em;
+    text-shadow: 0 0 5px rgba(0, 255, 100, 0.5);
+}
+
+.currency.negative span {
+    color: #ff4444;
+    text-shadow: 0 0 5px rgba(255, 50, 50, 0.5);
+}
+
+/* === TOOLTIP === */
+
+#tooltip {
+    position: fixed;
+    z-index: 3000;
+    background: rgba(10, 10, 10, 0.95);
+    border: 1px solid #444;
+    padding: 15px;
+    border-radius: 8px;
+    pointer-events: none;
+    font-size: 0.95em;
+    max-width: 380px;
+    line-height: 1.5;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 1);
+    backdrop-filter: blur(8px);
+    color: #ccc;
+    opacity: 0;
+    transition: opacity 0s;
+}
+
+#tooltip.visible {
+    opacity: 1;
+    transition: opacity 0.2s ease;
+}
+
+#tooltip h4 {
+    margin: 0 0 8px 0;
+    color: #fff;
+    font-size: 1.1em;
+    border-bottom: 1px solid #333;
+    padding-bottom: 6px;
+}
+
+#tooltip .desc {
+    margin-top: 6px;
+    color: #bbb;
+    font-size: 0.9em;
+    white-space: pre-wrap;
+}
+
+#tooltip .cost {
+    color: #0f0;
+    font-weight: bold;
+    margin-top: 8px;
+    font-size: 1.05em;
+}
+
+#tooltip .cost.bad {
+    color: #f66;
+}
+
+#tooltip .cost.free {
+    color: #ffd700;
+}
+
+#tooltip .reqs {
+    margin-top: 10px;
+    padding-top: 5px;
+    border-top: 1px solid #333;
+    font-size: 0.85em;
+}
+
+.req-item {
+    display: block;
+    margin-bottom: 2px;
+}
+
+.req-item.ok {
+    color: #666;
+    text-decoration: line-through;
+}
+
+.req-item.fail {
+    color: #f88;
+    font-weight: bold;
+}
+
+.req-item.missing {
+    color: #fa0;
+}
+
+#tooltip .debug-info {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px dashed #555;
+    color: #777;
+    font-family: monospace;
+    font-size: 0.75em;
+}
+
+/* === RESPONSIVE === */
+
+@media (max-width: 768px) {
+    .top-controls {
+        top: 5px;
+        right: 5px;
+        gap: 5px;
+    }
+
+    .ctrl-btn {
+        padding: 6px 10px;
+        font-size: 12px;
+    }
+
+    #points-bar {
+        gap: 20px;
+        padding: 10px;
+    }
+
+    .currency {
+        font-size: 1em;
+    }
+
+    #tooltip {
+        max-width: 90vw;
+        font-size: 0.85em;
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/* Editor Sidebar */
+.editor-sidebar {
+    position: fixed;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 350px;
+    background: #1e1e1e;
+    border-left: 2px solid #333;
+    box-shadow: -5px 0 20px rgba(0, 0, 0, 0.5);
+    z-index: 4000;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    padding: 0;
+}
+
+.editor-header {
+    background: #252525;
+    padding: 15px 20px;
+    border-bottom: 2px solid #333;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.editor-header h3 {
+    margin: 0;
+    color: #4CAF50;
+    font-size: 1.2rem;
+}
+
+.close-btn {
+    background: #d32f2f;
+    color: white;
+    border: none;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 18px;
+    line-height: 1;
+}
+
+.close-btn:hover {
+    background: #b71c1c;
+}
+
+.editor-section {
+    padding: 20px;
+    border-bottom: 1px solid #333;
+}
+
+.editor-section h4 {
+    margin: 0 0 10px 0;
+    color: #4CAF50;
+    font-size: 1rem;
+}
+
+.info-text {
+    background: #252525;
+    padding: 10px;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    color: #aaa;
+}
+
+/* Form Inputs */
+.editor-input,
+.editor-textarea {
+    width: 100%;
+    padding: 8px;
+    background: #252525;
+    border: 1px solid #444;
+    color: #eee;
+    border-radius: 4px;
+    margin-bottom: 10px;
+    font-family: inherit;
+    font-size: 0.9rem;
+}
+
+.editor-input:focus,
+.editor-textarea:focus {
+    outline: none;
+    border-color: #4CAF50;
+}
+
+.editor-textarea {
+    resize: vertical;
+    font-family: 'Courier New', monospace;
+}
+
+/* Coords Grid */
+.coords-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+
+.coords-grid label {
+    font-size: 0.85rem;
+    color: #888;
+    margin-bottom: 3px;
+}
+
+/* Buttons */
+.editor-btn {
+    width: 100%;
+    padding: 10px;
+    background: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+    margin-bottom: 5px;
+    transition: background 0.2s;
+}
+
+.editor-btn:hover {
+    background: #45a049;
+}
+
+.delete-btn {
+    background: #d32f2f;
+}
+
+.delete-btn:hover {
+    background: #b71c1c;
+}
+
+.small-btn {
+    padding: 6px 10px;
+    background: #2196F3;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    margin-top: 5px;
+}
+
+.small-btn:hover {
+    background: #1976D2;
+}
+
+/* Rule Builder */
+.rule-builder {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.rule-section {
+    background: #252525;
+    padding: 10px;
+    border-radius: 4px;
+}
+
+.rule-section label {
+    display: block;
+    font-weight: bold;
+    margin-bottom: 8px;
+    color: #4CAF50;
+}
+
+.rule-item {
+    display: flex;
+    gap: 5px;
+    margin-bottom: 5px;
+    align-items: center;
+}
+
+.rule-item select,
+.rule-item input {
+    flex: 1;
+    padding: 6px;
+    background: #1e1e1e;
+    border: 1px solid #444;
+    color: #eee;
+    border-radius: 3px;
+    font-size: 0.85rem;
+}
+
+.delete-mini-btn {
+    background: #d32f2f;
+    color: white;
+    border: none;
+    width: 25px;
+    height: 25px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 16px;
+    line-height: 1;
+    flex-shrink: 0;
+}
+
+.delete-mini-btn:hover {
+    background: #b71c1c;
+}
+
+.empty-state {
+    color: #666;
+    font-style: italic;
+    font-size: 0.85rem;
+    padding: 5px;
+}
+
+/* Code Preview */
+.code-preview {
+    width: 100%;
+    height: 200px;
+    background: #0d0d0d;
+    color: #0f0;
+    font-family: 'Courier New', monospace;
+    font-size: 0.75rem;
+    border: 1px solid #333;
+    border-radius: 4px;
+    padding: 10px;
+    margin-bottom: 10px;
+    resize: vertical;
+}
+
+/* Editable Items */
+body.debug-mode .item-zone.editable {
+    cursor: move;
+}
+
+body.debug-mode .item-zone.editor-selected {
+    border: 3px solid #FFD700 !important;
+    box-shadow: 0 0 20px rgba(255, 215, 0, 0.5) !important;
+}
+
+body.debug-mode .item-zone.editor-selected::after {
+    content: '';
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    width: 15px;
+    height: 15px;
+    background: #FFD700;
+    cursor: nwse-resize;
+    border: 2px solid #000;
+}
+
+/* Adjust main content when editor is open */
+body.debug-mode #game-wrapper {
+    margin-right: 350px;
+    transition: margin-right 0.3s;
+}
+
+/* Mobile Responsive */
+@media (max-width: 1200px) {
+    .editor-sidebar {
+        width: 100%;
+        max-width: 350px;
+    }
+    
+    body.debug-mode #game-wrapper {
+        margin-right: 0;
+    }
+}
+
+
+============================================================
+FILE START: styles\themes.css
+============================================================
+
+
+

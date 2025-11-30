@@ -1,0 +1,581 @@
+{
+  "meta": {
+    "title": "Dark Lord CYOA - Minions",
+    "pages": [
+      "page3.jpg"
+    ]
+  },
+  "points": [
+    {
+      "id": "sparks",
+      "name": "Sparks of Power",
+      "start": 7
+    }
+  ],
+  "groups": [
+    {
+      "id": "g_minions_intro",
+      "title": "Minions",
+      "description": "You may have finished your decisions regarding your own Lordly being, but even a Dark Lord can hardly be called a lord at all without someone to lord over. You have SEVEN (7) SPARKS OF POWER for Minion choices.\n\nYou can only purchase a MINION if you have purchased a Minion of the same color type of the tier below. Each Minion choice costs as much as its tier- so Tier IV minions cost 4 Sparks, Tier III cost 3, and so on.\n\nMinions are loyal to you, but prone to infighting and power-plays against each other. They can breed with anything intelligent, and have different reproduction rates to describe how long it takes to go from impregnation to working adult.\n\nYour Lair will contain a font for each Minion type you have. Fonts produce Minions at a rate of a handful per day, but only up to a certain threshold. Those thresholds are: 24 for Tier I, 12 for Tier II, 6 for Tier III, and 3 for Tier IV. You start with half this many of each Minion type you have.",
+      "items": [
+        {
+          "id": "minions_intro_text",
+          "title": "Minions Rules",
+          "coords": {
+            "x": 20,
+            "y": 20,
+            "w": 1858,
+            "h": 462
+          },
+          "description": "Review the rules above for purchasing Minions. Tier I costs 1 Spark, Tier II costs 2 Sparks, Tier III costs 3 Sparks, Tier IV costs 4 Sparks. You must build up your hierarchy from the bottom (Tier I) up.",
+          "cost": []
+        }
+      ]
+    },
+    {
+      "id": "g_minions_main",
+      "title": "Standard Minions",
+      "items": [
+        {
+          "id": "m_goblins",
+          "title": "Tier I: Goblins",
+          "coords": {
+            "x": 20,
+            "y": 495,
+            "w": 358,
+            "h": 610
+          },
+          "description": "Goblins are dumb labor and expendable front-line troops, relying on reckless savagery, treachery, and raw numbers over discipline or skill. They are smaller and slightly frailer than most humans, standing between three and four feet tall on average. Their morale in combat is poor if they are forced to stab people in the front, and their sole saving grace is that they care so little for each other that combat losses do not hurt their morale. Goblins reproduce at a Fast rate, and tend to have more males than females.",
+          "cost": [
+            {
+              "currency": "sparks",
+              "value": 1
+            }
+          ]
+        },
+        {
+          "id": "m_kobolds",
+          "title": "Tier I: Kobolds",
+          "coords": {
+            "x": 396,
+            "y": 495,
+            "w": 358,
+            "h": 610
+          },
+          "description": "Kobolds are craftsmen and inventors, relying more on low cunning, rickety traps, and competent tactics than physicality or will. They are smaller and frailer than most humans, coming between two and four feet tall on average. Their morale in combat is pitiful unless they have the advantage of numbers. Their draconic blood gives them resistance to heat, and they have a knack for metalworking. Kobolds reproduce at a Fast rate with part of this time spent as eggs, and tend to have a few more males than females.",
+          "cost": [
+            {
+              "currency": "sparks",
+              "value": 1
+            }
+          ]
+        },
+        {
+          "id": "m_imps",
+          "title": "Tier I: Imps",
+          "coords": {
+            "x": 771,
+            "y": 495,
+            "w": 358,
+            "h": 610
+          },
+          "description": "Imps are enchanters and ritualists, relying on crude mind magics, sparks of flame, and raw cruelty to compensate for their shortcomings and constant infighting. They are small and frail beings, ranging from two to three feet in height on average. Their morale is mediocre in small numbers, but imps are so prone to backstabbing that it grows ever more tenuous as their numbers grow. They have some knowledge of curses and rituals relating to inducing lust or fear in targets. Imps reproduce at a Fast rate, and tend to have many more males than females.",
+          "cost": [
+            {
+              "currency": "sparks",
+              "value": 1
+            }
+          ]
+        },
+        {
+          "id": "m_pixies",
+          "title": "Tier I: Pixies",
+          "coords": {
+            "x": 1146,
+            "y": 495,
+            "w": 358,
+            "h": 610
+          },
+          "description": "Pixies are scouts and diplomats who are uniformly beautiful, petty, vain, cruel creatures. Their physical abilities are unimpressive as they range from two to three feet tall, but they do possess weak illusions and the gift of flight. Pixies have pitiful morale in combat, unless insulted, but enraged pixies fight with berserk abandon. If they cannot lash out at the target of their ire immediately, they will attempt to plan a clever revenge... that is never as subtle as they think it is. Pixies reproduce at a Moderate rate, and tend to have more females than males.",
+          "cost": [
+            {
+              "currency": "sparks",
+              "value": 1
+            }
+          ]
+        },
+        {
+          "id": "m_ratmen",
+          "title": "Tier I: Ratmen",
+          "coords": {
+            "x": 1520,
+            "y": 495,
+            "w": 358,
+            "h": 610
+          },
+          "description": "Ratmen are sneaks and murderers by default, favoring overwhelming numbers and surprise over individual ability or actual cooperation. Their physicality is notably less than most humans, as they average three feet in height. In battle their morale is terrible, but the adage about cornered rats holds quite true and they are gleefully aggressive when catching foes by surprise. They are able to glean simple things about the area from common rats. Their greatest advantage is that they reproduce Very Fast, and tend to have many more males than females.",
+          "cost": [
+            {
+              "currency": "sparks",
+              "value": 1
+            }
+          ]
+        },
+        {
+          "id": "m_orcs",
+          "title": "Tier II: Orcs",
+          "coords": {
+            "x": 20,
+            "y": 1115,
+            "w": 358,
+            "h": 610
+          },
+          "description": "The larger cousins of goblins are still dumb labor, but they make for much more powerful frontline troops that rely on brutish ferocity and thuggish strength to make up for their dim wits. Orcs are more powerful but not faster than most humans, averaging seven feet in height and burly. It requires a dire situation to make an orc flee a battle, as their minds are simple and rarely think beyond the next feast, fight, or fuck. Orcs reproduce at a Moderate rate, trending on the faster side, and have more males than females.",
+          "requirements": ["has('m_goblins')"],
+          "cost": [
+            {
+              "currency": "sparks",
+              "value": 2
+            }
+          ]
+        },
+        {
+          "id": "m_dragonborn",
+          "title": "Tier II: Dragonborn",
+          "coords": {
+            "x": 396,
+            "y": 1115,
+            "w": 358,
+            "h": 610
+          },
+          "description": "Dragonborn possess less of a talent for invention than kobolds, but make up for it with physical excellence and iron wills. They are slightly stronger and faster than most humans at an average between six and seven feet in height, possess a deadly breath weapon, and are notably tougher than most from their hard scales. Their morale and skill in combat are both excellent, dragon-born make for fearsome elite warriors. Dragonborn reproduce at a Moderate rate trending on the slower side, and have as many males as females.",
+          "requirements": ["has('m_kobolds')"],
+          "cost": [
+            {
+              "currency": "sparks",
+              "value": 2
+            }
+          ]
+        },
+        {
+          "id": "m_succubi",
+          "title": "Tier II: Succubi",
+          "coords": {
+            "x": 771,
+            "y": 1115,
+            "w": 358,
+            "h": 610
+          },
+          "description": "Succubi- or Incubi, there is no real difference- are the witches of demonic forces. They range from four to seven feet in height and though their supernatural bodies make them slightly stronger than most mortals they are ill-suited and ill-tempered for true combat. Their magical talents run deeper than an imp's, focusing heavily on curses, enchantments, and rituals associated with lust, fertility, and inhibitions. Succubi grant you a 5% increase to Research Speed. These demons reproduce at a Moderate rate, and have as many males and hermaphrodites as females.",
+          "requirements": ["has('m_imps') || has('m_hellhounds')"],
+          "cost": [
+            {
+              "currency": "sparks",
+              "value": 2
+            }
+          ]
+        },
+        {
+          "id": "m_dryads",
+          "title": "Tier II: Dryads",
+          "coords": {
+            "x": 1146,
+            "y": 1115,
+            "w": 358,
+            "h": 610
+          },
+          "description": "Dryads are spirits of nature, specifically of plants. Reckless deforestation upsets them greatly... but they see no issue in returning the favor by turning meat life into seedbeds or fertilizer. Physically they are little stronger or larger than a human, but they possess a variety of potent magics relating to growing and manipulating plant life. They are able to grow a wide range of useful crops and can provide everything from staple foods to exotic poisons with good soil. Dryads grant a 5% increase to Research Speed. They reproduce at a Moderate rate, and tend to be hermaphrodites.",
+          "requirements": ["has('m_pixies') || has('m_brownies')"],
+          "cost": [
+            {
+              "currency": "sparks",
+              "value": 2
+            }
+          ]
+        },
+        {
+          "id": "m_gnolls",
+          "title": "Tier II: Gnolls",
+          "coords": {
+            "x": 1520,
+            "y": 1115,
+            "w": 358,
+            "h": 610
+          },
+          "description": "Gnolls are savage berserkers, more reckless in battle than even orcs but capable of inflicting far more damage in the depths of their bloodlust. Gnolls tend to slink away from entering combat with forces they cannot defeat while their wits are about them, but once combat is joined they are more likely to ignore orders to retreat than flee. Female gnolls tend to lead packs, being larger and stronger than males, but on average the species is not too dissimilar from humans. Gnolls reproduce at a Fast rate, and have slightly more males than females.",
+          "requirements": ["has('m_ratmen') || has('m_yinglets')"],
+          "cost": [
+            {
+              "currency": "sparks",
+              "value": 2
+            }
+          ]
+        },
+        {
+          "id": "m_trolls",
+          "title": "Tier III: Trolls",
+          "coords": {
+            "x": 20,
+            "y": 1745,
+            "w": 358,
+            "h": 610
+          },
+          "description": "Trolls are lumbering, dimwitted brutes that possess exceptional strength, great endurance, and legendary healing abilities. Trolls average ten feet tall and can regrow their entire bodies over the course of a fortnight if decapitated and somehow kept alive, but they cannot increase their numbers through this healing. Burning or melting their flesh stops it from regenerating. Their morale is usually high in combat because they are too dull to recognize danger, but they break quickly when faced with fire or acid. Trolls reproduce at a Slow rate, and have many more males than females.",
+          "requirements": ["has('m_orcs') || has('m_dire_wolves')"],
+          "cost": [
+            {
+              "currency": "sparks",
+              "value": 3
+            }
+          ]
+        },
+        {
+          "id": "m_ogredrakes",
+          "title": "Tier III: Ogredrakes",
+          "coords": {
+            "x": 396,
+            "y": 1745,
+            "w": 358,
+            "h": 610
+          },
+          "description": "Ogredrakes are mighty dragonblooded that yet posses much of their cousins' intellects. They average eleven feet tall and have thick, armored hides that resist much damage, putting them vastly beyond the abilities of most humans. Their morale is ironclad in combat and they are deceptively quick and skilled with their immense weapons. Their breath weapons are strong than those of a Dragonborn, able to catch a dozen men alight in the right circumstances. They reproduce at a Slow rate trending very slow, though part of this time is spent in eggs. They are mostly male.",
+          "requirements": ["has('m_dragonborn') || has('m_drakes')"],
+          "cost": [
+            {
+              "currency": "sparks",
+              "value": 3
+            }
+          ]
+        },
+        {
+          "id": "m_shadow_demons",
+          "title": "Tier III: Shadow Demons",
+          "coords": {
+            "x": 771,
+            "y": 1745,
+            "w": 358,
+            "h": 610
+          },
+          "description": "Shadow Demons are malevolent masses of darkness and bone used as shock troops by demonic forces. They average ten feet tall and have thick fur that dampens most elemental attacks, making them far more dangerous than most humans. Their morale is excellent, but they are relatively brutish and single-minded beings, making them ill suited to advanced tactics. They also struggle with fine tool use as their clawed hands, while wickedly sharp and dangerous, are not well suited to fine dexterity. They reproduce at a Slow rate, and are almost all male.",
+          "requirements": ["has('m_succubi') || has('m_war_demons')"],
+          "cost": [
+            {
+              "currency": "sparks",
+              "value": 3
+            }
+          ]
+        },
+        {
+          "id": "m_wild_hunters",
+          "title": "Tier III: Wild Hunters",
+          "coords": {
+            "x": 1146,
+            "y": 1745,
+            "w": 358,
+            "h": 610
+          },
+          "description": "Heavy cavalry and light scout all in one, members of the Wild Hunt are powerful shapechangers. They are able to shift between a massive humanoid nearing eight feet in height and an even larger moose, approaching nine feet at the shoulder. They can mix traits freely between forms, and often travel as fearsome centaurs or satyrs to reflect their blended nature. They are boisterous, bold, and powerful combatants, though they are often far more interested in hunting or showing off than true battle. They reproduce at a Slow rate and are evenly split between male and female.",
+          "requirements": ["has('m_dryads') || has('m_nereids')"],
+          "cost": [
+            {
+              "currency": "sparks",
+              "value": 3
+            }
+          ]
+        },
+        {
+          "id": "m_minotaurs",
+          "title": "Tier III: Minotaurs",
+          "coords": {
+            "x": 1520,
+            "y": 1745,
+            "w": 358,
+            "h": 610
+          },
+          "description": "Minotaurs are renowned for their power as they are their terrible rage. They stand between eight and ten feet tall, making them far stronger and tougher than most humans. In combat they easily fall into berserk rages with their oversized great weapons, and it is rare indeed for minotaurs to turn away from a fight... even when it might be wise. They also happen to possess a keen mind for mazes and all sorts of navigation, making them deceptively useful scouts and sailors. They reproduce at a Moderate rate, and have more males than females.",
+          "requirements": ["has('m_gnolls') || has('m_harpies')"],
+          "cost": [
+            {
+              "currency": "sparks",
+              "value": 3
+            }
+          ]
+        },
+        {
+          "id": "m_giants",
+          "title": "Tier IV: Giants",
+          "coords": {
+            "x": 20,
+            "y": 2375,
+            "w": 358,
+            "h": 610
+          },
+          "description": "The archetypal hulking, lumbering brute, Giants are living siege engines and heavy dumb labor for your army. Standing nearly twenty feet tall and able to chuck boulders like toys, a giant is well beyond the abilities of most mortals to fight. They tend to be smarter than trolls, though not quite as much as goblins or men, and in combat their morale is strong. Astoundingly they know a primitive sort of magic, having instinctive knowledge of a handful of runes with weak warding and protective effects. Giants reproduce at a Very Slow rate, and have somewhat more males than females.",
+          "requirements": ["has('m_trolls') || has('m_giant_bats')"],
+          "cost": [
+            {
+              "currency": "sparks",
+              "value": 4
+            }
+          ]
+        },
+        {
+          "id": "m_dragons",
+          "title": "Tier IV: Dragons",
+          "coords": {
+            "x": 396,
+            "y": 2375,
+            "w": 358,
+            "h": 610
+          },
+          "description": "Unparalleled masters of the sky, Dragons are a versatile and deadly force of nature on the battlefield. Adult dragons are at least twenty feet long, and they grow up to one hundred feet over the course of their first century. Their iron-hard scales, sword-like claws, and potent breath weapons make them a deadly threat to a normal human. Their intelligence is at least equal to a human, and their fabled arrogance leads to exceptional morale- few things can frighten a dragon. Dragons reproduce Very Slowly via eggs, taking more time to breed than most any other, and are mostly male.",
+          "requirements": ["has('m_ogredrakes') || has('m_wyverns')"],
+          "cost": [
+            {
+              "currency": "sparks",
+              "value": 4
+            }
+          ]
+        },
+        {
+          "id": "m_pit_lords",
+          "title": "Tier IV: Pit Lords",
+          "coords": {
+            "x": 771,
+            "y": 2375,
+            "w": 358,
+            "h": 610
+          },
+          "description": "Pit Lords are the generals and juggernauts of demonic forces, wielding fiery weaponry and soaring on wings of ash. They tower up to sixteen feet tall and favor ebonsteel armor and weapons, making them specters of death to normal humans. There is very little that can make a pit lord feel fear, though if truly threatened they are more inclined to retreat and regroup than fight to the death. They have some skill with the curses and rituals used by their underlings, though they prefer to use their terrible might in most battles. They reproduce at a Very Slow rate, and are almost all male.",
+          "requirements": ["has('m_shadow_demons')"],
+          "cost": [
+            {
+              "currency": "sparks",
+              "value": 4
+            }
+          ]
+        },
+        {
+          "id": "m_ladies",
+          "title": "Tier IV: Ladies",
+          "coords": {
+            "x": 1146,
+            "y": 2375,
+            "w": 358,
+            "h": 610
+          },
+          "description": "Ladies- and Lords, rarely- are the magical rulers and mages of fey beings. They stand between five and eight feet tall and are uncannily beautiful, but their magical nature makes them nearly twice as strong and far faster than any normal man. They are fearsome and arrogant combatants with respectable morale, but their primary skill is in their command of magic relating to nature, illusions, dreams, bewitchment, and transformation. They grant a 20% increase to Research Speed with their knowledge of magic. They reproduce at a Very Slow rate, and are almost all female or hermaphrodites.",
+          "requirements": ["has('m_wild_hunters')"],
+          "cost": [
+            {
+              "currency": "sparks",
+              "value": 4
+            }
+          ]
+        },
+        {
+          "id": "m_giant_apes",
+          "title": "Tier IV: Giant Apes",
+          "coords": {
+            "x": 1520,
+            "y": 2375,
+            "w": 358,
+            "h": 610
+          },
+          "description": "Titanic beasts resembling massive gorillas or chimpanzees, giant apes are living siege weapons for beastmen hordes. Standing fifteen feet tall on their back legs and strong enough to batter a stone wall down with their fists, they can easily crush any normal human. They are barely intelligent and prone to fits of berserk rage if harmed, making them powerful but difficult to control weapons. Their exceptional climbing ability allows them to scale obstacles that might stymie a giant or minotaur to attack those within. They reproduce at a Slow rate, and have more males than females.",
+          "requirements": ["has('m_minotaurs')"],
+          "cost": [
+            {
+              "currency": "sparks",
+              "value": 4
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "g_alt_minions",
+      "title": "Alternate Minions",
+      "description": "Here you can purchase a variety of alternate Minion types, either in addition to or instead of the Minion types with the same tier and color type above. These Minions satisfy the requirements to buy higher tiers of their color type.",
+      "items": [
+        {
+          "id": "m_dire_wolves",
+          "title": "Tier II: Dire Wolves",
+          "coords": {
+            "x": 20,
+            "y": 3170,
+            "w": 358,
+            "h": 610
+          },
+          "description": "Monstrous wolves that serve as hunting dogs and steeds for goblins. At seven feet long and three feet tall they easily overpower unarmed humans, though weaponry can even the odds quickly. Being very smart beasts rather than intelligent beings, their morale in combat is poor unless bolstered by thinking allies. Despite not being able to speak they are smart enough to broadly follow commands, but not enough to read or write. They make serviceable beasts of burden, though they can be aggressive with their handlers. They reproduce at a Fast rate, trending slower, and are mostly male.",
+          "requirements": ["has('m_goblins')"],
+          "cost": [
+            {
+              "currency": "sparks",
+              "value": 2
+            }
+          ]
+        },
+        {
+          "id": "m_drakes",
+          "title": "Tier II: Drakes",
+          "coords": {
+            "x": 396,
+            "y": 3170,
+            "w": 358,
+            "h": 610
+          },
+          "description": "Drakes are large, bestial draconic creatures that serve as mounts and trackers for kobolds. They are eight feet long with the tail and nearly three feet tall, which in tandem with their hard scales makes them severe threats to humans. They are clever animals but little more, and can struggle with complex commands as a result. Their morale is decent, but benefits from being bolstered by intelligent allies. They are often used as beasts of burden, but can be stubborn when their handlers are small creatures. They reproduce at a Moderate rate, trending faster, and are mostly male.",
+          "requirements": ["has('m_kobolds')"],
+          "cost": [
+            {
+              "currency": "sparks",
+              "value": 2
+            }
+          ]
+        },
+        {
+          "id": "m_hellhounds",
+          "title": "Tier I: Hellhounds",
+          "coords": {
+            "x": 771,
+            "y": 3170,
+            "w": 358,
+            "h": 610
+          },
+          "description": "Feral hounds of hell commonly used as trackers by demonic forces, hellhounds take the form of moderately sized canines with burning eyes. Dangerous to an unarmed human, but readily overcome with weaponry. Their morale in combat is poor and their intelligence no more or less than clever and cruel-minded hounds. They make for poor beasts of burden due to their relatively small size and ill tempers. Notably they are highly resistant to fire and high temperatures, making them good at navigating deserts, jungles, and hells. They reproduce at a Fast rate, and are mostly male.",
+          "cost": [
+            {
+              "currency": "sparks",
+              "value": 1
+            }
+          ]
+        },
+        {
+          "id": "m_brownies",
+          "title": "Tier I: Brownies",
+          "coords": {
+            "x": 1146,
+            "y": 3170,
+            "w": 358,
+            "h": 610
+          },
+          "description": "Brownies are fey workmen and servants, serving as logistics and maintenance. Brownies stand between two and three feet tall, and are notably feebler than most humans. They are extremely stealthy and hard-working creatures, busily working to clean and repair your possessions. They have a small pool of magics dedicated to such tasks. Their morale in a fight is utterly pitiful. Brownies often refuse to do violence at all unless their target has invaded a place they call home, and even then they are clumsy fighters. They reproduce at a Fast rate, and are evenly male and female.",
+          "cost": [
+            {
+              "currency": "sparks",
+              "value": 1
+            }
+          ]
+        },
+        {
+          "id": "m_yinglets",
+          "title": "Tier I: Yinglets",
+          "coords": {
+            "x": 1520,
+            "y": 3170,
+            "w": 358,
+            "h": 610
+          },
+          "description": "Scurrying, long-limbed creatures, Yinglets are the teeming masses of beastmen forces. They come between two and four feet in height but are very fragile, making them pitiful combatants. Their morale is similarly poor. Yinglets can be savage when desperate, but even armed they are easily killed by humans and they know it. Their one advantage is that they are ludicrously numerous. They are also somewhat apt at scavenging, primarily because of their numbers. Yinglets reproduce at a Blisteringly Fast pace, and are almost all male. Females are revered in Yinglet society due to their rarity.",
+          "cost": [
+            {
+              "currency": "sparks",
+              "value": 1
+            }
+          ]
+        },
+        {
+          "id": "m_giant_bats",
+          "title": "Tier III: Giant Bats",
+          "coords": {
+            "x": 20,
+            "y": 3790,
+            "w": 358,
+            "h": 610
+          },
+          "description": "Enormous bats large enough to carry a pair of orcs or a pack of goblins into battle and serving as the aerial transport and firing platform of such forces. Giant bats are nearly ten feet long and have vast wingspans, making them highly dangerous to normal humans. Their morale is respectable for a tamed beast, and they will typically only panic if they face a greater threat in the air... or if their riders do. Their echolocation makes them excellent for navigating and working at night. They reproduce at a Slow rate, and have more males than females.",
+          "requirements": ["has('m_orcs') || has('m_dire_wolves')"],
+          "cost": [
+            {
+              "currency": "sparks",
+              "value": 3
+            }
+          ]
+        },
+        {
+          "id": "m_wyverns",
+          "title": "Tier III: Wyverns",
+          "coords": {
+            "x": 396,
+            "y": 3790,
+            "w": 358,
+            "h": 610
+          },
+          "description": "Savage two-legged fliers, wyverns are mounts for the aerial cavalry of draconic forces. They are nearly twelve feet long, making them large and strong enough to carry a fully armored dragonborn or a pack of kobolds into battle on their backs and more than capable of ripping through most humans in groups. Their morale is high, especially for barely intelligent beasts. Their breath weapon is a spray of toxic acid that can blind and disorient opponents, and they have sharp tail stingers. They reproduce at a Slow rate, and have more males than females.",
+          "requirements": ["has('m_dragonborn') || has('m_drakes')"],
+          "cost": [
+            {
+              "currency": "sparks",
+              "value": 3
+            }
+          ]
+        },
+        {
+          "id": "m_war_demons",
+          "title": "Tier II: War Demons",
+          "coords": {
+            "x": 771,
+            "y": 3790,
+            "w": 358,
+            "h": 610
+          },
+          "description": "War demons are the screaming hordes of demonic forces, serving as front-line troops of brutal strength and skill. They are taller than humans on average and notably stronger and more durable. Their morale in combat is excellent, but their glorification of combat and bloodshed means that they will often descend into blind blood rages. They possess great resistance to fire and the ability to hurl gouts of flame from their hands, along with goat-like hooves that grant them great stability on tricky terrain. They reproduce at a Moderate rate, and are almost all male.",
+          "requirements": ["has('m_imps') || has('m_hellhounds')"],
+          "cost": [
+            {
+              "currency": "sparks",
+              "value": 2
+            }
+          ]
+        },
+        {
+          "id": "m_nereids",
+          "title": "Tier II: Nereids",
+          "coords": {
+            "x": 1146,
+            "y": 3790,
+            "w": 358,
+            "h": 610
+          },
+          "description": "Nereids are beautiful sea nymphs, capable of aiding both transportation and combat across the high seas. They are roughly the size of a human and only slightly stronger, but possess a variety of magic related to creating and controlling water along with the obvious abilities to breath underwater and swim at incredible speeds. They can also communicate with sea life, making them excellent fisherfey. Their morale in combat is mediocre, but as long as they stay at range or in the water they hold up well enough. They reproduce at a Moderate rate, and are mostly hermaphrodites and females.",
+          "requirements": ["has('m_pixies') || has('m_brownies')"],
+          "cost": [
+            {
+              "currency": "sparks",
+              "value": 2
+            }
+          ]
+        },
+        {
+          "id": "m_harpies",
+          "title": "Tier II: Harpies",
+          "coords": {
+            "x": 1520,
+            "y": 3790,
+            "w": 358,
+            "h": 610
+          },
+          "description": "Harpies are winged humanoids that serve as skirmishers and scouts for beastmen, with flighty and distract-able personalities. They are a little smaller than humans on average, but strong enough to carry one away in their talons in a pinch. Their morale in combat is relatively weak. They struggle to use weapons or wear armor while flying, but they are very apt at dropping projectiles on opponents from above and take glee in doing so as long as they're not being shot at. They reproduce at a Fast rate and are an even mix of males, hermaphrodites, and females.",
+          "requirements": ["has('m_ratmen') || has('m_yinglets')"],
+          "cost": [
+            {
+              "currency": "sparks",
+              "value": 2
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
