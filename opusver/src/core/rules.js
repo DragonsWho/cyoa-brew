@@ -17,7 +17,6 @@ export class RuleEvaluator {
                 return false;
             }
         }
-
         return true;
     }
 
@@ -33,7 +32,7 @@ export class RuleEvaluator {
             return !this.engine.state.selected.has(targetId);
         }
 
-        // Simple: item_id
+        // Simple: item_id (Map.has works like Set.has)
         return this.engine.state.selected.has(req.trim());
     }
 
@@ -47,7 +46,6 @@ export class RuleEvaluator {
                 return false;
             }
         }
-
         return true;
     }
 
@@ -74,6 +72,7 @@ export class RuleEvaluator {
     evaluateFormula(formula, item, group) {
         try {
             const context = this.createFormulaContext(item, group);
+            // Create function with context keys as arguments
             const func = new Function(...Object.keys(context), `return ${formula};`);
             return func(...Object.values(context));
         } catch (error) {
@@ -86,23 +85,28 @@ export class RuleEvaluator {
         const state = this.engine.state;
 
         return {
-            // Helper: has(id)
+            // Helper: has(id) - Checks existence (Qty > 0)
             has: (id) => state.selected.has(id),
+            
+            // CHANGED: Helper: qty(id) - Gets exact quantity
+            qty: (id) => state.selected.get(id) || 0,
 
-            // Helper: selected object
+            // Helper: selected object (Backward compatibility + new features)
             selected: {
                 has: (id) => state.selected.has(id),
-                length: state.selected.size
+                get: (id) => state.selected.get(id) || 0,
+                // Count of UNIQUE items selected
+                length: state.selected.size 
             },
 
             // Currencies
             currency: { ...state.currencies },
 
-            // Counts per group
+            // CHANGED: Counts per group (Sum of Quantities)
             count: this.createCountHelper(group),
 
-            // Current group count
-            this_group: group ? this.engine.getSelectedInGroup(group).length : 0,
+            // CHANGED: Current group count (Sum of Quantities)
+            this_group: group ? this.engine.getGroupQty(group) : 0,
 
             // Math functions
             Math: Math
@@ -113,11 +117,12 @@ export class RuleEvaluator {
         const counts = {};
 
         for (const group of this.engine.config.groups) {
-            counts[group.id] = this.engine.getSelectedInGroup(group).length;
+            // Use getGroupQty to sum up multiples
+            counts[group.id] = this.engine.getGroupQty(group);
         }
 
         if (currentGroup) {
-            counts.this_group = this.engine.getSelectedInGroup(currentGroup).length;
+            counts.this_group = this.engine.getGroupQty(currentGroup);
         }
 
         return counts;

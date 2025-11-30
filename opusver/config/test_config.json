@@ -104,6 +104,7 @@
           "id": "cheap",
           "title": "Cheap Item",
           "description": "Costs only 2 points.\nAffordable for everyone!",
+          "max_quantity": 5,
           "coords": {
             "x": 50,
             "y": 470,

@@ -12,77 +12,91 @@ export class GameEngine {
         this.rules = new RuleEvaluator(this);
         this.listeners = {};
         
-        console.log('🎮 Engine initialized');
+        console.log('🎮 Engine initialized (Multi-select enabled)');
     }
 
     // ==================== SELECTION ====================
 
     /**
-     * Select an item
-     * @param {string} itemId - Item ID to select
-     * @returns {boolean} Success
+     * Select an item (Increments quantity)
      */
     select(itemId) {
         const item = this.findItem(itemId);
-        if (!item) {
-            console.warn(`Item not found: ${itemId}`);
-            return false;
-        }
+        if (!item) return false;
 
         const group = this.findGroupForItem(itemId);
-        if (!group) {
-            console.warn(`Group not found for: ${itemId}`);
-            return false;
-        }
+        if (!group) return false;
 
-        // Check if can select
+        // Check if can select (requirements)
+        // Note: For multi-select, we might want to allow checking if we can take *another* one
         if (!this.canSelect(item, group)) {
-            console.log(`Cannot select ${itemId} (requirements not met)`);
             return false;
         }
 
-        // Handle max_choices (radio button behavior)
-        if (group.rules?.max_choices === 1) {
+        // CHANGED: Handle Quantity logic
+        const currentQty = this.state.selected.get(itemId) || 0;
+        const maxQty = item.max_quantity || 1; // Default to 1 if not specified
+
+        if (currentQty >= maxQty) {
+            console.log(`Max quantity (${maxQty}) reached for ${itemId}`);
+            return false;
+        }
+
+        // Handle max_choices (Radio button behavior)
+        // Only trigger this if we are selecting from 0 to 1, or if it's strict single-choice group
+        if (currentQty === 0 && group.rules?.max_choices === 1) {
             group.items.forEach(i => {
-                if (this.state.selected.has(i.id)) {
+                if (this.state.selected.has(i.id) && i.id !== itemId) {
                     this.state.selected.delete(i.id);
                 }
             });
         } else if (group.rules?.max_choices) {
-            const selectedInGroup = this.getSelectedInGroup(group);
-            if (selectedInGroup.length >= group.rules.max_choices) {
+            // Check total items in group (sum of quantities)
+            const totalInGroup = this.getGroupQty(group);
+            if (totalInGroup >= group.rules.max_choices) {
                 console.log(`Max choices reached in ${group.id}`);
                 return false;
             }
         }
 
-        this.state.selected.add(itemId);
+        // Increment
+        this.state.selected.set(itemId, currentQty + 1);
+
         this.recalculate();
-        this.emit('selection', { itemId, selected: true });
+        this.emit('selection', { itemId, selected: true, qty: currentQty + 1 });
         
-        console.log(`✓ Selected: ${item.title}`);
+        console.log(`✓ Selected: ${item.title} (Qty: ${currentQty + 1})`);
         return true;
     }
 
     /**
-     * Deselect an item
+     * Deselect an item (Decrements quantity)
      */
     deselect(itemId) {
         if (!this.state.selected.has(itemId)) {
             return false;
         }
 
-        this.state.selected.delete(itemId);
-        this.recalculate();
-        this.emit('selection', { itemId, selected: false });
+        const currentQty = this.state.selected.get(itemId);
         
-        const item = this.findItem(itemId);
-        console.log(`✗ Deselected: ${item?.title || itemId}`);
+        // CHANGED: Decrement or Remove
+        if (currentQty > 1) {
+             this.state.selected.set(itemId, currentQty - 1);
+             console.log(`Item decreased: ${itemId} (${currentQty - 1})`);
+        } else {
+             this.state.selected.delete(itemId);
+             console.log(`Item removed: ${itemId}`);
+        }
+
+        this.recalculate();
+        this.emit('selection', { itemId, selected: false, qty: currentQty - 1 });
         return true;
     }
 
     /**
      * Toggle item selection
+     * Note: Currently behaves as "Select if 0, Deselect if > 0"
+     * Future UI needs Left/Right click to properly handle + / -
      */
     toggle(itemId) {
         if (this.state.selected.has(itemId)) {
@@ -94,104 +108,65 @@ export class GameEngine {
 
     // ==================== VALIDATION ====================
 
-    /**
-     * Check if item can be selected
-     */
     canSelect(item, group) {
-        if (!this.rules.checkRequirements(item)) {
-            return false;
-        }
-
-        if (!this.rules.checkIncompatible(item)) {
-            return false;
-        }
-
+        if (!this.rules.checkRequirements(item)) return false;
+        if (!this.rules.checkIncompatible(item)) return false;
         return true;
     }
 
     // ==================== CALCULATION ====================
 
-    /**
-     * Recalculate all costs and currencies
-     */
     recalculate() {
-        // 1. Remove invalid selections
         this.cleanupInvalidSelections();
-
-        // 2. Reset currencies
         this.state.resetCurrencies();
 
-        // 3. Calculate with budgets
         const groupDeltas = this.calculateGroupDeltas();
         this.applyBudgets(groupDeltas);
         this.applyDeltas(groupDeltas);
 
-        // 4. Notify listeners
         this.emit('recalculate', { state: this.state });
     }
 
-    /**
-     * Remove selections that no longer meet requirements
-     */
     cleanupInvalidSelections() {
-        let changed = true;
-        let iterations = 0;
-        const MAX_ITERATIONS = 100;
-
-        while (changed && iterations < MAX_ITERATIONS) {
-            changed = false;
-            iterations++;
-
-            for (const itemId of Array.from(this.state.selected)) {
-                const item = this.findItem(itemId);
-                const group = this.findGroupForItem(itemId);
-
-                if (!item || !this.canSelect(item, group)) {
-                    this.state.selected.delete(itemId);
-                    changed = true;
-                }
+        // Iterating keys of Map is safe
+        for (const itemId of this.state.selected.keys()) {
+            const item = this.findItem(itemId);
+            const group = this.findGroupForItem(itemId);
+            // If requirements no longer met, remove completely (reset to 0)
+            if (!item || !this.canSelect(item, group)) {
+                this.state.selected.delete(itemId);
             }
-        }
-
-        if (iterations >= MAX_ITERATIONS) {
-            console.warn('⚠️ Dependency cleanup hit max iterations');
         }
     }
 
-    /**
-     * Calculate currency deltas per group
-     */
     calculateGroupDeltas() {
         const deltas = {};
 
-        for (const itemId of this.state.selected) {
+        // CHANGED: Iterate over Map Keys
+        for (const itemId of this.state.selected.keys()) {
             const item = this.findItem(itemId);
             const group = this.findGroupForItem(itemId);
+            const qty = this.state.selected.get(itemId);
             
             if (!item?.cost) continue;
 
-            if (!deltas[group.id]) {
-                deltas[group.id] = {};
-            }
+            if (!deltas[group.id]) deltas[group.id] = {};
 
             for (const cost of item.cost) {
-                const value = this.rules.evaluateCost(cost, item, group);
+                // Evaluate unit cost
+                const unitValue = this.rules.evaluateCost(cost, item, group);
                 const currencyId = cost.currency;
 
-                if (!deltas[group.id][currencyId]) {
-                    deltas[group.id][currencyId] = 0;
-                }
+                if (!deltas[group.id][currencyId]) deltas[group.id][currencyId] = 0;
 
-                deltas[group.id][currencyId] += value;
+                // CHANGED: Multiply by Quantity
+                deltas[group.id][currencyId] += (unitValue * qty);
             }
         }
 
         return deltas;
     }
 
-    /**
-     * Apply budget rules to deltas
-     */
     applyBudgets(groupDeltas) {
         for (const group of this.config.groups) {
             if (!group.rules?.budget) continue;
@@ -199,7 +174,6 @@ export class GameEngine {
             const budget = group.rules.budget;
             const targetGroups = [group.id, ...(budget.applies_to || [])];
 
-            // Calculate total spent
             let totalSpent = 0;
             for (const gid of targetGroups) {
                 if (groupDeltas[gid]?.[budget.currency] < 0) {
@@ -207,13 +181,11 @@ export class GameEngine {
                 }
             }
 
-            // Apply coverage
             const covered = Math.min(totalSpent, budget.amount);
             let remaining = covered;
 
             for (const gid of targetGroups) {
                 if (remaining <= 0) break;
-                
                 if (groupDeltas[gid]?.[budget.currency] < 0) {
                     const debt = Math.abs(groupDeltas[gid][budget.currency]);
                     const pay = Math.min(debt, remaining);
@@ -222,7 +194,6 @@ export class GameEngine {
                 }
             }
 
-            // Store budget state
             this.state.budgets[group.id] = {
                 total: budget.amount,
                 used: covered,
@@ -231,9 +202,6 @@ export class GameEngine {
         }
     }
 
-    /**
-     * Apply deltas to currencies
-     */
     applyDeltas(groupDeltas) {
         for (const groupId in groupDeltas) {
             for (const currencyId in groupDeltas[groupId]) {
@@ -263,41 +231,38 @@ export class GameEngine {
         return null;
     }
 
+    /**
+     * Get list of Item objects that are selected (Unique items)
+     */
     getSelectedInGroup(group) {
         return group.items.filter(i => this.state.selected.has(i.id));
     }
 
-    // ==================== EVENTS ====================
+    /**
+     * CHANGED: New helper to sum up all quantities in a group
+     */
+    getGroupQty(group) {
+        let total = 0;
+        group.items.forEach(i => {
+            total += (this.state.selected.get(i.id) || 0);
+        });
+        return total;
+    }
+
+    // ==================== EVENTS & STATE ====================
 
     on(event, callback) {
-        if (!this.listeners[event]) {
-            this.listeners[event] = [];
-        }
+        if (!this.listeners[event]) this.listeners[event] = [];
         this.listeners[event].push(callback);
     }
 
     emit(event, data) {
-        if (this.listeners[event]) {
-            this.listeners[event].forEach(cb => cb(data));
-        }
+        if (this.listeners[event]) this.listeners[event].forEach(cb => cb(data));
     }
-
-    // ==================== STATE MANAGEMENT ====================
 
     reset() {
         this.state.reset();
         this.recalculate();
         this.emit('reset');
-        console.log('🔄 State reset');
-    }
-
-    exportState() {
-        return this.state.export();
-    }
-
-    importState(stateData) {
-        this.state.import(stateData);
-        this.recalculate();
-        this.emit('import');
     }
 }

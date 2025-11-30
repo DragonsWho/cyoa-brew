@@ -89,12 +89,19 @@ export class CYOAEditor {
                                     <span class="input-label">GRP</span>
                                 </div>
                             </div>
+                            
+                            <!-- NEW: Max Quantity Field -->
+                            <div class="input-group">
+                                <input type="number" id="edit-max_quantity" min="1" placeholder="1">
+                                <span class="input-label">Max Qty (1 = Toggle)</span>
+                            </div>
+
                             <div class="input-group">
                                 <input type="text" id="edit-title">
                                 <span class="input-label">Title</span>
                             </div>
                             <div class="input-group">
-                                <textarea id="edit-description" rows="7"></textarea>
+                                <textarea id="edit-description" rows="5"></textarea>
                                 <span class="input-label">Desc</span>
                             </div>
                         </div>
@@ -451,6 +458,7 @@ export class CYOAEditor {
 
         document.getElementById('edit-id').value = item.id || '';
         document.getElementById('edit-parent-group').value = group ? group.id : '?';
+        document.getElementById('edit-max_quantity').value = item.max_quantity || 1;
         document.getElementById('edit-title').value = item.title || '';
         document.getElementById('edit-description').value = item.description || '';
         
@@ -497,23 +505,41 @@ export class CYOAEditor {
         const update = (key, val, isNum) => {
             if (!this.selectedItem) return;
             if (isNum) val = parseInt(val) || 0;
+            
             if (['x','y','w','h'].includes(key)) {
                 if (!this.selectedItem.coords) this.selectedItem.coords = {};
                 this.selectedItem.coords[key] = val;
             } else {
                 this.selectedItem[key] = val;
             }
-            this.renderer.renderButtons();
+
+            // Special handling for max_quantity to re-render structure
+            if (key === 'max_quantity') {
+                 if (val <= 1) delete this.selectedItem.max_quantity; // clean up JSON
+                 // Re-render to show/hide split controls
+                 this.renderer.renderButtons();
+                 // Re-select to keep focus outline
+                 setTimeout(() => {
+                    const el = document.getElementById(`btn-${this.selectedItem.id}`);
+                    if (el) el.classList.add('editor-selected');
+                 }, 0);
+            } else {
+                // Just update positions/styles for speed
+                this.renderer.renderButtons();
+            }
+            
             this.updateCodePreview();
         };
 
-        const inputs = ['edit-id', 'edit-title', 'edit-description', 'edit-x', 'edit-y', 'edit-w', 'edit-h'];
+        // Added 'edit-max_quantity' to the list
+        const inputs = ['edit-id', 'edit-title', 'edit-description', 'edit-x', 'edit-y', 'edit-w', 'edit-h', 'edit-max_quantity'];
+        
         inputs.forEach(id => {
             const el = document.getElementById(id);
             if (!el) return;
-            const key = id.split('-').pop();
+            const key = id.split('-').pop(); // gets 'max_quantity' correctly
             const realKey = (id === 'edit-description') ? 'description' : key;
-            const isNum = ['x','y','w','h'].includes(key);
+            const isNum = ['x','y','w','h', 'max_quantity'].includes(key); // added max_quantity here
             el.addEventListener('input', (e) => update(realKey, e.target.value, isNum));
         });
     }

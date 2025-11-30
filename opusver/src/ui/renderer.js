@@ -42,8 +42,6 @@ export class UIRenderer {
             return;
         }
 
-        console.log(`📄 Loading ${pages.length} page(s)...`);
-
         const loadPromises = pages.map((src, index) => {
             return new Promise((resolve) => {
                 const container = document.createElement('div');
@@ -68,12 +66,10 @@ export class UIRenderer {
                         w: img.naturalWidth,
                         h: img.naturalHeight
                     };
-                    console.log(`✓ Page ${index} loaded: ${img.naturalWidth}x${img.naturalHeight}`);
                     resolve();
                 };
 
                 img.onerror = () => {
-                    console.error(`✗ Failed to load page ${index}: ${src}`);
                     this.pageDimensions[index] = { w: 1920, h: 1080 };
                     resolve();
                 };
@@ -89,52 +85,37 @@ export class UIRenderer {
         const pages = this.engine.config.meta?.pages || [];
         pages.forEach((_, index) => {
             const layer = document.getElementById(`layer-${index}`);
-            if (layer) {
-                layer.innerHTML = '';  
-            }
+            if (layer) layer.innerHTML = '';  
         });
 
         const groups = this.engine.config.groups || [];
-        
-        console.log(`🔘 Rendering buttons for ${groups.length} group(s)...`);
 
         groups.forEach(group => {
             const pageIndex = group.page !== undefined ? group.page : 0;
             const layer = document.getElementById(`layer-${pageIndex}`);
             
-            if (!layer) {
-                console.warn(`Layer not found for page ${pageIndex}`);
-                return;
-            }
-
-            const dim = this.pageDimensions[pageIndex];
-            if (!dim) {
-                console.warn(`Dimensions not found for page ${pageIndex}`);
-                return;
-            }
+            if (!layer || !this.pageDimensions[pageIndex]) return;
 
             // Budget badge
             if (group.rules?.budget && group.coords) {
-                this.renderBudgetBadge(group, layer, dim);
+                this.renderBudgetBadge(group, layer, this.pageDimensions[pageIndex]);
             }
 
             // Group info zone
             if (group.coords) {
-                this.renderGroupZone(group, layer, dim);
+                this.renderGroupZone(group, layer, this.pageDimensions[pageIndex]);
             }
 
             // Items
             if (group.items) {
                 group.items.forEach(item => {
                     if (item.coords) {
-                        this.renderItemButton(item, group, layer, dim);
+                        this.renderItemButton(item, group, layer, this.pageDimensions[pageIndex]);
                     }
                 });
             }
         });
     }
-
-    // ==================== BUDGET BADGE ====================
 
     renderBudgetBadge(group, layer, dim) {
         const badge = document.createElement('div');
@@ -153,26 +134,6 @@ export class UIRenderer {
         this.updateBudgetBadge(group);
     }
 
-    updateBudgetBadge(group) {
-        const badge = document.getElementById(`budget-${group.id}`);
-        if (!badge) return;
-
-        const budgetState = this.engine.state.budgets[group.id];
-        if (!budgetState) {
-            // Initial state before calculation
-            const budget = group.rules.budget;
-            badge.textContent = `${budget.name || budget.currency}: ${budget.amount}/${budget.amount}`;
-            return;
-        }
-
-        const { total, remaining } = budgetState;
-        const budget = group.rules.budget;
-        badge.textContent = `${budget.name || budget.currency}: ${remaining}/${total}`;
-        badge.classList.toggle('empty', remaining === 0);
-    }
-
-    // ==================== GROUP ZONE ====================
-
     renderGroupZone(group, layer, dim) {
         const zone = document.createElement('div');
         zone.className = 'click-zone info-zone';
@@ -180,7 +141,6 @@ export class UIRenderer {
 
         Object.assign(zone.style, CoordHelper.toPercent(group.coords, dim));
 
-        // Text layer for translation mode
         if (group.title || group.description) {
             zone.appendChild(this.createTextLayer(
                 group.title || '',
@@ -191,7 +151,7 @@ export class UIRenderer {
         layer.appendChild(zone);
     }
 
-    // ==================== ITEM BUTTON ====================
+    // ==================== ITEM BUTTON (UPDATED) ====================
 
     renderItemButton(item, group, layer, dim) {
         const button = document.createElement('div');
@@ -210,10 +170,47 @@ export class UIRenderer {
             ));
         }
 
-        // Click handler
-        button.onclick = () => {
-            this.engine.toggle(item.id);
-        };
+        // CHANGED: Multi-select Logic
+        const maxQty = item.max_quantity || 1;
+
+        if (maxQty > 1) {
+            // 1. Add class for styling
+            button.classList.add('multi-select');
+
+            // 2. Create Split Controls (Left -, Right +)
+            const controls = document.createElement('div');
+            controls.className = 'split-controls';
+            
+            const minusBtn = document.createElement('div');
+            minusBtn.className = 'split-btn minus';
+            minusBtn.onclick = (e) => {
+                e.stopPropagation(); // Stop bubbling
+                this.engine.deselect(item.id);
+            };
+
+            const plusBtn = document.createElement('div');
+            plusBtn.className = 'split-btn plus';
+            plusBtn.onclick = (e) => {
+                e.stopPropagation();
+                this.engine.select(item.id);
+            };
+
+            controls.appendChild(minusBtn);
+            controls.appendChild(plusBtn);
+            button.appendChild(controls);
+
+            // 3. Create Quantity Badge
+            const badge = document.createElement('div');
+            badge.className = 'qty-badge';
+            badge.style.display = 'none'; // Hidden by default
+            button.appendChild(badge);
+
+        } else {
+            // Standard Behavior (Toggle)
+            button.onclick = () => {
+                this.engine.toggle(item.id);
+            };
+        }
 
         // Tooltip
         this.tooltip.attach(button, item, group);
@@ -221,29 +218,20 @@ export class UIRenderer {
         layer.appendChild(button);
     }
 
-    // ==================== TEXT LAYER ====================
-
     createTextLayer(title, description) {
         const div = document.createElement('div');
         div.className = 'text-content';
-
-        const cleanDesc = description ? 
-            description.replace(/\n/g, '<br>') : '';
-
+        const cleanDesc = description ? description.replace(/\n/g, '<br>') : '';
         div.innerHTML = `
             ${title ? `<strong>${title}</strong>` : ''}
             ${cleanDesc ? `<span>${cleanDesc}</span>` : ''}
         `;
-
         return div;
     }
-
-    // ==================== POINTS BAR ====================
 
     renderPointsBar() {
         const bar = document.getElementById('points-bar');
         bar.innerHTML = '';
-
         const points = this.engine.config.points || [];
 
         points.forEach(p => {
@@ -258,7 +246,7 @@ export class UIRenderer {
         });
     }
 
-    // ==================== UPDATE UI ====================
+    // ==================== UPDATE UI (UPDATED) ====================
 
     updateUI() {
         this.updateButtons();
@@ -276,12 +264,31 @@ export class UIRenderer {
 
             if (!item || !group) return;
 
-            const isSelected = this.engine.state.selected.has(itemId);
+            // CHANGED: Use Quantity logic
+            const qty = this.engine.state.selected.get(itemId) || 0;
+            const isSelected = qty > 0;
             const canSelect = this.engine.canSelect(item, group);
+            const maxQty = item.max_quantity || 1;
 
             // Update classes
             el.classList.toggle('selected', isSelected);
-            el.classList.toggle('disabled', !canSelect && !isSelected);
+            // Disabled if cannot select AND not already selected (so you can't start, but if selected you can deselect)
+            // For multi: disable ONLY if maxed out AND cannot increment further
+            if (maxQty > 1) {
+                // Multi-select specific states could go here (e.g., disable only "+" side)
+                el.classList.toggle('maxed', qty >= maxQty);
+            } else {
+                el.classList.toggle('disabled', !canSelect && !isSelected);
+            }
+
+            // CHANGED: Update Badge
+            if (maxQty > 1) {
+                const badge = el.querySelector('.qty-badge');
+                if (badge) {
+                    badge.textContent = qty;
+                    badge.style.display = isSelected ? 'flex' : 'none';
+                }
+            }
         });
     }
 
@@ -303,5 +310,22 @@ export class UIRenderer {
                 this.updateBudgetBadge(group);
             }
         }
+    }
+
+    updateBudgetBadge(group) {
+        const badge = document.getElementById(`budget-${group.id}`);
+        if (!badge) return;
+
+        const budgetState = this.engine.state.budgets[group.id];
+        if (!budgetState) {
+            const budget = group.rules.budget;
+            badge.textContent = `${budget.name || budget.currency}: ${budget.amount}/${budget.amount}`;
+            return;
+        }
+
+        const { total, remaining } = budgetState;
+        const budget = group.rules.budget;
+        badge.textContent = `${budget.name || budget.currency}: ${remaining}/${total}`;
+        badge.classList.toggle('empty', remaining === 0);
     }
 }
