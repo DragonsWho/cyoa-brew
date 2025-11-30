@@ -23,10 +23,10 @@ export class ControlPanel {
             textBtn.addEventListener('click', () => this.toggleText());
         }
 
-        // Debug toggle
-        const debugBtn = document.getElementById('debug-toggle');
-        if (debugBtn) {
-            debugBtn.addEventListener('click', () => this.toggleDebug());
+        // Edit/Debug toggle (Renamed)
+        const editBtn = document.getElementById('edit-toggle');
+        if (editBtn) {
+            editBtn.addEventListener('click', () => this.toggleEditMode());
         }
 
         // Reset
@@ -44,30 +44,32 @@ export class ControlPanel {
         if (btn) {
             btn.classList.toggle('active');
         }
-
-        const isActive = document.body.classList.contains('text-mode');
-        console.log(isActive ? '📖 Text mode ON' : '📖 Text mode OFF');
     }
 
-    toggleDebug() {
-        document.body.classList.toggle('debug-mode');
-        const btn = document.getElementById('debug-toggle');
+    toggleEditMode() {
+        // Toggle the main edit class
+        document.body.classList.toggle('edit-mode-active');
+        
+        const btn = document.getElementById('edit-toggle');
         if (btn) {
             btn.classList.toggle('active');
         }
 
-        const isActive = document.body.classList.contains('debug-mode');
+        const isActive = document.body.classList.contains('edit-mode-active');
         
-        // Enable/disable editor
+        // Enable/disable editor logic
         if (isActive) {
             this.editor.enable();
-            // Setup form listeners after UI is created
-            setTimeout(() => this.editor.setupFormListeners(), 100);
+            // Also enable visual debug borders for items by default
+            document.body.classList.add('show-zones'); 
         } else {
             this.editor.disable();
+            document.body.classList.remove('show-zones');
+            document.body.classList.remove('edit-mode-choice');
+            document.body.classList.remove('edit-mode-group');
         }
         
-        console.log(isActive ? '🐞 Debug mode ON' : '🐞 Debug mode OFF');
+        console.log(isActive ? '✏️ Edit mode ON' : '✏️ Edit mode OFF');
     }
 
     reset() {
