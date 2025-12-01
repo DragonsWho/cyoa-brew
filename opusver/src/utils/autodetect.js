@@ -1,6 +1,6 @@
 /**
  * AutoDetect - SAM3 Integration logic
- * Optimized: Downscaling masks before morphology, then rescaling coordinates
+ * Optimized: Smart Downscaling + Sliding Window Morphology
  */
 
 import { Client } from "@gradio/client";
@@ -11,8 +11,10 @@ export class AutoDetector {
         this.statusCallback = null;
         this.debugCallback = null;
         
-        // Максимальный размер для обработки морфологии
-        this.MAX_PROCESSING_SIZE = 1000;
+        // Увеличили лимит до 2000px. 
+        // Это дает высокую точность, а алгоритм "скользящего окна" 
+        // справится с такой скоростью без проблем.
+        this.MAX_PROCESSING_SIZE = 2000;
     }
 
     setStatus(msg) {
@@ -28,11 +30,6 @@ export class AutoDetector {
 
     /**
      * Main function to process image
-     * @param {File} imageFile 
-     * @param {string} prompt 
-     * @param {number} shaveRatio 
-     * @param {string} hfToken 
-     * @param {number} targetDebugIndex - Index to generate debug images for (-1 for none)
      */
     async processImage(imageFile, prompt, shaveRatio, hfToken, targetDebugIndex = -1) {
         if (!this.client) {
@@ -61,8 +58,6 @@ export class AutoDetector {
                 return [];
             }
 
-            this.setStatus(`Processing ${rawAnnotations.length} masks (Optimized Morphology)...`);
-
             // Подготовка битмапа оригинала для размеров
             const imgBitmap = await createImageBitmap(imageFile);
             const originalW = imgBitmap.width;
@@ -73,18 +68,17 @@ export class AutoDetector {
             const processW = Math.round(originalW * scale);
             const processH = Math.round(originalH * scale);
 
-            this.setStatus(`Original: ${originalW}×${originalH}, Processing at: ${processW}×${processH} (scale: ${scale.toFixed(3)})`);
+            this.setStatus(`Processing ${rawAnnotations.length} masks. Scale: ${scale.toFixed(3)} (${processW}x${processH})`);
 
             const detectedItems = [];
 
-            // Используем requestIdleCallback или setTimeout для разбивки работы
             for (let i = 0; i < rawAnnotations.length; i++) {
                 this.setStatus(`Processing mask ${i+1}/${rawAnnotations.length}...`);
                 
                 const isDebugItem = (targetDebugIndex >= 0 && i === targetDebugIndex);
 
-                // Даём браузеру "вздохнуть" каждые 5 масок
-                if (i > 0 && i % 5 === 0) {
+                // Даём браузеру "вздохнуть" каждые 3 маски, чтобы интерфейс не фризился
+                if (i > 0 && i % 3 === 0) {
                     await this.yieldToMain();
                 }
 
@@ -131,9 +125,6 @@ export class AutoDetector {
         }
     }
 
-    /**
-     * Вычисляет масштаб для уменьшения изображения
-     */
     calculateScale(w, h) {
         const maxDim = Math.max(w, h);
         if (maxDim <= this.MAX_PROCESSING_SIZE) {
@@ -143,7 +134,7 @@ export class AutoDetector {
     }
 
     /**
-     * Позволяет браузеру обработать другие события
+     * Позволяет браузеру обработать UI события, чтобы не было фризов
      */
     yieldToMain() {
         return new Promise(resolve => {
@@ -155,9 +146,6 @@ export class AutoDetector {
         });
     }
 
-    /**
-     * Оптимизированная обработка маски с уменьшением размера
-     */
     async processMaskMorphologyOptimized(maskUrl, originalW, originalH, processW, processH, scale, shaveRatio, debugName) {
         return new Promise((resolve) => {
             const img = new Image();
@@ -171,7 +159,7 @@ export class AutoDetector {
                 canvas.height = processH;
                 const ctx = canvas.getContext('2d', { willReadFrequently: true });
                 
-                // Рисуем маску сразу в уменьшенном размере
+                // Рисуем маску
                 ctx.drawImage(img, 0, 0, processW, processH);
 
                 if (debugName) {
@@ -182,16 +170,14 @@ export class AutoDetector {
                 const imgData = ctx.getImageData(0, 0, processW, processH);
                 let binary = new Uint8Array(processW * processH);
                 
-                // Threshold (Бинаризация) - оптимизированный цикл
                 const data = imgData.data;
                 const len = binary.length;
                 for (let k = 0; k < len; k++) {
-                    binary[k] = data[k << 2] > 128 ? 1 : 0; // k << 2 = k * 4
+                    binary[k] = data[k << 2] > 128 ? 1 : 0; 
                 }
 
                 // ==========================================
                 // STEP 3: MORPH OPEN (Shaving)
-                // Размер ядра пропорционально уменьшен
                 // ==========================================
                 
                 let shaveSize = Math.floor(processW * shaveRatio);
@@ -208,10 +194,8 @@ export class AutoDetector {
 
                 // ==========================================
                 // STEP 4: MORPH CLOSE (Closing holes)
-                // Размер ядра также масштабируем
                 // ==========================================
-                let closeSize = Math.round(15 * scale);
-                if (closeSize < 3) closeSize = 3;
+                let closeSize = Math.max(3, Math.round(15 * scale)); 
                 if (closeSize % 2 === 0) closeSize++;
                 
                 let dilated2 = this.morphDilateOptimized(shaved, processW, processH, closeSize);
@@ -252,8 +236,6 @@ export class AutoDetector {
         });
     }
 
-    // --- Helpers ---
-
     drawBinaryToCanvas(binary, ctx, w, h) {
         const output = ctx.createImageData(w, h);
         const outData = output.data;
@@ -261,7 +243,7 @@ export class AutoDetector {
         
         for (let i = 0; i < len; i++) {
             const val = binary[i] === 1 ? 255 : 0;
-            const idx = i << 2; // i * 4
+            const idx = i << 2; 
             outData[idx] = val;
             outData[idx + 1] = val;
             outData[idx + 2] = val;
@@ -273,8 +255,7 @@ export class AutoDetector {
     findBoundingBoxOptimized(binary, w, h) {
         let minX = w, minY = h, maxX = -1, maxY = -1;
         
-        // Оптимизация: ищем границы более эффективно
-        // Сначала находим minY и maxY
+        // Оптимизированный поиск границ
         let foundFirst = false;
         for (let y = 0; y < h && !foundFirst; y++) {
             const rowStart = y * w;
@@ -300,7 +281,6 @@ export class AutoDetector {
             if (maxY !== -1) break;
         }
         
-        // Теперь ищем minX и maxX только в найденном диапазоне Y
         for (let y = minY; y <= maxY; y++) {
             const rowStart = y * w;
             for (let x = 0; x < w; x++) {
@@ -322,37 +302,36 @@ export class AutoDetector {
     }
 
     /**
-     * Оптимизированная эрозия с использованием "скользящей суммы"
+     * Супер-быстрая эрозия (Sliding Window)
+     * O(N) вместо O(N*K)
      */
     morphErodeOptimized(input, w, h, kSize) {
-        const r = kSize >> 1; // kSize / 2
+        const r = kSize >> 1; 
         const temp = new Uint8Array(w * h);
         const output = new Uint8Array(w * h);
 
-        // Pass 1: Horizontal (скользящее окно)
+        // Pass 1: Horizontal
         for (let y = 0; y < h; y++) {
             const rowStart = y * w;
             let count = 0;
             
-            // Инициализация окна
+            // Заполняем начальное окно
             for (let x = 0; x < r; x++) {
                 count += input[rowStart + x];
             }
             
             for (let x = 0; x < w; x++) {
-                // Добавляем правый край
                 if (x + r < w) {
                     count += input[rowStart + x + r];
                 }
                 
-                // Проверяем границы
                 const left = x - r;
                 const right = Math.min(x + r, w - 1);
                 const windowSize = right - Math.max(0, left) + 1;
                 
+                // Если сумма в окне равна размеру окна, значит все пиксели = 1
                 temp[rowStart + x] = (count === windowSize) ? 1 : 0;
                 
-                // Убираем левый край
                 if (left >= 0) {
                     count -= input[rowStart + left];
                 }
@@ -363,36 +342,31 @@ export class AutoDetector {
         for (let x = 0; x < w; x++) {
             let count = 0;
             
-            // Инициализация окна
             for (let y = 0; y < r; y++) {
                 count += temp[y * w + x];
             }
             
             for (let y = 0; y < h; y++) {
-                // Добавляем нижний край
                 if (y + r < h) {
                     count += temp[(y + r) * w + x];
                 }
                 
-                // Проверяем границы
                 const top = y - r;
                 const bottom = Math.min(y + r, h - 1);
                 const windowSize = bottom - Math.max(0, top) + 1;
                 
                 output[y * w + x] = (count === windowSize) ? 1 : 0;
                 
-                // Убираем верхний край
                 if (top >= 0) {
                     count -= temp[top * w + x];
                 }
             }
         }
-        
         return output;
     }
 
     /**
-     * Оптимизированная дилатация с использованием "скользящей суммы"
+     * Супер-быстрая дилатация (Sliding Window)
      */
     morphDilateOptimized(input, w, h, kSize) {
         const r = kSize >> 1;
@@ -413,6 +387,7 @@ export class AutoDetector {
                     count += input[rowStart + x + r];
                 }
                 
+                // Если сумма > 0, значит хотя бы один пиксель = 1
                 temp[rowStart + x] = (count > 0) ? 1 : 0;
                 
                 const left = x - r;
@@ -443,7 +418,6 @@ export class AutoDetector {
                 }
             }
         }
-        
         return output;
     }
 }
