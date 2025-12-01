@@ -1,16 +1,17 @@
-
 /**
  * CYOA Editor - Visual editing mode
  */
 
 import { CoordHelper } from '../utils/coords.js';
 import { RuleBuilder } from './rule-builder.js';
+import { AutoDetector } from '../utils/autodetect.js';
 
 export class CYOAEditor {
     constructor(engine, renderer) {
         this.engine = engine;
         this.renderer = renderer;
         this.ruleBuilder = new RuleBuilder(engine);
+        this.autoDetector = new AutoDetector(); 
         
         this.selectedItem = null;
         this.selectedGroup = null;
@@ -30,6 +31,8 @@ export class CYOAEditor {
         this.dragContext = null;
         
         this.enabled = false;
+        this.triggerLabelCheck = null;
+
         console.log('✏️ Editor initialized');
     }
 
@@ -78,7 +81,6 @@ export class CYOAEditor {
                     </div>
 
                     <div id="choice-props" style="display:none;">
-                        <!-- Main Properties -->
                         <div class="editor-section">
                             <div class="row-2">
                                 <div class="input-group">
@@ -93,7 +95,7 @@ export class CYOAEditor {
                             
                             <div class="input-group">
                                 <input type="number" id="edit-max_quantity" min="1" placeholder="1">
-                                <span class="input-label">Max Qty (1 = Toggle)</span>
+                                <span class="input-label">Max Qty</span>
                             </div>
 
                             <div class="input-group">
@@ -101,10 +103,9 @@ export class CYOAEditor {
                                 <span class="input-label">Title</span>
                             </div>
 
-                            <!-- NEW: Tags Input -->
                             <div class="input-group">
-                                <input type="text" id="edit-tags" placeholder="magic, fire, weapon">
-                                <span class="input-label">Tags (comma sep.)</span>
+                                <input type="text" id="edit-tags" placeholder="magic, fire">
+                                <span class="input-label">Tags</span>
                             </div>
 
                             <div class="input-group">
@@ -113,7 +114,6 @@ export class CYOAEditor {
                             </div>
                         </div>
 
-                        <!-- Position & Size -->
                         <div class="editor-section">
                             <div class="accordion-header" onclick="CYOA.editor.toggleAccordion(this)">
                                 Position & Size
@@ -128,10 +128,8 @@ export class CYOAEditor {
                             </div>
                         </div>
                         
-                        <!-- Rule Builder -->
                         <div id="rule-builder-container"></div>
 
-                        <!-- RAW JSON -->
                         <div class="editor-section">
                             <div class="accordion-header collapsed" onclick="CYOA.editor.toggleAccordion(this)">
                                 🔧 Raw JSON
@@ -141,7 +139,6 @@ export class CYOAEditor {
                             </div>
                         </div>
                         
-                        <!-- Actions Footer -->
                         <div class="editor-section" style="margin-top: 10px; border-top: 1px solid #222;">
                             <div class="row-buttons">
                                 <button class="action-btn btn-delete" onclick="CYOA.editor.deleteSelectedItem()">🗑️ Delete</button>
@@ -187,18 +184,15 @@ export class CYOAEditor {
                             </div>
                         </div>
                         
-                        <!-- Group Rules (JSON) -->
                          <div class="editor-section">
                              <div class="accordion-header" onclick="CYOA.editor.toggleAccordion(this)">
                                  📜 Group Rules (JSON)
                              </div>
                              <div class="accordion-content">
                                  <textarea id="group-rules-json" class="code-editor" style="height:150px;"></textarea>
-                                 <div style="font-size:0.7rem; color:#666;">Format: {"max_choices": 1, "budget": {...}}</div>
                              </div>
                          </div>
 
-                        <!-- Actions Footer -->
                         <div class="editor-section" style="margin-top: 10px; border-top: 1px solid #222;">
                             <div class="row-buttons">
                                 <button class="action-btn btn-delete" onclick="CYOA.editor.deleteSelectedGroup()">🗑️ Delete Group</button>
@@ -210,10 +204,87 @@ export class CYOAEditor {
 
                 <!-- TAB 3: SETTINGS -->
                 <div id="tab-content-settings" class="tab-content" style="display:none;">
+                    
+                    <!-- SAM3 DETECTOR -->
+                    <div class="editor-section">
+                        <div class="accordion-header" onclick="CYOA.editor.toggleAccordion(this)">
+                            🤖 Auto-Detect (SAM3)
+                        </div>
+                        <div class="accordion-content">
+                            
+                            <!-- Help Accordion -->
+                            <div style="margin-bottom:10px; border:1px solid #333; border-radius:4px;">
+                                <div style="padding:5px 10px; background:#222; font-size:0.8rem; cursor:pointer;" onclick="this.nextElementSibling.style.display = this.nextElementSibling.style.display==='none'?'block':'none'">
+                                    ❓ How to get HF Token (Free)
+                                </div>
+                                <div style="display:none; padding:10px; font-size:0.75rem; color:#aaa; background:#1a1a1a;">
+                                    1. Register at <a href="https://huggingface.co/join" target="_blank" style="color:#4CAF50;">Hugging Face</a> (Free, No Credit Card).<br>
+                                    2. Verify email.<br>
+                                    3. Go to <a href="https://huggingface.co/settings/tokens" target="_blank" style="color:#4CAF50;">Settings > Tokens</a>.<br>
+                                    4. Create new token (Type: <b>Read</b>).<br>
+                                    5. Copy token (starts with hf_...).<br><br>
+                                    <span style="color:#ffd700;">⚠️ Note: Free tier can be slow. Daily limit: ~15-20 images.</span>
+                                </div>
+                            </div>
+
+                            <div class="input-group">
+                                <input type="password" id="sam-token" placeholder="hf_...">
+                                <span class="input-label">Hugging Face Token</span>
+                            </div>
+
+                            <div class="editor-section" style="border:none; padding:0;">
+                                <label style="font-size:0.8rem; color:#888;">Working Image (Resets current items!)</label>
+                                <input type="file" id="sam-image-upload" accept="image/*" style="width:100%; margin-top:5px; font-size:0.8rem;">
+                            </div>
+
+                            <div class="input-group" style="margin-top:10px;">
+                                <input type="text" id="sam-prompt" value="content block, game card, description panel">
+                                <span class="input-label">Search Prompt</span>
+                            </div>
+
+                            <div style="margin-top:10px;">
+                                <div style="display:flex; justify-content:space-between; font-size:0.8rem; color:#888;">
+                                    <span>Shave (Tightness)</span>
+                                    <span id="shave-val">2.0%</span>
+                                </div>
+                                <input type="range" id="sam-shave" min="0.005" max="0.05" step="0.005" value="0.02" style="width:100%;" 
+                                       oninput="document.getElementById('shave-val').textContent = (this.value*100).toFixed(1)+'%'">
+                            </div>
+
+                            <!-- Debug Index Input -->
+                            <div class="input-group" style="margin-top:10px;">
+                                <input type="number" id="sam-debug-index" placeholder="None">
+                                <span class="input-label">Debug Item Index (Optional)</span>
+                            </div>
+
+                            <button id="btn-run-sam" class="full-width-btn primary-btn" style="margin-top:15px; background: linear-gradient(45deg, #4b6cb7, #182848);">
+                                🚀 Run Auto-Detect
+                            </button>
+                            
+                            <div id="sam-status" style="margin-top:10px; font-size:0.75rem; color:#ffd700; min-height:1.2em;"></div>
+
+                            <!-- DEBUG GALLERY -->
+                            <div class="editor-section" style="margin-top:15px; border:1px solid #333; padding:0;">
+                                <div class="accordion-header collapsed" onclick="CYOA.editor.toggleAccordion(this)" style="padding:5px 10px; font-size:0.8rem;">
+                                    🐞 Debug Gallery
+                                </div>
+                                <div class="accordion-content collapsed" id="sam-debug-gallery" style="background:#000; padding:10px;">
+                                    <div style="font-size:0.7rem; color:#666;">Images will appear here...</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- File Operations -->
                     <div class="editor-section">
                         <div class="accordion-header">File Operations</div>
                         <div class="accordion-content" style="display:block">
-                            <button class="full-width-btn primary-btn" onclick="CYOA.editor.exportConfig()">💾 Save JSON</button>
+                            <button class="full-width-btn primary-btn" onclick="CYOA.editor.exportConfig()">
+                                💾 Save JSON
+                            </button>
+                            <button class="full-width-btn" style="margin-top:10px; background:#444;" onclick="CYOA.editor.exportZip()">
+                                📦 Save All (Zip)
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -228,6 +299,7 @@ export class CYOAEditor {
         this.setupGroupListeners();
         this.setupJsonListeners();
         this.setupLabelAutoHiding();
+        this.setupSamListeners();
     }
 
     switchTab(tabName) {
@@ -297,7 +369,7 @@ export class CYOAEditor {
         };
 
         const attach = () => {
-             const inputs = document.querySelectorAll('#editor-sidebar input[type="text"], #editor-sidebar input[type="number"], #editor-sidebar textarea:not(.code-editor)');
+             const inputs = document.querySelectorAll('#editor-sidebar input[type="text"], #editor-sidebar input[type="number"], #editor-sidebar input[type="password"], #editor-sidebar textarea:not(.code-editor)');
              inputs.forEach(input => {
                 input.removeEventListener('input', input._labelHandler);
                 input._labelHandler = () => checkCollision(input);
@@ -309,74 +381,175 @@ export class CYOAEditor {
         setTimeout(attach, 500); 
     }
 
+    setupSamListeners() {
+        const fileInput = document.getElementById('sam-image-upload');
+        if (fileInput) {
+            fileInput.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (evt) => {
+                        const dataUrl = evt.target.result;
+                        // 1. Сохраняем DataURL прямо в конфиг.
+                        // Это предотвращает ошибку 404 memory_blob при renderAll()
+                        this.engine.config.meta.pages[0] = dataUrl;
+
+                        // 2. Сбрасываем группы и валюты
+                        this.engine.config.groups = [];
+                        this.engine.config.points = [{id:"points", name:"Points", start:0}];
+                        
+                        // 3. Сбрасываем движок
+                        this.engine.reset();
+                        
+                        // 4. Перерисовываем UI (теперь renderPages возьмет dataUrl из конфига)
+                        this.renderer.renderAll().then(() => {
+                             // Обновляем dimensions для корректной работы координат
+                             const img = document.querySelector('#page-0 .page-image');
+                             if(img) {
+                                 this.renderer.pageDimensions[0] = { w: img.naturalWidth, h: img.naturalHeight };
+                             }
+                        });
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+        }
+
+        const runBtn = document.getElementById('btn-run-sam');
+        if (runBtn) {
+            runBtn.addEventListener('click', () => this.runSamDetection());
+        }
+    }
+
+    async runSamDetection() {
+        const fileInput = document.getElementById('sam-image-upload');
+        const tokenInput = document.getElementById('sam-token');
+        const promptInput = document.getElementById('sam-prompt');
+        const shaveInput = document.getElementById('sam-shave');
+        const debugIdxInput = document.getElementById('sam-debug-index');
+        const statusEl = document.getElementById('sam-status');
+        const galleryEl = document.getElementById('sam-debug-gallery');
+
+        if (!fileInput.files[0]) { alert("Please upload an image first!"); return; }
+        if (!tokenInput.value) { alert("Please enter your Hugging Face Token!"); return; }
+
+        const btn = document.getElementById('btn-run-sam');
+        btn.disabled = true;
+        btn.style.opacity = 0.5;
+
+        galleryEl.innerHTML = '';
+        
+        let debugIdx = -1;
+        if (debugIdxInput.value) {
+            debugIdx = parseInt(debugIdxInput.value) - 1; 
+        }
+
+        this.autoDetector.statusCallback = (msg) => { statusEl.textContent = msg; };
+
+        this.autoDetector.debugCallback = (title, dataUrl) => {
+            const wrapper = document.createElement('div');
+            wrapper.style.marginBottom = "15px";
+            const label = document.createElement('div');
+            label.textContent = title;
+            label.style.color = "#4CAF50";
+            label.style.fontSize = "0.75rem";
+            label.style.marginBottom = "5px";
+            const img = document.createElement('img');
+            img.src = dataUrl;
+            img.style.maxWidth = "100%";
+            img.style.border = "1px solid #444";
+            img.style.cursor = "pointer";
+            img.onclick = () => {
+                const w = window.open("");
+                w.document.write(`<img src="${dataUrl}" style="border:1px solid red;">`);
+            };
+            wrapper.appendChild(label);
+            wrapper.appendChild(img);
+            galleryEl.appendChild(wrapper);
+            const accHeader = galleryEl.previousElementSibling;
+            if (accHeader && accHeader.classList.contains('collapsed')) CYOA.editor.toggleAccordion(accHeader);
+        };
+
+        const detectedItems = await this.autoDetector.processImage(
+            fileInput.files[0],
+            promptInput.value,
+            parseFloat(shaveInput.value),
+            tokenInput.value,
+            debugIdx
+        );
+
+        if (detectedItems.length > 0) {
+            let group = this.engine.config.groups[0];
+            if (!group) {
+                group = {
+                    id: "generated_group",
+                    title: "Detected Items",
+                    page: 0,
+                    coords: { x: 50, y: 50, w: 500, h: 200 },
+                    items: []
+                };
+                this.engine.config.groups.push(group);
+            }
+
+            group.items = [...group.items, ...detectedItems];
+            
+            this.engine.recalculate();
+            this.renderer.renderButtons();
+            
+            statusEl.textContent = `Done! Added ${detectedItems.length} items.`;
+            this.switchTab('choice');
+        } else {
+             statusEl.textContent = "No items found.";
+        }
+
+        btn.disabled = false;
+        btn.style.opacity = 1;
+    }
+
+    // ... Event listeners (Mouse/Keyboard) - without changes ...
     attachEventListeners() {
         document.addEventListener('mousedown', this.handleMouseDown.bind(this));
         document.addEventListener('mousemove', this.handleMouseMove.bind(this));
         document.addEventListener('mouseup', this.handleMouseUp.bind(this));
         document.addEventListener('keydown', this.handleKeyDown.bind(this));
     }
-
     removeEventListeners() {}
 
     handleMouseDown(e) {
         if (!this.enabled) return;
         if (e.target.closest('#editor-sidebar')) return;
-
         let target = null;
         let objectToEdit = null;
-
         if (this.activeTab === 'group') {
             target = e.target.closest('.info-zone');
             if (target) {
                 const gid = target.id.replace('group-', '');
                 const group = this.engine.config.groups.find(g => g.id === gid);
-                if (group) {
-                    this.selectGroup(group);
-                    objectToEdit = group;
-                }
+                if (group) { this.selectGroup(group); objectToEdit = group; }
             }
         } else {
             target = e.target.closest('.item-zone');
             if (target) {
                 const itemId = target.dataset.itemId;
                 const item = this.engine.findItem(itemId);
-                if (item) {
-                    this.selectChoice(item, target);
-                    objectToEdit = item;
-                    this.selectedGroup = this.engine.findGroupForItem(item.id);
-                }
-            } else if(this.activeTab === 'choice') {
-                this.deselectChoice();
-            }
+                if (item) { this.selectChoice(item, target); objectToEdit = item; this.selectedGroup = this.engine.findGroupForItem(item.id); }
+            } else if(this.activeTab === 'choice') { this.deselectChoice(); }
         }
-
         if (objectToEdit && target) {
             target.classList.add('dragging');
             const rect = target.getBoundingClientRect();
-            
-            if (e.clientX >= rect.right - this.handleSize && e.clientY >= rect.bottom - this.handleSize) {
-                this.isResizing = true;
-            } else {
-                this.isDragging = true;
-            }
-            
+            if (e.clientX >= rect.right - this.handleSize && e.clientY >= rect.bottom - this.handleSize) { this.isResizing = true; } 
+            else { this.isDragging = true; }
             this.dragStart = { x: e.clientX, y: e.clientY };
             if (!objectToEdit.coords) objectToEdit.coords = {x:0,y:0,w:100,h:100};
             this.initialRect = { ...objectToEdit.coords };
-            
             const group = (objectToEdit.items) ? objectToEdit : this.engine.findGroupForItem(objectToEdit.id);
             const pageIndex = group?.page || 0;
             const dim = this.renderer.pageDimensions[pageIndex];
             const container = document.querySelector(`#page-${pageIndex}`);
-            
             if (dim && container) {
                 const containerRect = container.getBoundingClientRect();
-                this.dragContext = {
-                    scaleX: dim.w / containerRect.width,
-                    scaleY: dim.h / containerRect.height,
-                    dim: dim,
-                    targetObj: objectToEdit
-                };
+                this.dragContext = { scaleX: dim.w / containerRect.width, scaleY: dim.h / containerRect.height, dim: dim, targetObj: objectToEdit };
             }
             e.preventDefault();
         }
@@ -385,11 +558,9 @@ export class CYOAEditor {
     handleMouseMove(e) {
         if (!this.enabled || !this.dragContext) return;
         if (!this.isDragging && !this.isResizing) return;
-        
         const dx = e.clientX - this.dragStart.x;
         const dy = e.clientY - this.dragStart.y;
         const { scaleX, scaleY, dim, targetObj } = this.dragContext;
-        
         if (this.isDragging) {
             targetObj.coords.x = Math.round(this.initialRect.x + dx * scaleX);
             targetObj.coords.y = Math.round(this.initialRect.y + dy * scaleY);
@@ -397,24 +568,15 @@ export class CYOAEditor {
             targetObj.coords.w = Math.max(20, Math.round(this.initialRect.w + dx * scaleX));
             targetObj.coords.h = Math.max(20, Math.round(this.initialRect.h + dy * scaleY));
         }
-        
         let domId = targetObj.items ? `group-${targetObj.id}` : `btn-${targetObj.id}`;
         const element = document.getElementById(domId);
-        
-        if (element) {
-            const style = CoordHelper.toPercent(targetObj.coords, dim);
-            Object.assign(element.style, style);
-        }
-        
-        if (this.activeTab === 'group') this.updateGroupInputs();
-        else this.updateChoiceInputs();
+        if (element) { const style = CoordHelper.toPercent(targetObj.coords, dim); Object.assign(element.style, style); }
+        if (this.activeTab === 'group') this.updateGroupInputs(); else this.updateChoiceInputs();
     }
 
     handleMouseUp() {
         document.querySelectorAll('.dragging').forEach(el => el.classList.remove('dragging'));
-        this.isDragging = false;
-        this.isResizing = false;
-        this.dragContext = null;
+        this.isDragging = false; this.isResizing = false; this.dragContext = null;
     }
 
     handleKeyDown(e) {
@@ -427,14 +589,13 @@ export class CYOAEditor {
         }
     }
 
+    // ... Selection methods (Same as before) ...
     selectChoice(item, element) {
         this.selectedItem = item;
         document.querySelectorAll('.editor-selected').forEach(el => el.classList.remove('editor-selected'));
         if(element) element.classList.add('editor-selected');
-        
         document.getElementById('choice-empty-state').style.display = 'none';
         document.getElementById('choice-props').style.display = 'block';
-        
         this.updateChoiceInputs();
         this.ruleBuilder.loadItem(item, this.engine.findGroupForItem(item.id));
     }
@@ -451,10 +612,8 @@ export class CYOAEditor {
         document.querySelectorAll('.info-zone.editor-selected').forEach(el => el.classList.remove('editor-selected'));
         const el = document.getElementById(`group-${group.id}`);
         if(el) el.classList.add('editor-selected');
-
         document.getElementById('group-empty-state').style.display = 'none';
         document.getElementById('group-props').style.display = 'block';
-        
         this.updateGroupInputs();
     }
 
@@ -462,20 +621,13 @@ export class CYOAEditor {
         if (!this.selectedItem) return;
         const item = this.selectedItem;
         const group = this.engine.findGroupForItem(item.id);
-
         document.getElementById('edit-id').value = item.id || '';
         document.getElementById('edit-parent-group').value = group ? group.id : '?';
         document.getElementById('edit-max_quantity').value = item.max_quantity || 1;
         document.getElementById('edit-title').value = item.title || '';
         document.getElementById('edit-description').value = item.description || '';
-        
-        // Populate Tags
         document.getElementById('edit-tags').value = (item.tags || []).join(', ');
-        
-        ['x','y','w','h'].forEach(k => {
-            document.getElementById(`edit-${k}`).value = Math.round(item.coords?.[k] || 0);
-        });
-
+        ['x','y','w','h'].forEach(k => { document.getElementById(`edit-${k}`).value = Math.round(item.coords?.[k] || 0); });
         this.updateCodePreview();
         if (this.triggerLabelCheck) this.triggerLabelCheck();
     }
@@ -483,15 +635,10 @@ export class CYOAEditor {
     updateGroupInputs() {
         if (!this.selectedGroup) return;
         const g = this.selectedGroup;
-
         document.getElementById('group-id').value = g.id || '';
         document.getElementById('group-title').value = g.title || '';
         document.getElementById('group-description').value = g.description || '';
-        
-        ['x','y','w','h'].forEach(k => {
-            document.getElementById(`group-${k}`).value = Math.round(g.coords?.[k] || 0);
-        });
-
+        ['x','y','w','h'].forEach(k => { document.getElementById(`group-${k}`).value = Math.round(g.coords?.[k] || 0); });
         this.updateCodePreview();
         if (this.triggerLabelCheck) this.triggerLabelCheck();
     }
@@ -499,59 +646,33 @@ export class CYOAEditor {
     updateCodePreview() {
         if (this.selectedItem) {
             const el = document.getElementById('edit-raw-json');
-            if (el && document.activeElement !== el) {
-                el.value = JSON.stringify(this.selectedItem, null, 2);
-            }
+            if (el && document.activeElement !== el) el.value = JSON.stringify(this.selectedItem, null, 2);
         }
         if (this.selectedGroup) {
             const rulesEl = document.getElementById('group-rules-json');
-            if (rulesEl && document.activeElement !== rulesEl) {
-                rulesEl.value = JSON.stringify(this.selectedGroup.rules || {}, null, 2);
-            }
+            if (rulesEl && document.activeElement !== rulesEl) rulesEl.value = JSON.stringify(this.selectedGroup.rules || {}, null, 2);
         }
     }
 
+    // ... Listeners Setup (Same as before) ...
     setupChoiceListeners() {
         const update = (key, val, isNum) => {
             if (!this.selectedItem) return;
             if (isNum) val = parseInt(val) || 0;
-            
-            if (['x','y','w','h'].includes(key)) {
-                if (!this.selectedItem.coords) this.selectedItem.coords = {};
-                this.selectedItem.coords[key] = val;
-            } else if (key === 'tags') {
-                // Parse CSV to Array
-                this.selectedItem.tags = val.split(',').map(t => t.trim()).filter(t => t);
-            } else {
-                this.selectedItem[key] = val;
-            }
-
-            // Special handling for max_quantity to re-render structure
+            if (['x','y','w','h'].includes(key)) { if (!this.selectedItem.coords) this.selectedItem.coords = {}; this.selectedItem.coords[key] = val; } 
+            else if (key === 'tags') { this.selectedItem.tags = val.split(',').map(t => t.trim()).filter(t => t); } 
+            else { this.selectedItem[key] = val; }
             if (key === 'max_quantity') {
-                 if (val <= 1) delete this.selectedItem.max_quantity; // clean up JSON
-                 // Re-render to show/hide split controls
+                 if (val <= 1) delete this.selectedItem.max_quantity;
                  this.renderer.renderButtons();
-                 // Re-select to keep focus outline
-                 setTimeout(() => {
-                    const el = document.getElementById(`btn-${this.selectedItem.id}`);
-                    if (el) el.classList.add('editor-selected');
-                 }, 0);
-            } else {
-                // Just update positions/styles for speed
-                this.renderer.renderButtons();
-            }
-            
+                 setTimeout(() => { const el = document.getElementById(`btn-${this.selectedItem.id}`); if (el) el.classList.add('editor-selected'); }, 0);
+            } else { this.renderer.renderButtons(); }
             this.updateCodePreview();
         };
-
         const inputs = ['edit-id', 'edit-title', 'edit-description', 'edit-tags', 'edit-x', 'edit-y', 'edit-w', 'edit-h', 'edit-max_quantity'];
-        
         inputs.forEach(id => {
-            const el = document.getElementById(id);
-            if (!el) return;
-            const key = id.split('-').pop(); 
-            const realKey = (id === 'edit-description') ? 'description' : key;
-            const isNum = ['x','y','w','h', 'max_quantity'].includes(key); 
+            const el = document.getElementById(id); if (!el) return;
+            const key = id.split('-').pop(); const realKey = (id === 'edit-description') ? 'description' : key; const isNum = ['x','y','w','h', 'max_quantity'].includes(key); 
             el.addEventListener('input', (e) => update(realKey, e.target.value, isNum));
         });
     }
@@ -560,23 +681,15 @@ export class CYOAEditor {
         const update = (key, val, isNum) => {
             if (!this.selectedGroup) return;
             if (isNum) val = parseInt(val) || 0;
-            if (['x','y','w','h'].includes(key)) {
-                if (!this.selectedGroup.coords) this.selectedGroup.coords = {};
-                this.selectedGroup.coords[key] = val;
-            } else {
-                this.selectedGroup[key] = val;
-            }
+            if (['x','y','w','h'].includes(key)) { if (!this.selectedGroup.coords) this.selectedGroup.coords = {}; this.selectedGroup.coords[key] = val; } 
+            else { this.selectedGroup[key] = val; }
             this.renderer.renderButtons();
             this.updateCodePreview();
         };
-
         const inputs = ['group-id', 'group-title', 'group-description', 'group-x', 'group-y', 'group-w', 'group-h'];
         inputs.forEach(id => {
-            const el = document.getElementById(id);
-            if (!el) return;
-            const key = id.split('-').pop();
-            const realKey = (id === 'group-description') ? 'description' : key;
-            const isNum = ['x','y','w','h'].includes(key);
+            const el = document.getElementById(id); if (!el) return;
+            const key = id.split('-').pop(); const realKey = (id === 'group-description') ? 'description' : key; const isNum = ['x','y','w','h'].includes(key);
             el.addEventListener('input', (e) => update(realKey, e.target.value, isNum));
         });
     }
@@ -585,111 +698,87 @@ export class CYOAEditor {
         const choiceJson = document.getElementById('edit-raw-json');
         if (choiceJson) {
             choiceJson.addEventListener('change', (e) => {
-                try {
-                    const data = JSON.parse(e.target.value);
-                    if (this.selectedItem) {
-                        Object.assign(this.selectedItem, data);
-                        this.renderer.renderButtons();
-                        this.updateChoiceInputs();
-                        this.ruleBuilder.loadItem(this.selectedItem, this.selectedGroup);
-                    }
-                } catch(err) { console.error("JSON Error", err); }
+                try { const data = JSON.parse(e.target.value); if (this.selectedItem) { Object.assign(this.selectedItem, data); this.renderer.renderButtons(); this.updateChoiceInputs(); this.ruleBuilder.loadItem(this.selectedItem, this.selectedGroup); } } catch(err) { console.error("JSON Error", err); }
             });
         }
-
         const rulesJson = document.getElementById('group-rules-json');
         if (rulesJson) {
             rulesJson.addEventListener('change', (e) => {
-                try {
-                    const data = JSON.parse(e.target.value);
-                    if (this.selectedGroup) {
-                        this.selectedGroup.rules = data;
-                        this.renderer.renderButtons(); 
-                        this.engine.recalculate(); 
-                    }
-                } catch(err) { console.error("Rules JSON Error", err); }
+                try { const data = JSON.parse(e.target.value); if (this.selectedGroup) { this.selectedGroup.rules = data; this.renderer.renderButtons(); this.engine.recalculate(); } } catch(err) { console.error("Rules JSON Error", err); }
             });
         }
     }
 
+    // ... Actions (Delete, Add) ...
     deleteSelectedItem() {
-        if (!this.selectedItem) return;
-        if (!confirm('Delete item?')) return;
+        if (!this.selectedItem) return; if (!confirm('Delete item?')) return;
         const group = this.engine.findGroupForItem(this.selectedItem.id);
-        if (group) {
-            const idx = group.items.indexOf(this.selectedItem);
-            if (idx > -1) group.items.splice(idx, 1);
-        }
-        this.deselectChoice();
-        this.renderer.renderButtons();
+        if (group) { const idx = group.items.indexOf(this.selectedItem); if (idx > -1) group.items.splice(idx, 1); }
+        this.deselectChoice(); this.renderer.renderButtons();
     }
-
     addNewItem() {
-        let group = this.selectedGroup || this.engine.config.groups[0];
-        if (!group) return;
-        const newItem = {
-            id: `item_${Date.now()}`,
-            title: 'New Item',
-            description: '',
-            coords: { x: 50, y: 50, w: 200, h: 100 },
-            cost: []
-        };
-        group.items.push(newItem);
-        this.renderer.renderButtons();
-        setTimeout(() => {
-            const el = document.getElementById(`btn-${newItem.id}`);
-            if (el) this.selectChoice(newItem, el);
-        }, 50);
+        let group = this.selectedGroup || this.engine.config.groups[0]; if (!group) return;
+        const newItem = { id: `item_${Date.now()}`, title: 'New Item', description: '', coords: { x: 50, y: 50, w: 200, h: 100 }, cost: [] };
+        group.items.push(newItem); this.renderer.renderButtons();
+        setTimeout(() => { const el = document.getElementById(`btn-${newItem.id}`); if (el) this.selectChoice(newItem, el); }, 50);
     }
-
-    // === GROUP ACTIONS ===
     addNewGroup() {
-        const newGroup = {
-            id: `group_${Date.now()}`,
-            title: 'New Group',
-            description: '',
-            page: 0,
-            coords: { x: 50, y: 50, w: 300, h: 200 },
-            items: []
-        };
-        this.engine.config.groups.push(newGroup);
-        this.renderer.renderButtons();
-        setTimeout(() => {
-            const el = document.getElementById(`group-${newGroup.id}`);
-            if (el) this.selectGroup(newGroup);
-        }, 50);
+        const newGroup = { id: `group_${Date.now()}`, title: 'New Group', description: '', page: 0, coords: { x: 50, y: 50, w: 300, h: 200 }, items: [] };
+        this.engine.config.groups.push(newGroup); this.renderer.renderButtons();
+        setTimeout(() => { const el = document.getElementById(`group-${newGroup.id}`); if (el) this.selectGroup(newGroup); }, 50);
     }
-
     deleteSelectedGroup() {
         if (!this.selectedGroup) return;
-        if (this.selectedGroup.items && this.selectedGroup.items.length > 0) {
-            if (!confirm(`Group has ${this.selectedGroup.items.length} items. Delete group and ALL items?`)) return;
-        } else {
-            if (!confirm('Delete this group?')) return;
-        }
-
-        const idx = this.engine.config.groups.indexOf(this.selectedGroup);
-        if (idx > -1) {
-            this.engine.config.groups.splice(idx, 1);
-        }
-        
-        // Deselect
-        this.selectedGroup = null;
-        document.querySelectorAll('.info-zone.editor-selected').forEach(el => el.classList.remove('editor-selected'));
-        document.getElementById('group-props').style.display = 'none';
-        document.getElementById('group-empty-state').style.display = 'block';
-        
+        if (this.selectedGroup.items && this.selectedGroup.items.length > 0) { if (!confirm(`Group has ${this.selectedGroup.items.length} items. Delete group and ALL items?`)) return; } 
+        else { if (!confirm('Delete this group?')) return; }
+        const idx = this.engine.config.groups.indexOf(this.selectedGroup); if (idx > -1) { this.engine.config.groups.splice(idx, 1); }
+        this.selectedGroup = null; document.querySelectorAll('.info-zone.editor-selected').forEach(el => el.classList.remove('editor-selected'));
+        document.getElementById('group-props').style.display = 'none'; document.getElementById('group-empty-state').style.display = 'block';
         this.renderer.renderButtons();
     }
 
+    // ... Export Logic ...
     exportConfig() {
         const config = this.engine.config;
         const blob = new Blob([JSON.stringify(config, null, 2)], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `${config.meta?.title || 'cyoa'}_edited.json`;
-        a.click();
-        URL.revokeObjectURL(url);
+        const a = document.createElement('a'); a.href = url; a.download = `${config.meta?.title || 'cyoa'}_edited.json`; a.click(); URL.revokeObjectURL(url);
+    }
+
+    async exportZip() {
+        let JSZip;
+        try { const module = await import('https://cdn.jsdelivr.net/npm/jszip/+esm'); JSZip = module.default; } 
+        catch (e) { alert("Could not load JSZip library."); return; }
+
+        const zip = new JSZip();
+        
+        // 1. Prepare Config for Zip (Replace DataURL with relative filename)
+        const configToSave = JSON.parse(JSON.stringify(this.engine.config));
+        configToSave.meta.pages[0] = "image.png"; 
+        
+        zip.file("config.json", JSON.stringify(configToSave, null, 2));
+
+        // 2. Add Image
+        // Extract DataURL from config (because we stored it there on load)
+        const dataUrl = this.engine.config.meta.pages[0];
+        if (dataUrl && dataUrl.startsWith('data:image')) {
+            const resp = await fetch(dataUrl);
+            const blob = await resp.blob();
+            zip.file("image.png", blob);
+        } else {
+            // Fallback: Try to fetch if it's a normal URL
+            try {
+                const resp = await fetch(dataUrl);
+                const blob = await resp.blob();
+                zip.file("image.png", blob);
+            } catch(e) {
+                console.warn("Could not zip image:", e);
+            }
+        }
+
+        // 3. Generate
+        const content = await zip.generateAsync({type:"blob"});
+        const url = URL.createObjectURL(content);
+        const a = document.createElement('a'); a.href = url; a.download = "project.zip"; a.click(); URL.revokeObjectURL(url);
     }
 }
