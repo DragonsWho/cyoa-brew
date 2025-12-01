@@ -1,3 +1,4 @@
+
 /**
  * CYOA Editor - Visual editing mode
  */
@@ -90,7 +91,6 @@ export class CYOAEditor {
                                 </div>
                             </div>
                             
-                            <!-- NEW: Max Quantity Field -->
                             <div class="input-group">
                                 <input type="number" id="edit-max_quantity" min="1" placeholder="1">
                                 <span class="input-label">Max Qty (1 = Toggle)</span>
@@ -100,6 +100,13 @@ export class CYOAEditor {
                                 <input type="text" id="edit-title">
                                 <span class="input-label">Title</span>
                             </div>
+
+                            <!-- NEW: Tags Input -->
+                            <div class="input-group">
+                                <input type="text" id="edit-tags" placeholder="magic, fire, weapon">
+                                <span class="input-label">Tags (comma sep.)</span>
+                            </div>
+
                             <div class="input-group">
                                 <textarea id="edit-description" rows="5"></textarea>
                                 <span class="input-label">Desc</span>
@@ -462,6 +469,9 @@ export class CYOAEditor {
         document.getElementById('edit-title').value = item.title || '';
         document.getElementById('edit-description').value = item.description || '';
         
+        // Populate Tags
+        document.getElementById('edit-tags').value = (item.tags || []).join(', ');
+        
         ['x','y','w','h'].forEach(k => {
             document.getElementById(`edit-${k}`).value = Math.round(item.coords?.[k] || 0);
         });
@@ -509,6 +519,9 @@ export class CYOAEditor {
             if (['x','y','w','h'].includes(key)) {
                 if (!this.selectedItem.coords) this.selectedItem.coords = {};
                 this.selectedItem.coords[key] = val;
+            } else if (key === 'tags') {
+                // Parse CSV to Array
+                this.selectedItem.tags = val.split(',').map(t => t.trim()).filter(t => t);
             } else {
                 this.selectedItem[key] = val;
             }
@@ -531,15 +544,14 @@ export class CYOAEditor {
             this.updateCodePreview();
         };
 
-        // Added 'edit-max_quantity' to the list
-        const inputs = ['edit-id', 'edit-title', 'edit-description', 'edit-x', 'edit-y', 'edit-w', 'edit-h', 'edit-max_quantity'];
+        const inputs = ['edit-id', 'edit-title', 'edit-description', 'edit-tags', 'edit-x', 'edit-y', 'edit-w', 'edit-h', 'edit-max_quantity'];
         
         inputs.forEach(id => {
             const el = document.getElementById(id);
             if (!el) return;
-            const key = id.split('-').pop(); // gets 'max_quantity' correctly
+            const key = id.split('-').pop(); 
             const realKey = (id === 'edit-description') ? 'description' : key;
-            const isNum = ['x','y','w','h', 'max_quantity'].includes(key); // added max_quantity here
+            const isNum = ['x','y','w','h', 'max_quantity'].includes(key); 
             el.addEventListener('input', (e) => update(realKey, e.target.value, isNum));
         });
     }

@@ -88,7 +88,7 @@ export class RuleEvaluator {
             // Helper: has(id) - Checks existence (Qty > 0)
             has: (id) => state.selected.has(id),
             
-            // CHANGED: Helper: qty(id) - Gets exact quantity
+            // Helper: qty(id) - Gets exact quantity
             qty: (id) => state.selected.get(id) || 0,
 
             // Helper: selected object (Backward compatibility + new features)
@@ -102,10 +102,23 @@ export class RuleEvaluator {
             // Currencies
             currency: { ...state.currencies },
 
-            // CHANGED: Counts per group (Sum of Quantities)
-            count: this.createCountHelper(group),
+            // Counts per group (Sum of Quantities) + TAG SUPPORT
+            count: {
+                ...this.createCountHelper(group),
+                // NEW: Tag counting helper -> count.tag('magic')
+                tag: (tagName) => {
+                    let total = 0;
+                    for (const [itemId, qty] of state.selected) {
+                        const i = this.engine.findItem(itemId);
+                        if (i && i.tags && i.tags.includes(tagName)) {
+                            total += qty;
+                        }
+                    }
+                    return total;
+                }
+            },
 
-            // CHANGED: Current group count (Sum of Quantities)
+            // Current group count (Sum of Quantities)
             this_group: group ? this.engine.getGroupQty(group) : 0,
 
             // Math functions

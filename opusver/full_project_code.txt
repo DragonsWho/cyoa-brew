@@ -687,6 +687,7 @@ FILE START: config\test_config.json
           "id": "cheap",
           "title": "Cheap Item",
           "description": "Costs only 2 points.\nAffordable for everyone!",
+          "max_quantity": 5,
           "coords": {
             "x": 50,
             "y": 470,
@@ -861,6 +862,25 @@ FILE START: config\test_config.json
           "cost": []
         },
         {
+      "id": "expansion_pack",
+      "title": "Expansion Pack",
+      "description": "Allows picking +2 options in the 'Choose Only 1' section.",
+      "coords": {             
+          "x": 1330,
+          "y": 50,
+          "w": 520,
+          "h": 150
+          },
+      "cost": [{"currency": "points", "value": -5}],
+      "effects": [
+        {
+          "type": "modify_group_limit",
+          "group_id": "max_choices",
+          "value": 2
+        }
+      ]
+    },
+        {
           "id": "choice_b",
           "title": "Choice B",
           "description": "Selecting this deselects A and C.",
@@ -1014,6 +1034,10 @@ Extract game structure from CYOA images into JSON configuration.
 | "Choose up to 3" | `"rules": {"max_choices": 3}` |
 | "3 free picks" | `"rules": {"budget": {"currency": "points", "amount": 3}}` |
 | "Incompatible with Fire" | `"incompatible": ["fire"]` |
+| "Take up to 3 times" | `"max_quantity": 3` |
+| "+2 Spell Slots" | `"effects": [{"type": "modify_group_limit", "group_id": "spells", "value": 2}]` |
+| "Free Sword included" | `"effects": [{"type": "force_selection", "target_id": "sword"}]` |
+
 
 ## Coordinate System
 
@@ -1466,6 +1490,97 @@ Always ensure:
 - [ ] Coordinates are within image bounds
 
  
+ 
+## 📦 Multi-Select & Quantity
+
+Allow selecting an item multiple times.
+
+### Rule: `max_quantity`
+```json
+{
+  "max_quantity": 5,
+  "cost": [{"currency": "points", "value": -2}]
+}
+```
+**Behavior:**
+- UI shows `+` and `-` buttons
+- Cost is automatically multiplied (e.g., buying 3 costs 6 points)
+- Formulas can use `qty('item_id')` to get the count.
+
+**Patterns:**
+- "Can be taken up to 3 times"
+- "Buy multiple potions"
+- "Each purchase costs X"
+
+---
+
+## ✨ Effects System
+
+Items can actively modify the game rules or other items.
+
+### Effect: `modify_group_limit`
+Increases (or decreases) the number of allowed choices in a group.
+
+```json
+{
+  "effects": [
+    {
+      "type": "modify_group_limit",
+      "group_id": "spells_section",
+      "value": 2
+    }
+  ]
+}
+```
+*Note: If `max_quantity` > 1, the effect multiplies by the quantity unless `"once": true` is added.*
+
+**Patterns:**
+- "Unlock +2 spell slots"
+- "Allows one extra companion"
+- "Backpack: Increases inventory capacity"
+
+---
+
+### Effect: `force_selection`
+Automatically selects another item.
+
+```json
+{
+  "effects": [
+    {
+      "type": "force_selection",
+      "target_id": "basic_sword"
+    }
+  ]
+}
+```
+
+**Patterns:**
+- "Comes with a free sword"
+- "Knight class includes heavy armor"
+
+---
+
+### Effect: `set_value`
+Sets a currency/variable to a specific number (ignoring calculations).
+
+```json
+{
+  "effects": [
+    {
+      "type": "set_value",
+      "currency": "strength",
+      "value": 10
+    }
+  ]
+}
+```
+
+**Patterns:**
+- "Sets your Strength to 10"
+- "Resets Magic to 0"
+```
+
 
 
 ============================================================
@@ -1559,6 +1674,111 @@ console.log('  CYOA.state                     - View current state');
 
 
 ============================================================
+FILE START: src\core\effects.js
+============================================================
+
+/**
+ * Effect Processor - Handles active card effects
+ */
+
+export class EffectProcessor {
+    constructor(engine) {
+        this.engine = engine;
+    }
+
+    /**
+     * Apply effects from all selected items
+     */
+    applyAll() {
+        // 1. Reset dynamic rules (like group limits) to default
+        this.engine.restoreDefaults();
+
+        // 2. Iterate over selected items and apply their effects
+        for (const [itemId, qty] of this.engine.state.selected) {
+            const item = this.engine.findItem(itemId);
+            if (!item || !item.effects) continue;
+
+            for (const effect of item.effects) {
+                this.process(effect, item, qty);
+            }
+        }
+    }
+
+    process(effect, sourceItem, qty) {
+        switch (effect.type) {
+            
+            // "Этот рюкзак позволяет взять +2 предмета в разделе Оружие"
+            case 'modify_group_limit':
+                this.applyGroupLimitMod(effect, qty);
+                break;
+
+            // "Взял Рыцаря -> Получил Меч (бесплатно и принудительно)"
+            case 'force_selection':
+                this.applyForceSelection(effect, qty);
+                break;
+
+            // "Установить Силу на 10" (вместо +10)
+            case 'set_value':
+                this.applySetValue(effect, qty);
+                break;
+
+            default:
+                console.warn(`Unknown effect type: ${effect.type}`);
+        }
+    }
+
+    // ==================== HANDLERS ====================
+
+    applyGroupLimitMod(effect, qty) {
+        const group = this.engine.config.groups.find(g => g.id === effect.group_id);
+        if (!group || !group.rules) return;
+
+        // Support formula or fixed value
+        let value = effect.value || 0;
+        
+        // Multiply by qty (if I buy 2 backpacks, I get +4 slots)
+        // Unless specific flag "once" is set
+        if (!effect.once) {
+            value *= qty;
+        }
+
+        if (group.rules.max_choices !== undefined) {
+            group.rules.max_choices += value;
+        }
+    }
+
+    applyForceSelection(effect, qty) {
+        // Prevent infinite loops if A forces B and B forces A
+        // We check if it's already selected to avoid recursion in simple cases
+        // Note: For multi-select, this might need logic "Force N times"
+        
+        const targetId = effect.target_id;
+        const currentQty = this.engine.state.selected.get(targetId) || 0;
+        
+        // If not selected, select it
+        if (currentQty === 0) {
+            // We use a silent select (no event emission yet) to avoid render thrashing
+            // We bypass canSelect check because Force usually overrides requirements
+            this.engine.state.selected.set(targetId, 1);
+            console.log(`⚡ Effect forced selection: ${targetId}`);
+        }
+    }
+
+    applySetValue(effect, qty) {
+        // This overrides the calculated currency value
+        // We store it in a special "overrides" state in engine or set directly
+        // For simplicity, we'll write directly to state, but this runs BEFORE deltas
+        // so deltas might modify it further. Ideally, 'set' happens last.
+        // Let's assume this sets the BASE value.
+        
+        const currency = effect.currency;
+        const value = effect.value;
+        this.engine.state.currencies[currency] = value;
+    }
+}
+
+
+============================================================
 FILE START: src\core\engine.js
 ============================================================
 
@@ -1568,86 +1788,99 @@ FILE START: src\core\engine.js
 
 import { RuleEvaluator } from './rules.js';
 import { GameState } from './state.js';
+import { EffectProcessor } from './effects.js'; // IMPORT NEW MODULE
 
 export class GameEngine {
     constructor(config) {
         this.config = config;
         this.state = new GameState(config);
         this.rules = new RuleEvaluator(this);
+        this.effects = new EffectProcessor(this); // INIT EFFECTS
         this.listeners = {};
         
-        console.log('🎮 Engine initialized');
+        // Capture initial defaults for restoration
+        this.defaults = {
+            groupRules: {}
+        };
+        this.initDefaults();
+
+        console.log('🎮 Engine initialized (Multi-select + Effects)');
+    }
+
+    initDefaults() {
+        // Deep copy group rules to restore them later
+        this.config.groups.forEach(g => {
+            if (g.rules) {
+                this.defaults.groupRules[g.id] = JSON.parse(JSON.stringify(g.rules));
+            }
+        });
+    }
+
+    restoreDefaults() {
+        // Restore group rules (max_choices, etc)
+        this.config.groups.forEach(g => {
+            if (this.defaults.groupRules[g.id]) {
+                // Restore from copy
+                g.rules = JSON.parse(JSON.stringify(this.defaults.groupRules[g.id]));
+            }
+        });
     }
 
     // ==================== SELECTION ====================
 
-    /**
-     * Select an item
-     * @param {string} itemId - Item ID to select
-     * @returns {boolean} Success
-     */
     select(itemId) {
         const item = this.findItem(itemId);
-        if (!item) {
-            console.warn(`Item not found: ${itemId}`);
-            return false;
-        }
+        if (!item) return false;
 
         const group = this.findGroupForItem(itemId);
-        if (!group) {
-            console.warn(`Group not found for: ${itemId}`);
-            return false;
-        }
+        if (!group) return false;
 
-        // Check if can select
-        if (!this.canSelect(item, group)) {
-            console.log(`Cannot select ${itemId} (requirements not met)`);
-            return false;
-        }
+        // Check requirements
+        if (!this.canSelect(item, group)) return false;
 
-        // Handle max_choices (radio button behavior)
-        if (group.rules?.max_choices === 1) {
+        const currentQty = this.state.selected.get(itemId) || 0;
+        const maxQty = item.max_quantity || 1;
+
+        if (currentQty >= maxQty) return false;
+
+        // Radio logic (Max choices)
+        if (currentQty === 0 && group.rules?.max_choices === 1) {
             group.items.forEach(i => {
-                if (this.state.selected.has(i.id)) {
+                if (this.state.selected.has(i.id) && i.id !== itemId) {
                     this.state.selected.delete(i.id);
                 }
             });
         } else if (group.rules?.max_choices) {
-            const selectedInGroup = this.getSelectedInGroup(group);
-            if (selectedInGroup.length >= group.rules.max_choices) {
-                console.log(`Max choices reached in ${group.id}`);
+            // NOTE: This check now uses the DYNAMIC max_choices (modified by effects)
+            const totalInGroup = this.getGroupQty(group);
+            if (totalInGroup >= group.rules.max_choices) {
+                console.log(`Max choices reached in ${group.id} (Limit: ${group.rules.max_choices})`);
                 return false;
             }
         }
 
-        this.state.selected.add(itemId);
-        this.recalculate();
-        this.emit('selection', { itemId, selected: true });
-        
-        console.log(`✓ Selected: ${item.title}`);
+        this.state.selected.set(itemId, currentQty + 1);
+        this.recalculate(); // This triggers effect application
+        this.emit('selection', { itemId, selected: true, qty: currentQty + 1 });
         return true;
     }
 
-    /**
-     * Deselect an item
-     */
     deselect(itemId) {
-        if (!this.state.selected.has(itemId)) {
-            return false;
+        if (!this.state.selected.has(itemId)) return false;
+
+        const currentQty = this.state.selected.get(itemId);
+        
+        if (currentQty > 1) {
+             this.state.selected.set(itemId, currentQty - 1);
+        } else {
+             this.state.selected.delete(itemId);
         }
 
-        this.state.selected.delete(itemId);
         this.recalculate();
-        this.emit('selection', { itemId, selected: false });
-        
-        const item = this.findItem(itemId);
-        console.log(`✗ Deselected: ${item?.title || itemId}`);
+        this.emit('selection', { itemId, selected: false, qty: currentQty - 1 });
         return true;
     }
 
-    /**
-     * Toggle item selection
-     */
     toggle(itemId) {
         if (this.state.selected.has(itemId)) {
             return this.deselect(itemId);
@@ -1658,112 +1891,72 @@ export class GameEngine {
 
     // ==================== VALIDATION ====================
 
-    /**
-     * Check if item can be selected
-     */
     canSelect(item, group) {
-        if (!this.rules.checkRequirements(item)) {
-            return false;
-        }
-
-        if (!this.rules.checkIncompatible(item)) {
-            return false;
-        }
-
+        if (!this.rules.checkRequirements(item)) return false;
+        if (!this.rules.checkIncompatible(item)) return false;
         return true;
     }
 
     // ==================== CALCULATION ====================
 
-    /**
-     * Recalculate all costs and currencies
-     */
     recalculate() {
-        // 1. Remove invalid selections
+        // 1. Cleanup invalid selections first (standard)
         this.cleanupInvalidSelections();
-
-        // 2. Reset currencies
+        
+        // 2. Reset currencies to base
         this.state.resetCurrencies();
 
-        // 3. Calculate with budgets
+        // 3. APPLY EFFECTS (The Magic Step)
+        // This restores default limits, then applies new ones from selections
+        // It might also force-select items
+        this.effects.applyAll();
+
+        // 4. Calculate Costs (Deltas)
         const groupDeltas = this.calculateGroupDeltas();
+        
+        // 5. Apply Logic
         this.applyBudgets(groupDeltas);
         this.applyDeltas(groupDeltas);
 
-        // 4. Notify listeners
         this.emit('recalculate', { state: this.state });
     }
 
-    /**
-     * Remove selections that no longer meet requirements
-     */
     cleanupInvalidSelections() {
-        let changed = true;
-        let iterations = 0;
-        const MAX_ITERATIONS = 100;
-
-        while (changed && iterations < MAX_ITERATIONS) {
-            changed = false;
-            iterations++;
-
-            for (const itemId of Array.from(this.state.selected)) {
-                const item = this.findItem(itemId);
-                const group = this.findGroupForItem(itemId);
-
-                if (!item || !this.canSelect(item, group)) {
-                    this.state.selected.delete(itemId);
-                    changed = true;
-                }
+        for (const itemId of this.state.selected.keys()) {
+            const item = this.findItem(itemId);
+            const group = this.findGroupForItem(itemId);
+            if (!item || !this.canSelect(item, group)) {
+                this.state.selected.delete(itemId);
             }
-        }
-
-        if (iterations >= MAX_ITERATIONS) {
-            console.warn('⚠️ Dependency cleanup hit max iterations');
         }
     }
 
-    /**
-     * Calculate currency deltas per group
-     */
     calculateGroupDeltas() {
         const deltas = {};
-
-        for (const itemId of this.state.selected) {
+        for (const itemId of this.state.selected.keys()) {
             const item = this.findItem(itemId);
             const group = this.findGroupForItem(itemId);
+            const qty = this.state.selected.get(itemId);
             
             if (!item?.cost) continue;
-
-            if (!deltas[group.id]) {
-                deltas[group.id] = {};
-            }
+            if (!deltas[group.id]) deltas[group.id] = {};
 
             for (const cost of item.cost) {
-                const value = this.rules.evaluateCost(cost, item, group);
+                const unitValue = this.rules.evaluateCost(cost, item, group);
                 const currencyId = cost.currency;
-
-                if (!deltas[group.id][currencyId]) {
-                    deltas[group.id][currencyId] = 0;
-                }
-
-                deltas[group.id][currencyId] += value;
+                if (!deltas[group.id][currencyId]) deltas[group.id][currencyId] = 0;
+                deltas[group.id][currencyId] += (unitValue * qty);
             }
         }
-
         return deltas;
     }
 
-    /**
-     * Apply budget rules to deltas
-     */
     applyBudgets(groupDeltas) {
         for (const group of this.config.groups) {
             if (!group.rules?.budget) continue;
-
             const budget = group.rules.budget;
             const targetGroups = [group.id, ...(budget.applies_to || [])];
 
-            // Calculate total spent
             let totalSpent = 0;
             for (const gid of targetGroups) {
                 if (groupDeltas[gid]?.[budget.currency] < 0) {
@@ -1771,13 +1964,11 @@ export class GameEngine {
                 }
             }
 
-            // Apply coverage
             const covered = Math.min(totalSpent, budget.amount);
             let remaining = covered;
 
             for (const gid of targetGroups) {
                 if (remaining <= 0) break;
-                
                 if (groupDeltas[gid]?.[budget.currency] < 0) {
                     const debt = Math.abs(groupDeltas[gid][budget.currency]);
                     const pay = Math.min(debt, remaining);
@@ -1786,7 +1977,6 @@ export class GameEngine {
                 }
             }
 
-            // Store budget state
             this.state.budgets[group.id] = {
                 total: budget.amount,
                 used: covered,
@@ -1795,9 +1985,6 @@ export class GameEngine {
         }
     }
 
-    /**
-     * Apply deltas to currencies
-     */
     applyDeltas(groupDeltas) {
         for (const groupId in groupDeltas) {
             for (const currencyId in groupDeltas[groupId]) {
@@ -1831,38 +2018,28 @@ export class GameEngine {
         return group.items.filter(i => this.state.selected.has(i.id));
     }
 
-    // ==================== EVENTS ====================
+    getGroupQty(group) {
+        let total = 0;
+        group.items.forEach(i => {
+            total += (this.state.selected.get(i.id) || 0);
+        });
+        return total;
+    }
 
     on(event, callback) {
-        if (!this.listeners[event]) {
-            this.listeners[event] = [];
-        }
+        if (!this.listeners[event]) this.listeners[event] = [];
         this.listeners[event].push(callback);
     }
 
     emit(event, data) {
-        if (this.listeners[event]) {
-            this.listeners[event].forEach(cb => cb(data));
-        }
+        if (this.listeners[event]) this.listeners[event].forEach(cb => cb(data));
     }
-
-    // ==================== STATE MANAGEMENT ====================
 
     reset() {
         this.state.reset();
+        this.restoreDefaults(); // Reset rules
         this.recalculate();
         this.emit('reset');
-        console.log('🔄 State reset');
-    }
-
-    exportState() {
-        return this.state.export();
-    }
-
-    importState(stateData) {
-        this.state.import(stateData);
-        this.recalculate();
-        this.emit('import');
     }
 }
 
@@ -1890,7 +2067,6 @@ export class RuleEvaluator {
                 return false;
             }
         }
-
         return true;
     }
 
@@ -1906,7 +2082,7 @@ export class RuleEvaluator {
             return !this.engine.state.selected.has(targetId);
         }
 
-        // Simple: item_id
+        // Simple: item_id (Map.has works like Set.has)
         return this.engine.state.selected.has(req.trim());
     }
 
@@ -1920,7 +2096,6 @@ export class RuleEvaluator {
                 return false;
             }
         }
-
         return true;
     }
 
@@ -1947,6 +2122,7 @@ export class RuleEvaluator {
     evaluateFormula(formula, item, group) {
         try {
             const context = this.createFormulaContext(item, group);
+            // Create function with context keys as arguments
             const func = new Function(...Object.keys(context), `return ${formula};`);
             return func(...Object.values(context));
         } catch (error) {
@@ -1959,23 +2135,28 @@ export class RuleEvaluator {
         const state = this.engine.state;
 
         return {
-            // Helper: has(id)
+            // Helper: has(id) - Checks existence (Qty > 0)
             has: (id) => state.selected.has(id),
+            
+            // CHANGED: Helper: qty(id) - Gets exact quantity
+            qty: (id) => state.selected.get(id) || 0,
 
-            // Helper: selected object
+            // Helper: selected object (Backward compatibility + new features)
             selected: {
                 has: (id) => state.selected.has(id),
-                length: state.selected.size
+                get: (id) => state.selected.get(id) || 0,
+                // Count of UNIQUE items selected
+                length: state.selected.size 
             },
 
             // Currencies
             currency: { ...state.currencies },
 
-            // Counts per group
+            // CHANGED: Counts per group (Sum of Quantities)
             count: this.createCountHelper(group),
 
-            // Current group count
-            this_group: group ? this.engine.getSelectedInGroup(group).length : 0,
+            // CHANGED: Current group count (Sum of Quantities)
+            this_group: group ? this.engine.getGroupQty(group) : 0,
 
             // Math functions
             Math: Math
@@ -1986,11 +2167,12 @@ export class RuleEvaluator {
         const counts = {};
 
         for (const group of this.engine.config.groups) {
-            counts[group.id] = this.engine.getSelectedInGroup(group).length;
+            // Use getGroupQty to sum up multiples
+            counts[group.id] = this.engine.getGroupQty(group);
         }
 
         if (currentGroup) {
-            counts.this_group = this.engine.getSelectedInGroup(currentGroup).length;
+            counts.this_group = this.engine.getGroupQty(currentGroup);
         }
 
         return counts;
@@ -2013,7 +2195,8 @@ export class GameState {
     }
 
     reset() {
-        this.selected = new Set();
+        // CHANGED: Use Map instead of Set to store Quantity (ID -> Integer)
+        this.selected = new Map();
         this.currencies = {};
         this.budgets = {};
         this.resetCurrencies();
@@ -2032,7 +2215,8 @@ export class GameState {
 
     export() {
         return {
-            selected: Array.from(this.selected),
+            // CHANGED: Convert Map to array of entries [[id, qty], [id, qty]]
+            selected: Array.from(this.selected.entries()),
             currencies: { ...this.currencies },
             budgets: { ...this.budgets },
             timestamp: new Date().toISOString()
@@ -2040,7 +2224,14 @@ export class GameState {
     }
 
     import(data) {
-        this.selected = new Set(data.selected || []);
+        // CHANGED: Reconstruct Map from entries
+        // Support legacy format (array of strings) just in case old save loads
+        if (Array.isArray(data.selected) && typeof data.selected[0] === 'string') {
+            this.selected = new Map(data.selected.map(id => [id, 1]));
+        } else {
+            this.selected = new Map(data.selected || []);
+        }
+        
         this.currencies = { ...data.currencies };
         this.budgets = { ...data.budgets };
     }
@@ -2229,12 +2420,19 @@ export class CYOAEditor {
                                     <span class="input-label">GRP</span>
                                 </div>
                             </div>
+                            
+                            <!-- NEW: Max Quantity Field -->
+                            <div class="input-group">
+                                <input type="number" id="edit-max_quantity" min="1" placeholder="1">
+                                <span class="input-label">Max Qty (1 = Toggle)</span>
+                            </div>
+
                             <div class="input-group">
                                 <input type="text" id="edit-title">
                                 <span class="input-label">Title</span>
                             </div>
                             <div class="input-group">
-                                <textarea id="edit-description" rows="7"></textarea>
+                                <textarea id="edit-description" rows="5"></textarea>
                                 <span class="input-label">Desc</span>
                             </div>
                         </div>
@@ -2591,6 +2789,7 @@ export class CYOAEditor {
 
         document.getElementById('edit-id').value = item.id || '';
         document.getElementById('edit-parent-group').value = group ? group.id : '?';
+        document.getElementById('edit-max_quantity').value = item.max_quantity || 1;
         document.getElementById('edit-title').value = item.title || '';
         document.getElementById('edit-description').value = item.description || '';
         
@@ -2637,23 +2836,41 @@ export class CYOAEditor {
         const update = (key, val, isNum) => {
             if (!this.selectedItem) return;
             if (isNum) val = parseInt(val) || 0;
+            
             if (['x','y','w','h'].includes(key)) {
                 if (!this.selectedItem.coords) this.selectedItem.coords = {};
                 this.selectedItem.coords[key] = val;
             } else {
                 this.selectedItem[key] = val;
             }
-            this.renderer.renderButtons();
+
+            // Special handling for max_quantity to re-render structure
+            if (key === 'max_quantity') {
+                 if (val <= 1) delete this.selectedItem.max_quantity; // clean up JSON
+                 // Re-render to show/hide split controls
+                 this.renderer.renderButtons();
+                 // Re-select to keep focus outline
+                 setTimeout(() => {
+                    const el = document.getElementById(`btn-${this.selectedItem.id}`);
+                    if (el) el.classList.add('editor-selected');
+                 }, 0);
+            } else {
+                // Just update positions/styles for speed
+                this.renderer.renderButtons();
+            }
+            
             this.updateCodePreview();
         };
 
-        const inputs = ['edit-id', 'edit-title', 'edit-description', 'edit-x', 'edit-y', 'edit-w', 'edit-h'];
+        // Added 'edit-max_quantity' to the list
+        const inputs = ['edit-id', 'edit-title', 'edit-description', 'edit-x', 'edit-y', 'edit-w', 'edit-h', 'edit-max_quantity'];
+        
         inputs.forEach(id => {
             const el = document.getElementById(id);
             if (!el) return;
-            const key = id.split('-').pop();
+            const key = id.split('-').pop(); // gets 'max_quantity' correctly
             const realKey = (id === 'edit-description') ? 'description' : key;
-            const isNum = ['x','y','w','h'].includes(key);
+            const isNum = ['x','y','w','h', 'max_quantity'].includes(key); // added max_quantity here
             el.addEventListener('input', (e) => update(realKey, e.target.value, isNum));
         });
     }
@@ -2845,8 +3062,6 @@ export class UIRenderer {
             return;
         }
 
-        console.log(`📄 Loading ${pages.length} page(s)...`);
-
         const loadPromises = pages.map((src, index) => {
             return new Promise((resolve) => {
                 const container = document.createElement('div');
@@ -2871,12 +3086,10 @@ export class UIRenderer {
                         w: img.naturalWidth,
                         h: img.naturalHeight
                     };
-                    console.log(`✓ Page ${index} loaded: ${img.naturalWidth}x${img.naturalHeight}`);
                     resolve();
                 };
 
                 img.onerror = () => {
-                    console.error(`✗ Failed to load page ${index}: ${src}`);
                     this.pageDimensions[index] = { w: 1920, h: 1080 };
                     resolve();
                 };
@@ -2892,52 +3105,37 @@ export class UIRenderer {
         const pages = this.engine.config.meta?.pages || [];
         pages.forEach((_, index) => {
             const layer = document.getElementById(`layer-${index}`);
-            if (layer) {
-                layer.innerHTML = '';  
-            }
+            if (layer) layer.innerHTML = '';  
         });
 
         const groups = this.engine.config.groups || [];
-        
-        console.log(`🔘 Rendering buttons for ${groups.length} group(s)...`);
 
         groups.forEach(group => {
             const pageIndex = group.page !== undefined ? group.page : 0;
             const layer = document.getElementById(`layer-${pageIndex}`);
             
-            if (!layer) {
-                console.warn(`Layer not found for page ${pageIndex}`);
-                return;
-            }
-
-            const dim = this.pageDimensions[pageIndex];
-            if (!dim) {
-                console.warn(`Dimensions not found for page ${pageIndex}`);
-                return;
-            }
+            if (!layer || !this.pageDimensions[pageIndex]) return;
 
             // Budget badge
             if (group.rules?.budget && group.coords) {
-                this.renderBudgetBadge(group, layer, dim);
+                this.renderBudgetBadge(group, layer, this.pageDimensions[pageIndex]);
             }
 
             // Group info zone
             if (group.coords) {
-                this.renderGroupZone(group, layer, dim);
+                this.renderGroupZone(group, layer, this.pageDimensions[pageIndex]);
             }
 
             // Items
             if (group.items) {
                 group.items.forEach(item => {
                     if (item.coords) {
-                        this.renderItemButton(item, group, layer, dim);
+                        this.renderItemButton(item, group, layer, this.pageDimensions[pageIndex]);
                     }
                 });
             }
         });
     }
-
-    // ==================== BUDGET BADGE ====================
 
     renderBudgetBadge(group, layer, dim) {
         const badge = document.createElement('div');
@@ -2956,26 +3154,6 @@ export class UIRenderer {
         this.updateBudgetBadge(group);
     }
 
-    updateBudgetBadge(group) {
-        const badge = document.getElementById(`budget-${group.id}`);
-        if (!badge) return;
-
-        const budgetState = this.engine.state.budgets[group.id];
-        if (!budgetState) {
-            // Initial state before calculation
-            const budget = group.rules.budget;
-            badge.textContent = `${budget.name || budget.currency}: ${budget.amount}/${budget.amount}`;
-            return;
-        }
-
-        const { total, remaining } = budgetState;
-        const budget = group.rules.budget;
-        badge.textContent = `${budget.name || budget.currency}: ${remaining}/${total}`;
-        badge.classList.toggle('empty', remaining === 0);
-    }
-
-    // ==================== GROUP ZONE ====================
-
     renderGroupZone(group, layer, dim) {
         const zone = document.createElement('div');
         zone.className = 'click-zone info-zone';
@@ -2983,7 +3161,6 @@ export class UIRenderer {
 
         Object.assign(zone.style, CoordHelper.toPercent(group.coords, dim));
 
-        // Text layer for translation mode
         if (group.title || group.description) {
             zone.appendChild(this.createTextLayer(
                 group.title || '',
@@ -2994,7 +3171,7 @@ export class UIRenderer {
         layer.appendChild(zone);
     }
 
-    // ==================== ITEM BUTTON ====================
+    // ==================== ITEM BUTTON (UPDATED) ====================
 
     renderItemButton(item, group, layer, dim) {
         const button = document.createElement('div');
@@ -3013,10 +3190,47 @@ export class UIRenderer {
             ));
         }
 
-        // Click handler
-        button.onclick = () => {
-            this.engine.toggle(item.id);
-        };
+        // CHANGED: Multi-select Logic
+        const maxQty = item.max_quantity || 1;
+
+        if (maxQty > 1) {
+            // 1. Add class for styling
+            button.classList.add('multi-select');
+
+            // 2. Create Split Controls (Left -, Right +)
+            const controls = document.createElement('div');
+            controls.className = 'split-controls';
+            
+            const minusBtn = document.createElement('div');
+            minusBtn.className = 'split-btn minus';
+            minusBtn.onclick = (e) => {
+                e.stopPropagation(); // Stop bubbling
+                this.engine.deselect(item.id);
+            };
+
+            const plusBtn = document.createElement('div');
+            plusBtn.className = 'split-btn plus';
+            plusBtn.onclick = (e) => {
+                e.stopPropagation();
+                this.engine.select(item.id);
+            };
+
+            controls.appendChild(minusBtn);
+            controls.appendChild(plusBtn);
+            button.appendChild(controls);
+
+            // 3. Create Quantity Badge
+            const badge = document.createElement('div');
+            badge.className = 'qty-badge';
+            badge.style.display = 'none'; // Hidden by default
+            button.appendChild(badge);
+
+        } else {
+            // Standard Behavior (Toggle)
+            button.onclick = () => {
+                this.engine.toggle(item.id);
+            };
+        }
 
         // Tooltip
         this.tooltip.attach(button, item, group);
@@ -3024,29 +3238,20 @@ export class UIRenderer {
         layer.appendChild(button);
     }
 
-    // ==================== TEXT LAYER ====================
-
     createTextLayer(title, description) {
         const div = document.createElement('div');
         div.className = 'text-content';
-
-        const cleanDesc = description ? 
-            description.replace(/\n/g, '<br>') : '';
-
+        const cleanDesc = description ? description.replace(/\n/g, '<br>') : '';
         div.innerHTML = `
             ${title ? `<strong>${title}</strong>` : ''}
             ${cleanDesc ? `<span>${cleanDesc}</span>` : ''}
         `;
-
         return div;
     }
-
-    // ==================== POINTS BAR ====================
 
     renderPointsBar() {
         const bar = document.getElementById('points-bar');
         bar.innerHTML = '';
-
         const points = this.engine.config.points || [];
 
         points.forEach(p => {
@@ -3061,7 +3266,7 @@ export class UIRenderer {
         });
     }
 
-    // ==================== UPDATE UI ====================
+    // ==================== UPDATE UI (UPDATED) ====================
 
     updateUI() {
         this.updateButtons();
@@ -3079,12 +3284,31 @@ export class UIRenderer {
 
             if (!item || !group) return;
 
-            const isSelected = this.engine.state.selected.has(itemId);
+            // CHANGED: Use Quantity logic
+            const qty = this.engine.state.selected.get(itemId) || 0;
+            const isSelected = qty > 0;
             const canSelect = this.engine.canSelect(item, group);
+            const maxQty = item.max_quantity || 1;
 
             // Update classes
             el.classList.toggle('selected', isSelected);
-            el.classList.toggle('disabled', !canSelect && !isSelected);
+            // Disabled if cannot select AND not already selected (so you can't start, but if selected you can deselect)
+            // For multi: disable ONLY if maxed out AND cannot increment further
+            if (maxQty > 1) {
+                // Multi-select specific states could go here (e.g., disable only "+" side)
+                el.classList.toggle('maxed', qty >= maxQty);
+            } else {
+                el.classList.toggle('disabled', !canSelect && !isSelected);
+            }
+
+            // CHANGED: Update Badge
+            if (maxQty > 1) {
+                const badge = el.querySelector('.qty-badge');
+                if (badge) {
+                    badge.textContent = qty;
+                    badge.style.display = isSelected ? 'flex' : 'none';
+                }
+            }
         });
     }
 
@@ -3106,6 +3330,23 @@ export class UIRenderer {
                 this.updateBudgetBadge(group);
             }
         }
+    }
+
+    updateBudgetBadge(group) {
+        const badge = document.getElementById(`budget-${group.id}`);
+        if (!badge) return;
+
+        const budgetState = this.engine.state.budgets[group.id];
+        if (!budgetState) {
+            const budget = group.rules.budget;
+            badge.textContent = `${budget.name || budget.currency}: ${budget.amount}/${budget.amount}`;
+            return;
+        }
+
+        const { total, remaining } = budgetState;
+        const budget = group.rules.budget;
+        badge.textContent = `${budget.name || budget.currency}: ${remaining}/${total}`;
+        badge.classList.toggle('empty', remaining === 0);
     }
 }
 
@@ -3150,6 +3391,17 @@ export class RuleBuilder {
                     <button class="full-width-btn" onclick="CYOA.editor.ruleBuilder.addRequirement()">+ Add Requirement</button>
                 </div>
             </div>
+
+            <!-- Effects Section (NEW) -->
+            <div class="editor-section">
+                <div class="accordion-header collapsed" onclick="CYOA.editor.toggleAccordion(this)">
+                    ⚡ Effects
+                </div>
+                <div class="accordion-content collapsed">
+                    <div id="effects-list" class="compact-list"></div>
+                    <button class="full-width-btn" onclick="CYOA.editor.ruleBuilder.addEffect()">+ Add Effect</button>
+                </div>
+            </div>
             
             <!-- Incompatible Section -->
             <div class="editor-section">
@@ -3169,9 +3421,146 @@ export class RuleBuilder {
         this.currentGroup = group;
         this.renderCosts();
         this.renderRequirements();
+        this.renderEffects(); // NEW
         this.renderIncompatible();
     }
 
+    // ... (COSTS methods remain same) ...
+    // ... (REQUIREMENTS methods remain same) ...
+
+    // ==================== EFFECTS (NEW) ====================
+
+    renderEffects() {
+        if (!this.currentItem) return;
+        const container = document.getElementById('effects-list');
+        if (!container) return;
+        const effects = this.currentItem.effects || [];
+        
+        if (effects.length === 0) {
+            container.innerHTML = '<div style="color:#666; font-size:0.8rem; text-align:center; padding:2px;">No effects</div>';
+            return;
+        }
+
+        container.innerHTML = effects.map((eff, index) => {
+            let inputs = '';
+            
+            // Dynamic inputs based on type
+            if (eff.type === 'modify_group_limit') {
+                inputs = `
+                    <select onchange="CYOA.editor.ruleBuilder.updateEffectProp(${index}, 'group_id', this.value)" style="width:100px;">
+                        <option value="">Select Group...</option>
+                        ${this.getGroupOptions(eff.group_id)}
+                    </select>
+                    <input type="number" value="${eff.value || 0}" 
+                           onchange="CYOA.editor.ruleBuilder.updateEffectProp(${index}, 'value', this.value)"
+                           placeholder="+/-" style="width:50px;">
+                `;
+            } else if (eff.type === 'force_selection') {
+                inputs = `
+                    <input type="text" value="${eff.target_id || ''}" 
+                           onchange="CYOA.editor.ruleBuilder.updateEffectProp(${index}, 'target_id', this.value)"
+                           placeholder="Target Item ID">
+                `;
+            } else if (eff.type === 'set_value') {
+                inputs = `
+                    <select onchange="CYOA.editor.ruleBuilder.updateEffectProp(${index}, 'currency', this.value)" style="width:80px;">
+                        ${this.getCurrencyOptions(eff.currency)}
+                    </select>
+                    <input type="number" value="${eff.value || 0}" 
+                           onchange="CYOA.editor.ruleBuilder.updateEffectProp(${index}, 'value', this.value)"
+                           placeholder="Val" style="width:50px;">
+                `;
+            }
+
+            return `
+            <div style="background:#222; padding:4px; border:1px solid #333; border-radius:4px; margin-bottom:4px;">
+                <div class="compact-row">
+                    <select onchange="CYOA.editor.ruleBuilder.updateEffectType(${index}, this.value)" style="font-weight:bold; color:#4CAF50;">
+                        <option value="modify_group_limit" ${eff.type === 'modify_group_limit' ? 'selected' : ''}>Modify Limit</option>
+                        <option value="force_selection" ${eff.type === 'force_selection' ? 'selected' : ''}>Force Select</option>
+                        <option value="set_value" ${eff.type === 'set_value' ? 'selected' : ''}>Set Variable</option>
+                    </select>
+                    <button class="icon-btn" onclick="CYOA.editor.ruleBuilder.removeEffect(${index})">×</button>
+                </div>
+                <div style="display:flex; gap:4px; margin-top:4px;">
+                    ${inputs}
+                </div>
+            </div>
+            `;
+        }).join('');
+    }
+
+    addEffect() {
+        if (!this.currentItem) return;
+        if (!this.currentItem.effects) this.currentItem.effects = [];
+        
+        // Default new effect
+        this.currentItem.effects.push({ 
+            type: 'modify_group_limit', 
+            group_id: this.engine.config.groups[0]?.id || '',
+            value: 1 
+        });
+        
+        this.renderEffects();
+        this.updateParent();
+    }
+
+    removeEffect(index) {
+        if (!this.currentItem?.effects) return;
+        this.currentItem.effects.splice(index, 1);
+        this.renderEffects();
+        this.updateParent();
+    }
+
+    updateEffectType(index, newType) {
+        if (!this.currentItem?.effects?.[index]) return;
+        const oldEffect = this.currentItem.effects[index];
+        
+        // Reset props based on new type to avoid junk data
+        const newEffect = { type: newType };
+        if (newType === 'modify_group_limit') {
+            newEffect.group_id = this.engine.config.groups[0]?.id || '';
+            newEffect.value = 1;
+        } else if (newType === 'force_selection') {
+            newEffect.target_id = '';
+        } else if (newType === 'set_value') {
+            newEffect.currency = 'points';
+            newEffect.value = 0;
+        }
+        
+        this.currentItem.effects[index] = newEffect;
+        this.renderEffects();
+        this.updateParent();
+    }
+
+    updateEffectProp(index, prop, value) {
+        if (!this.currentItem?.effects?.[index]) return;
+        
+        if (prop === 'value') value = parseInt(value) || 0;
+        
+        this.currentItem.effects[index][prop] = value;
+        this.updateParent();
+    }
+
+    // ==================== HELPERS ====================
+
+    getCurrencyOptions(selected) {
+        const currencies = this.engine.config.points || [];
+        return currencies.map(c => 
+            `<option value="${c.id}" ${c.id === selected ? 'selected' : ''}>${c.name}</option>`
+        ).join('');
+    }
+
+    getGroupOptions(selected) {
+        const groups = this.engine.config.groups || [];
+        return groups.map(g => 
+            `<option value="${g.id}" ${g.id === selected ? 'selected' : ''}>${g.title || g.id}</option>`
+        ).join('');
+    }
+    
+    // ... (Costs/Requirements helper functions remain same) ...
+
+    // (Helper for original costs needed for context)
     renderCosts() {
         if (!this.currentItem) return;
         const container = document.getElementById('cost-list');
@@ -3194,15 +3583,7 @@ export class RuleBuilder {
         `).join('');
     }
 
-    getCurrencyOptions(selected) {
-        const currencies = this.engine.config.points || [];
-        return currencies.map(c => 
-            `<option value="${c.id}" ${c.id === selected ? 'selected' : ''}>
-                ${c.name.substr(0, 10)}
-            </option>`
-        ).join('');
-    }
-
+    // Keep existing add/remove cost/req/incompatible methods...
     addCost() {
         if (!this.currentItem) return;
         if (!this.currentItem.cost) this.currentItem.cost = [];
@@ -3610,8 +3991,6 @@ FILE START: styles\main.css
 
 /* ==========================================================================
    CYOA INTERACTIVE STYLES
-   NOTE: Please keep CSS rules in SINGLE LINE format for compactness.
-   Example: .class { property: value; property: value; }
    ========================================================================== */
 
 /* === RESET & BASE === */
@@ -3637,11 +4016,24 @@ body { margin: 0; padding: 0 0 120px 0; background: #1a1a1a; color: #eee; font-f
 .click-zone:hover { background: rgba(255,255,255,0.07); box-shadow: 0 0 10px rgba(255,255,255,0.1); }
 .click-zone.selected { background: rgba(0,255,0,0.1); box-shadow: 0 0 15px 2px #0f0, inset 0 0 20px 5px rgba(0,255,0,0.3); }
 .click-zone.disabled { cursor: not-allowed; background-image: repeating-linear-gradient(45deg, rgba(0,0,0,0.4), rgba(0,0,0,0.4) 10px, rgba(50,50,50,0.6) 10px, rgba(50,50,50,0.6) 20px); box-shadow: 0 0 15px 5px #000, inset 0 0 20px 10px rgba(0,0,0,0.8); }
+.click-zone.maxed { background: rgba(0,255,0,0.05); cursor: default; } /* Max quantity reached */
+
 .info-zone { z-index: 50; pointer-events: none; border: none; }
 .info-zone .text-content { pointer-events: auto; }
 
+/* === MULTI-SELECT CONTROLS === */
+.split-controls { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; z-index: 150; }
+.split-btn { width: 50%; height: 100%; transition: background 0.2s, opacity 0.2s; display: flex; align-items: center; justify-content: center; font-size: 40px; font-weight: bold; opacity: 0; color: rgba(255,255,255,0.8); text-shadow: 0 0 5px #000; }
+.split-btn:hover { opacity: 1; }
+.split-btn.minus:hover { background: rgba(255,0,0,0.2); }
+.split-btn.minus:hover::after { content: '-'; }
+.split-btn.plus:hover { background: rgba(0,255,0,0.2); }
+.split-btn.plus:hover::after { content: '+'; }
+
+.qty-badge { position: absolute; top: 10px; right: 10px; width: 40px; height: 40px; background: #000; border: 2px solid #0f0; border-radius: 50%; color: #0f0; font-weight: bold; font-size: 18px; display: flex; align-items: center; justify-content: center; z-index: 160; box-shadow: 0 0 10px rgba(0,255,0,0.5); pointer-events: none; }
+
 /* === TEXT LAYER === */
-.text-content { display: none; background: rgba(0,0,0,0.85); color: #ddd; padding: 10px; font-size: 14px; line-height: 1.4; max-height: 100%; overflow-y: auto; pointer-events: none; backdrop-filter: blur(2px); border-top: 1px solid #444; }
+.text-content { display: none; background: rgba(0,0,0,0.85); color: #ddd; padding: 10px; font-size: 14px; line-height: 1.4; max-height: 100%; overflow-y: auto; pointer-events: none; backdrop-filter: blur(2px); border-top: 1px solid #444; position: relative; z-index: 10; }
 .text-content strong { display: block; color: #fff; font-size: 1.1em; margin-bottom: 4px; border-bottom: 1px solid #555; }
 body.text-mode .text-content { display: block; pointer-events: auto; }
 
@@ -3693,7 +4085,6 @@ body.edit-mode-active #game-wrapper { margin-right: 340px; transition: margin-ri
 .close-tab-btn:hover { background: #b71c1c; }
 
 /* === EDITOR CONTENT (Stable Gutter + Offset Padding) === */
-/* Padding right is reduced to 2px to account for the ~8px reserved gutter */
 .sidebar-scroll-content { flex: 1; overflow-y: auto; overflow-x: hidden; padding-bottom: 40px; padding-top: 15px; scrollbar-gutter: stable; scrollbar-width: thin; scrollbar-color: #444 transparent; }
 .editor-section { padding: 5px 2px 5px 10px; width: 100%; box-sizing: border-box; border-bottom: 1px solid #222; }
 .info-text { background: #252525; padding: 15px; border-radius: 4px; color: #aaa; font-size: 0.9rem; line-height: 1.4; text-align: center; margin: 10px; }
@@ -3734,7 +4125,6 @@ body.edit-mode-active #game-wrapper { margin-right: 340px; transition: margin-ri
 .full-width-btn { width: 100%; padding: 8px; background: #333; border: 1px solid #444; color: #ccc; cursor: pointer; border-radius: 4px; margin-top: 5px; font-weight: bold; font-size: 0.85rem; }
 .code-editor { width: 100%; height: 200px; background: #111; color: #0f0; font-family: monospace; font-size: 0.8rem; border: 1px solid #333; border-radius: 4px; padding: 5px; box-sizing: border-box; resize: vertical; }
 .code-editor:focus { outline: none !important; border-color: #4CAF50; box-shadow: none; }
-/* Resizer: 70% gradient as requested */
 ::-webkit-resizer { background: linear-gradient(135deg, transparent 70%, #666 70%); }
 ::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-track { background: transparent; }
