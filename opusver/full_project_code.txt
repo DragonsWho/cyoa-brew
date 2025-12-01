@@ -581,373 +581,135 @@ FILE START: config\schema.json
 FILE START: config\test_config.json
 ============================================================
 
+
 {
   "meta": {
-    "title": "Test CYOA - Rule Examples",
-    "author": "System Test",
-    "version": "1.0",
+    "title": "Test CYOA - Advanced Mechanics",
     "pages": [
       "config/test_image.png"
     ]
   },
   "points": [
-    {
-      "id": "points",
-      "name": "Points",
-      "start": 10
-    },
-    {
-      "id": "gold",
-      "name": "Gold",
-      "start": 100
-    }
+    { "id": "points", "name": "Points", "start": 50 }
   ],
   "groups": [
     {
-      "id": "intro",
-      "title": "Introduction",
-      "description": "Welcome to the test CYOA!\n\nThis demonstrates all available mechanics:\n- Simple costs\n- Requirements\n- Incompatibilities\n- Max choices\n- Budgets\n- Formulas",
+      "id": "modifiers",
+      "title": "Global Modifiers",
       "page": 0,
-      "coords": {
-        "x": 50,
-        "y": 50,
-        "w": 1820,
-        "h": 150
-      },
-      "items": []
-    },
-    {
-      "id": "free_items",
-      "title": "Free Items",
-      "description": "These items cost nothing. Click to select!",
-      "page": 0,
-      "coords": {
-        "x": 50,
-        "y": 220,
-        "w": 1820,
-        "h": 200
-      },
+      "coords": { "x": 50, "y": 50, "w": 1200, "h": 150 },
       "items": [
         {
-          "id": "free1",
-          "title": "Free Item 1",
-          "description": "This item is completely free.\nNo requirements, no costs.",
-          "coords": {
-            "x": 50,
-            "y": 250,
-            "w": 400,
-            "h": 150
-          },
-          "cost": []
-        },
-        {
-          "id": "free2",
-          "title": "Free Item 2",
-          "description": "Another free item.\nYou can select both!",
-          "coords": {
-            "x": 470,
-            "y": 250,
-            "w": 400,
-            "h": 150
-          },
-          "cost": []
-        },
-        {
-          "id": "bonus",
-          "title": "Bonus Points",
-          "description": "This actually GIVES you points!\nPositive cost = gain.",
-          "coords": {
-            "x": 890,
-            "y": 250,
-            "w": 400,
-            "h": 150
-          },
-          "cost": [
+          "id": "backpack",
+          "title": "Magic Backpack",
+          "description": "Increases limit in 'Choose Only 1' by +2.\nAllows you to pick A, B, and C!",
+          "coords": { "x": 50, "y": 50, "w": 350, "h": 120 },
+          "cost": [{ "currency": "points", "value": -5 }],
+          "effects": [
             {
-              "currency": "points",
-              "value": 5
+              "type": "modify_group_limit",
+              "group_id": "max_choices",
+              "value": 2
             }
+          ]
+        },
+        {
+          "id": "merchant_ring",
+          "title": "Merchant Ring",
+          "description": "All 'Magic' items cost 50% less!\nWatch the prices of Fire/Ice change.",
+          "coords": { "x": 420, "y": 50, "w": 350, "h": 120 },
+          "cost": [{ "currency": "points", "value": -10 }],
+          "effects": [
+            {
+              "type": "modify_cost",
+              "tag": "magic",
+              "mode": "multiply",
+              "value": 0.5
+            }
+          ]
+        },
+        {
+          "id": "starter_pack",
+          "title": "Starter Pack",
+          "description": "Automatically selects 'Cheap Item'.",
+          "coords": { "x": 790, "y": 50, "w": 350, "h": 120 },
+          "cost": [{ "currency": "points", "value": -2 }],
+          "effects": [
+            { "type": "force_selection", "target_id": "cheap" }
           ]
         }
       ]
     },
     {
-      "id": "paid_items",
-      "title": "Paid Items",
-      "description": "These cost points. Watch the counter at the bottom!",
+      "id": "magic_shop",
+      "title": "Magic Shop (Tags Test)",
       "page": 0,
-      "coords": {
-        "x": 50,
-        "y": 440,
-        "w": 1820,
-        "h": 200
-      },
+      "coords": { "x": 50, "y": 220, "w": 1200, "h": 200 },
       "items": [
         {
-          "id": "cheap",
-          "title": "Cheap Item",
-          "description": "Costs only 2 points.\nAffordable for everyone!",
-          "max_quantity": 5,
-          "coords": {
-            "x": 50,
-            "y": 470,
-            "w": 400,
-            "h": 150
-          },
-          "cost": [
-            {
-              "currency": "points",
-              "value": -2
-            }
-          ]
+          "id": "fire_scroll",
+          "title": "Fire Scroll",
+          "tags": ["magic", "fire"],
+          "description": "Tags: Magic, Fire\nCost: 10 (5 with Ring)",
+          "coords": { "x": 50, "y": 250, "w": 350, "h": 150 },
+          "cost": [{ "currency": "points", "value": -10 }]
         },
         {
-          "id": "expensive",
-          "title": "Expensive Item",
-          "description": "Costs 8 points.\nChoose wisely!",
-          "coords": {
-            "x": 470,
-            "y": 470,
-            "w": 400,
-            "h": 150
-          },
-          "cost": [
-            {
-              "currency": "points",
-              "value": -8
-            }
-          ]
+          "id": "ice_scroll",
+          "title": "Ice Scroll",
+          "tags": ["magic", "ice"],
+          "description": "Tags: Magic, Ice\nCost: 10 (5 with Ring)",
+          "coords": { "x": 420, "y": 250, "w": 350, "h": 150 },
+          "cost": [{ "currency": "points", "value": -10 }]
         },
         {
-          "id": "dual_cost",
-          "title": "Dual Cost",
-          "description": "Costs both points AND gold.\nMultiple currencies!",
-          "coords": {
-            "x": 890,
-            "y": 470,
-            "w": 400,
-            "h": 150
-          },
-          "cost": [
-            {
-              "currency": "points",
-              "value": -3
-            },
-            {
-              "currency": "gold",
-              "value": -25
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "id": "requirements",
-      "title": "Items with Requirements",
-      "description": "These require other items first.",
-      "page": 0,
-      "coords": {
-        "x": 50,
-        "y": 660,
-        "w": 1820,
-        "h": 200
-      },
-      "items": [
-        {
-          "id": "requires_free1",
-          "title": "Requires Free 1",
-          "description": "You must select 'Free Item 1' first.\n\nTry it: select Free Item 1, then this becomes available.",
-          "coords": {
-            "x": 50,
-            "y": 690,
-            "w": 400,
-            "h": 150
-          },
-          "cost": [],
-          "requirements": ["free1"]
-        },
-        {
-          "id": "requires_any",
-          "title": "Requires Any Free",
-          "description": "Requires Free Item 1 OR Free Item 2.\n\nFormula: free1 || free2",
-          "coords": {
-            "x": 470,
-            "y": 690,
-            "w": 400,
-            "h": 150
-          },
-          "cost": [],
-          "requirements": ["has('free1') || has('free2')"]
-        },
-        {
-          "id": "requires_both",
-          "title": "Requires Both",
-          "description": "Requires BOTH Cheap AND Expensive items.\n\nFormula: cheap && expensive",
-          "coords": {
-            "x": 890,
-            "y": 690,
-            "w": 400,
-            "h": 150
-          },
-          "cost": [],
-          "requirements": ["has('cheap') && has('expensive')"]
-        }
-      ]
-    },
-    {
-      "id": "incompatible",
-      "title": "Incompatible Items",
-      "description": "These cannot be selected together.",
-      "page": 0,
-      "coords": {
-        "x": 50,
-        "y": 880,
-        "w": 1820,
-        "h": 200
-      },
-      "items": [
-        {
-          "id": "fire",
-          "title": "Fire Magic",
-          "description": "Incompatible with Ice Magic.\nChoose your element!",
-          "coords": {
-            "x": 50,
-            "y": 910,
-            "w": 400,
-            "h": 150
-          },
-          "cost": [{"currency": "points", "value": -3}],
-          "incompatible": ["ice"]
-        },
-        {
-          "id": "ice",
-          "title": "Ice Magic",
-          "description": "Incompatible with Fire Magic.\nOpposite elements!",
-          "coords": {
-            "x": 470,
-            "y": 910,
-            "w": 400,
-            "h": 150
-          },
-          "cost": [{"currency": "points", "value": -3}],
-          "incompatible": ["fire"]
+          "id": "master_spell",
+          "title": "Master Spell",
+          "description": "Requires 2 items with 'magic' tag.",
+          "coords": { "x": 790, "y": 250, "w": 350, "h": 150 },
+          "cost": [{ "currency": "points", "value": -20 }],
+          "requirements": ["count.tag('magic') >= 2"]
         }
       ]
     },
     {
       "id": "max_choices",
-      "title": "Choose Only 1",
-      "description": "Radio button behavior - only one allowed.",
+      "title": "Choose Only 1 (Limit Test)",
       "page": 0,
-      "coords": {
-        "x": 1310,
-        "y": 220,
-        "w": 560,
-        "h": 640
-      },
-      "rules": {
-        "max_choices": 1
-      },
+      "coords": { "x": 1310, "y": 220, "w": 560, "h": 640 },
+      "rules": { "max_choices": 1 },
       "items": [
         {
           "id": "choice_a",
           "title": "Choice A",
-          "description": "Selecting this deselects B and C.",
-          "coords": {
-            "x": 1330,
-            "y": 250,
-            "w": 520,
-            "h": 150
-          },
+          "coords": { "x": 1330, "y": 250, "w": 520, "h": 150 },
           "cost": []
         },
         {
-      "id": "expansion_pack",
-      "title": "Expansion Pack",
-      "description": "Allows picking +2 options in the 'Choose Only 1' section.",
-      "coords": {             
-          "x": 1330,
-          "y": 50,
-          "w": 520,
-          "h": 150
-          },
-      "cost": [{"currency": "points", "value": -5}],
-      "effects": [
-        {
-          "type": "modify_group_limit",
-          "group_id": "max_choices",
-          "value": 2
-        }
-      ]
-    },
-        {
           "id": "choice_b",
           "title": "Choice B",
-          "description": "Selecting this deselects A and C.",
-          "coords": {
-            "x": 1330,
-            "y": 420,
-            "w": 520,
-            "h": 150
-          },
+          "coords": { "x": 1330, "y": 420, "w": 520, "h": 150 },
           "cost": []
         },
         {
           "id": "choice_c",
           "title": "Choice C",
-          "description": "Selecting this deselects A and B.",
-          "coords": {
-            "x": 1330,
-            "y": 590,
-            "w": 520,
-            "h": 150
-          },
+          "coords": { "x": 1330, "y": 590, "w": 520, "h": 150 },
           "cost": []
         }
       ]
     },
     {
-      "id": "budget_group",
-      "title": "Budget Example",
-      "description": "This group has 5 free picks!\nAfter 5, items cost points.",
+      "id": "paid_items",
+      "title": "Misc Items",
       "page": 0,
-      "coords": {
-        "x": 1310,
-        "y": 880,
-        "w": 560,
-        "h": 200
-      },
-      "rules": {
-        "budget": {
-          "currency": "points",
-          "amount": 5,
-          "name": "Free Picks"
-        }
-      },
+      "coords": { "x": 50, "y": 440, "w": 1200, "h": 200 },
       "items": [
         {
-          "id": "budget1",
-          "title": "Budget Item 1",
-          "description": "Normally costs 2 points.\nFree if budget available!",
-          "coords": {
-            "x": 1330,
-            "y": 910,
-            "w": 250,
-            "h": 150
-          },
-          "cost": [{"currency": "points", "value": -2}]
-        },
-        {
-          "id": "budget2",
-          "title": "Budget Item 2",
-          "description": "Also costs 2 points.\nCovered by budget!",
-          "coords": {
-            "x": 1600,
-            "y": 910,
-            "w": 250,
-            "h": 150
-          },
-          "cost": [{"currency": "points", "value": -2}]
+          "id": "cheap",
+          "title": "Cheap Item",
+          "coords": { "x": 50, "y": 470, "w": 350, "h": 150 },
+          "cost": [{ "currency": "points", "value": -1 }]
         }
       ]
     }
@@ -1084,6 +846,82 @@ System auto-converts to percentages.
   "requirements": ["item_a && item_b"]  // Use &&
 }
 ```
+
+
+
+
+## Tag System
+You can extract "Tags" from item descriptions or categories if they are used in the game. 
+
+**Example Extraction:**
+*Image Text:* "Fireball (Spell). blasts enemies with fire."
+*JSON:*
+```json
+{
+  "id": "fireball",
+  "title": "Fireball",
+  "tags": ["spell", "fire", "magic"], // Infer tags from context!
+  ...
+}
+```
+
+## Output Format
+
+```json
+{
+  "meta": { "title": "Game Title", "pages": ["page1.png"] },
+  "points": [{ "id": "points", "name": "Points", "start": 100 }],
+  "groups": [
+    {
+      "id": "group_id",
+      "title": "Group Title",
+      "items": [
+        {
+          "id": "item_id",
+          "title": "Item Name",
+          "tags": ["tag1", "tag2"],  <-- TAGS
+          "cost": [{"currency": "points", "value": -5}],
+          "requirements": ["count.tag('tag1') >= 3"],
+          "effects": []
+        }
+      ]
+    }
+  ]
+}
+```
+  
+## Pattern Recognition Guide
+
+### 1. Requirements
+| Text Pattern | JSON Rule |
+|--------------|-----------|
+| "Requires 3 Magic items" | `"requirements": ["count.tag('magic') >= 3"]` |
+| "Need any Weapon" | `"requirements": ["count.tag('weapon') > 0"]` |
+| "Requires Fireball" | `"requirements": ["fireball"]` |
+
+### 2. Discounts (Global Modifiers)
+| Text Pattern | JSON Effect |
+|--------------|-------------|
+| "Magic items cost 50% less" | `{"type": "modify_cost", "tag": "magic", "mode": "multiply", "value": 0.5}` |
+| "Swords cost -2 points" | `{"type": "modify_cost", "tag": "sword", "mode": "add", "value": 2}` |
+| "Fire spells are free" | `{"type": "modify_cost", "tag": "fire", "mode": "multiply", "value": 0}` |
+
+### 3. Group Limits
+| Text Pattern | JSON Effect |
+|--------------|-------------|
+| "+2 Spell Slots" | `{"type": "modify_group_limit", "group_id": "spells", "value": 2}` |
+| "Can pick 1 extra Companion" | `{"type": "modify_group_limit", "group_id": "companions", "value": 1}` |
+
+## Common Mistakes to AVOID
+
+❌ **Wrong:** `requirements: ["item1 || item2 || item3"]` (Hardcoding IDs)
+✅ **Correct:** `requirements: ["count.tag('magic') > 0"]` (Using Tags)
+
+❌ **Wrong:** `value: 5` for cost (This adds points)
+✅ **Correct:** `value: -5` for cost (This spends points)
+
+❌ **Wrong:** `value: -0.5` for discount multiplier (Result becomes negative)
+✅ **Correct:** `value: 0.5` for discount (Multiplies cost by 0.5)
 
 
 ============================================================
@@ -1583,6 +1421,159 @@ Sets a currency/variable to a specific number (ignoring calculations).
 
 
 
+
+
+## 🏷️ Tag System  
+Tags are the primary way to categorize items for requirements and discounts.
+Items can have multiple tags.
+
+```json
+{
+  "id": "fire_sword",
+  "title": "Flaming Sword",
+  "tags": ["weapon", "fire", "magic", "metal"]
+}
+```
+
+---
+
+## 🔒 Requirements with Tags
+
+### Rule: `requires_tag_count`
+Requires X items with a specific tag.
+
+```json
+{
+  "requirements": [
+    "count.tag('magic') >= 3",
+    "count.tag('weapon') > 0"
+  ]
+}
+```
+
+**Patterns:**
+- "Requires 3 Magic items"
+- "Need at least one Weapon"
+- "Unlock after picking 5 Fire spells"
+
+---
+
+## 🪙 Global Modifiers (Discounts)
+
+### Rule: `modify_cost`
+Changes the cost of OTHER items based on tags or groups.
+
+**Percentage Discount (Multiply):**
+```json
+{
+  "effects": [
+    {
+      "type": "modify_cost",
+      "tag": "magic",           // Target items with this tag
+      "mode": "multiply",       // Multiplication mode
+      "value": 0.5              // 0.5 = 50% cost (50% discount)
+    }
+  ]
+}
+```
+*Note: `value` is the multiplier. 0.5 means "half price".*
+
+**Flat Discount (Add):**
+```json
+{
+  "effects": [
+    {
+      "type": "modify_cost",
+      "tag": "weapon",
+      "mode": "add",
+      "value": 2               // Adds +2 to the cost (Reduces spending)
+    }
+  ]
+}
+```
+*Note: Since costs are usually negative (e.g. -10), adding +2 makes it -8 (cheaper).*
+
+**Patterns:**
+- "All Magic items cost 50% less"
+- "Swords are 2 points cheaper"
+- "Fire spells are free" (`mode: multiply, value: 0`)
+
+---
+
+## 💰 Basic Cost & Currency
+
+### Rule: `simple_cost`
+```json
+{
+  "cost": [{"currency": "points", "value": -5}]
+}
+```
+
+### Rule: `max_quantity`
+Allow selecting multiple times.
+```json
+{
+  "max_quantity": 3
+}
+```
+
+---
+
+## 📊 Group Rules
+
+### Rule: `max_choices`
+```json
+{
+  "rules": {
+    "max_choices": 1  // Radio button behavior
+  }
+}
+```
+
+### Rule: `budget`
+```json
+{
+  "rules": {
+    "budget": {
+      "currency": "points",
+      "amount": 5,
+      "name": "Free Picks"
+    }
+  }
+}
+```
+
+---
+
+## ✨ Other Effects
+
+### Rule: `modify_group_limit`
+Increases allowed choices in another group.
+```json
+{
+  "effects": [
+    {
+      "type": "modify_group_limit",
+      "group_id": "spells",
+      "value": 2
+    }
+  ]
+}
+```
+
+### Rule: `force_selection`
+```json
+{
+  "effects": [
+    {
+      "type": "force_selection",
+      "target_id": "basic_sword"
+    }
+  ]
+}
+```
+
+
 ============================================================
 FILE START: src\main.js
 ============================================================
@@ -1677,6 +1668,7 @@ console.log('  CYOA.state                     - View current state');
 FILE START: src\core\effects.js
 ============================================================
 
+
 /**
  * Effect Processor - Handles active card effects
  */
@@ -1690,10 +1682,9 @@ export class EffectProcessor {
      * Apply effects from all selected items
      */
     applyAll() {
-        // 1. Reset dynamic rules (like group limits) to default
         this.engine.restoreDefaults();
 
-        // 2. Iterate over selected items and apply their effects
+        // Iterate over selected items and apply their effects
         for (const [itemId, qty] of this.engine.state.selected) {
             const item = this.engine.findItem(itemId);
             if (!item || !item.effects) continue;
@@ -1707,19 +1698,21 @@ export class EffectProcessor {
     process(effect, sourceItem, qty) {
         switch (effect.type) {
             
-            // "Этот рюкзак позволяет взять +2 предмета в разделе Оружие"
             case 'modify_group_limit':
                 this.applyGroupLimitMod(effect, qty);
                 break;
 
-            // "Взял Рыцаря -> Получил Меч (бесплатно и принудительно)"
             case 'force_selection':
                 this.applyForceSelection(effect, qty);
                 break;
 
-            // "Установить Силу на 10" (вместо +10)
             case 'set_value':
                 this.applySetValue(effect, qty);
+                break;
+            
+            // NEW: Modifies costs of other items
+            case 'modify_cost':
+                this.applyModifyCost(effect, qty);
                 break;
 
             default:
@@ -1733,11 +1726,7 @@ export class EffectProcessor {
         const group = this.engine.config.groups.find(g => g.id === effect.group_id);
         if (!group || !group.rules) return;
 
-        // Support formula or fixed value
         let value = effect.value || 0;
-        
-        // Multiply by qty (if I buy 2 backpacks, I get +4 slots)
-        // Unless specific flag "once" is set
         if (!effect.once) {
             value *= qty;
         }
@@ -1748,39 +1737,50 @@ export class EffectProcessor {
     }
 
     applyForceSelection(effect, qty) {
-        // Prevent infinite loops if A forces B and B forces A
-        // We check if it's already selected to avoid recursion in simple cases
-        // Note: For multi-select, this might need logic "Force N times"
-        
         const targetId = effect.target_id;
         const currentQty = this.engine.state.selected.get(targetId) || 0;
         
-        // If not selected, select it
         if (currentQty === 0) {
-            // We use a silent select (no event emission yet) to avoid render thrashing
-            // We bypass canSelect check because Force usually overrides requirements
             this.engine.state.selected.set(targetId, 1);
             console.log(`⚡ Effect forced selection: ${targetId}`);
         }
     }
 
     applySetValue(effect, qty) {
-        // This overrides the calculated currency value
-        // We store it in a special "overrides" state in engine or set directly
-        // For simplicity, we'll write directly to state, but this runs BEFORE deltas
-        // so deltas might modify it further. Ideally, 'set' happens last.
-        // Let's assume this sets the BASE value.
-        
         const currency = effect.currency;
         const value = effect.value;
         this.engine.state.currencies[currency] = value;
     }
+
+    // NEW: Adds a modifier to the engine for the calculation phase
+    applyModifyCost(effect, qty) {
+        // Effect structure example:
+        // { type: "modify_cost", tag: "magic", mode: "multiply", value: 0.5 } 
+        
+        // If qty > 1, do we stack discounts? Usually yes.
+        // But for "multiply" (50% off), stacking acts like 0.5 * 0.5 = 0.25 (75% off)
+        
+        for (let i = 0; i < qty; i++) {
+            this.engine.modifiers.cost.push({
+                tag: effect.tag,
+                groupId: effect.group_id,
+                currency: effect.currency,
+                mode: effect.mode || 'add',
+                value: effect.value
+            });
+            
+            // If "once" flag is true, don't stack for quantity
+            if (effect.once) break;
+        }
+    }
 }
+
 
 
 ============================================================
 FILE START: src\core\engine.js
 ============================================================
+
 
 /**
  * Game Engine - Core game logic and state management
@@ -1788,15 +1788,20 @@ FILE START: src\core\engine.js
 
 import { RuleEvaluator } from './rules.js';
 import { GameState } from './state.js';
-import { EffectProcessor } from './effects.js'; // IMPORT NEW MODULE
+import { EffectProcessor } from './effects.js';
 
 export class GameEngine {
     constructor(config) {
         this.config = config;
         this.state = new GameState(config);
         this.rules = new RuleEvaluator(this);
-        this.effects = new EffectProcessor(this); // INIT EFFECTS
+        this.effects = new EffectProcessor(this);
         this.listeners = {};
+        
+        // Хранилище для активных модификаторов (скидки, наценки)
+        this.modifiers = {
+            cost: [] 
+        };
         
         // Capture initial defaults for restoration
         this.defaults = {
@@ -1804,7 +1809,7 @@ export class GameEngine {
         };
         this.initDefaults();
 
-        console.log('🎮 Engine initialized (Multi-select + Effects)');
+        console.log('🎮 Engine initialized (Tags + Modifiers)');
     }
 
     initDefaults() {
@@ -1851,7 +1856,6 @@ export class GameEngine {
                 }
             });
         } else if (group.rules?.max_choices) {
-            // NOTE: This check now uses the DYNAMIC max_choices (modified by effects)
             const totalInGroup = this.getGroupQty(group);
             if (totalInGroup >= group.rules.max_choices) {
                 console.log(`Max choices reached in ${group.id} (Limit: ${group.rules.max_choices})`);
@@ -1860,7 +1864,7 @@ export class GameEngine {
         }
 
         this.state.selected.set(itemId, currentQty + 1);
-        this.recalculate(); // This triggers effect application
+        this.recalculate(); 
         this.emit('selection', { itemId, selected: true, qty: currentQty + 1 });
         return true;
     }
@@ -1900,21 +1904,22 @@ export class GameEngine {
     // ==================== CALCULATION ====================
 
     recalculate() {
-        // 1. Cleanup invalid selections first (standard)
+        // 1. Cleanup invalid selections first
         this.cleanupInvalidSelections();
         
         // 2. Reset currencies to base
         this.state.resetCurrencies();
 
-        // 3. APPLY EFFECTS (The Magic Step)
-        // This restores default limits, then applies new ones from selections
-        // It might also force-select items
+        // 3. Сброс модификаторов перед новым расчетом
+        this.modifiers = { cost: [] };
+
+        // 4. APPLY EFFECTS (Заполняет this.modifiers и меняет правила групп)
         this.effects.applyAll();
 
-        // 4. Calculate Costs (Deltas)
+        // 5. Calculate Costs (Deltas) - ТЕПЕРЬ С УЧЕТОМ МОДИФИКАТОРОВ
         const groupDeltas = this.calculateGroupDeltas();
         
-        // 5. Apply Logic
+        // 6. Apply Logic
         this.applyBudgets(groupDeltas);
         this.applyDeltas(groupDeltas);
 
@@ -1942,6 +1947,7 @@ export class GameEngine {
             if (!deltas[group.id]) deltas[group.id] = {};
 
             for (const cost of item.cost) {
+                // Здесь RulesEvaluator применит модификаторы
                 const unitValue = this.rules.evaluateCost(cost, item, group);
                 const currencyId = cost.currency;
                 if (!deltas[group.id][currencyId]) deltas[group.id][currencyId] = 0;
@@ -2037,7 +2043,7 @@ export class GameEngine {
 
     reset() {
         this.state.reset();
-        this.restoreDefaults(); // Reset rules
+        this.restoreDefaults(); 
         this.recalculate();
         this.emit('reset');
     }
@@ -2047,6 +2053,7 @@ export class GameEngine {
 ============================================================
 FILE START: src\core\rules.js
 ============================================================
+
 
 /**
  * Rule Evaluator - Handles requirements, costs, and formulas
@@ -2082,7 +2089,7 @@ export class RuleEvaluator {
             return !this.engine.state.selected.has(targetId);
         }
 
-        // Simple: item_id (Map.has works like Set.has)
+        // Simple: item_id
         return this.engine.state.selected.has(req.trim());
     }
 
@@ -2102,19 +2109,110 @@ export class RuleEvaluator {
     // ==================== COST EVALUATION ====================
 
     evaluateCost(cost, item, group) {
-        let value = cost.value || cost.base || 0;
-
-        if (cost.formula) {
-            const formulaResult = this.evaluateFormula(cost.formula, item, group);
-            value += formulaResult;
-        }
-
-        if (cost.condition) {
-            const conditionResult = this.evaluateFormula(cost.condition, item, group);
-            value += conditionResult;
-        }
-
+        const { value } = this.calculateCostWithDetails(cost, item, group);
         return value;
+    }
+
+    /**
+     * Возвращает цену И список примененных модификаторов для UI
+     */
+    getCostBreakdown(cost, item, group) {
+        return this.calculateCostWithDetails(cost, item, group);
+    }
+
+    calculateCostWithDetails(cost, item, group) {
+        // 1. Base Calc
+        let value = cost.value || cost.base || 0;
+        if (cost.formula) value += this.evaluateFormula(cost.formula, item, group);
+        if (cost.condition) value += this.evaluateFormula(cost.condition, item, group);
+
+        const modifiersText = [];
+
+        // 2. Apply Modifiers
+        if (this.engine.modifiers.cost.length > 0) {
+            // Фильтруем применимые модификаторы
+            const applicable = this.engine.modifiers.cost.filter(mod => {
+                if (mod.currency && mod.currency !== cost.currency) return false;
+                if (mod.groupId && group.id !== mod.groupId) return false;
+                if (mod.tag && (!item.tags || !item.tags.includes(mod.tag))) return false;
+                return true;
+            });
+
+            // Сортировка "В пользу игрока": Сначала умножение, потом сложение
+            // set - самый приоритетный, он перезаписывает всё
+            const setters = applicable.filter(m => m.mode === 'set');
+            const multipliers = applicable.filter(m => m.mode === 'multiply');
+            const adders = applicable.filter(m => m.mode === 'add' || !m.mode);
+
+            // 1. Set (если есть, остальное игнорируем, либо применяем поверх - зависит от логики)
+            // Обычно set ставит базу. Пусть будет так.
+            if (setters.length > 0) {
+                const lastSet = setters[setters.length - 1];
+                value = lastSet.value;
+                modifiersText.push(`= ${value}`);
+            }
+
+            // 2. Multipliers (Скидки в процентах)
+            // Складываем множители? Или перемножаем? Обычно перемножаем (0.5 * 0.5 = 0.25 итоговая)
+            for (const mod of multipliers) {
+                value *= mod.value;
+                
+                // Формируем текст: 0.5 -> -50%, 1.5 -> +50%
+                const percent = Math.round((1 - mod.value) * 100);
+                if (percent > 0) modifiersText.push(`-${percent}%`); // Скидка
+                else modifiersText.push(`+${Math.abs(percent)}%`);   // Наценка
+            }
+
+            // 3. Adders (Плоские скидки)
+            for (const mod of adders) {
+                value += mod.value;
+                
+                // Если value отрицательное (цена), то +value это скидка.
+                // Пишем как есть: "+5" или "-5"
+                const sign = mod.value > 0 ? '+' : '';
+                modifiersText.push(`${sign}${mod.value}`);
+            }
+        }
+
+        return { 
+            value: Math.round(value), 
+            modifiers: modifiersText 
+        };
+    }
+
+    applyCostModifiers(baseValue, item, group, currency) {
+        let finalValue = baseValue;
+
+        // Iterate through all active modifiers
+        for (const mod of this.engine.modifiers.cost) {
+            let apply = true;
+
+            // Filter: Currency
+            if (mod.currency && mod.currency !== currency) apply = false;
+
+            // Filter: Group ID
+            if (apply && mod.groupId && group.id !== mod.groupId) apply = false;
+
+            // Filter: Tag
+            if (apply && mod.tag) {
+                if (!item.tags || !item.tags.includes(mod.tag)) apply = false;
+            }
+
+            if (apply) {
+                if (mod.mode === 'multiply') {
+                    // e.g. 50% discount: value * 0.5
+                    finalValue *= mod.value;
+                } else if (mod.mode === 'add') {
+                    // e.g. -2 discount: -10 becomes -8. 
+                    // Note: Since costs are usually negative (-10), adding +2 reduces the cost.
+                    finalValue += mod.value;
+                } else if (mod.mode === 'set') {
+                    finalValue = mod.value;
+                }
+            }
+        }
+        
+        return Math.round(finalValue);
     }
 
     // ==================== FORMULA EVALUATION ====================
@@ -2122,7 +2220,6 @@ export class RuleEvaluator {
     evaluateFormula(formula, item, group) {
         try {
             const context = this.createFormulaContext(item, group);
-            // Create function with context keys as arguments
             const func = new Function(...Object.keys(context), `return ${formula};`);
             return func(...Object.values(context));
         } catch (error) {
@@ -2135,46 +2232,47 @@ export class RuleEvaluator {
         const state = this.engine.state;
 
         return {
-            // Helper: has(id) - Checks existence (Qty > 0)
             has: (id) => state.selected.has(id),
-            
-            // CHANGED: Helper: qty(id) - Gets exact quantity
             qty: (id) => state.selected.get(id) || 0,
-
-            // Helper: selected object (Backward compatibility + new features)
+            
             selected: {
                 has: (id) => state.selected.has(id),
                 get: (id) => state.selected.get(id) || 0,
-                // Count of UNIQUE items selected
                 length: state.selected.size 
             },
 
-            // Currencies
             currency: { ...state.currencies },
 
-            // CHANGED: Counts per group (Sum of Quantities)
-            count: this.createCountHelper(group),
+            // Count helpers + TAGS
+            count: {
+                ...this.createCountHelper(group),
+                // count.tag('magic') -> returns total quantity of items with this tag
+                tag: (tagName) => {
+                    let total = 0;
+                    for (const [itemId, qty] of state.selected) {
+                        const i = this.engine.findItem(itemId);
+                        if (i && i.tags && i.tags.includes(tagName)) {
+                            total += qty;
+                        }
+                    }
+                    return total;
+                }
+            },
 
-            // CHANGED: Current group count (Sum of Quantities)
             this_group: group ? this.engine.getGroupQty(group) : 0,
 
-            // Math functions
             Math: Math
         };
     }
 
     createCountHelper(currentGroup) {
         const counts = {};
-
         for (const group of this.engine.config.groups) {
-            // Use getGroupQty to sum up multiples
             counts[group.id] = this.engine.getGroupQty(group);
         }
-
         if (currentGroup) {
             counts.this_group = this.engine.getGroupQty(currentGroup);
         }
-
         return counts;
     }
 }
@@ -2329,6 +2427,7 @@ export class ControlPanel {
 FILE START: src\ui\editor.js
 ============================================================
 
+
 /**
  * CYOA Editor - Visual editing mode
  */
@@ -2421,7 +2520,6 @@ export class CYOAEditor {
                                 </div>
                             </div>
                             
-                            <!-- NEW: Max Quantity Field -->
                             <div class="input-group">
                                 <input type="number" id="edit-max_quantity" min="1" placeholder="1">
                                 <span class="input-label">Max Qty (1 = Toggle)</span>
@@ -2431,6 +2529,13 @@ export class CYOAEditor {
                                 <input type="text" id="edit-title">
                                 <span class="input-label">Title</span>
                             </div>
+
+                            <!-- NEW: Tags Input -->
+                            <div class="input-group">
+                                <input type="text" id="edit-tags" placeholder="magic, fire, weapon">
+                                <span class="input-label">Tags (comma sep.)</span>
+                            </div>
+
                             <div class="input-group">
                                 <textarea id="edit-description" rows="5"></textarea>
                                 <span class="input-label">Desc</span>
@@ -2793,6 +2898,9 @@ export class CYOAEditor {
         document.getElementById('edit-title').value = item.title || '';
         document.getElementById('edit-description').value = item.description || '';
         
+        // Populate Tags
+        document.getElementById('edit-tags').value = (item.tags || []).join(', ');
+        
         ['x','y','w','h'].forEach(k => {
             document.getElementById(`edit-${k}`).value = Math.round(item.coords?.[k] || 0);
         });
@@ -2840,6 +2948,9 @@ export class CYOAEditor {
             if (['x','y','w','h'].includes(key)) {
                 if (!this.selectedItem.coords) this.selectedItem.coords = {};
                 this.selectedItem.coords[key] = val;
+            } else if (key === 'tags') {
+                // Parse CSV to Array
+                this.selectedItem.tags = val.split(',').map(t => t.trim()).filter(t => t);
             } else {
                 this.selectedItem[key] = val;
             }
@@ -2862,15 +2973,14 @@ export class CYOAEditor {
             this.updateCodePreview();
         };
 
-        // Added 'edit-max_quantity' to the list
-        const inputs = ['edit-id', 'edit-title', 'edit-description', 'edit-x', 'edit-y', 'edit-w', 'edit-h', 'edit-max_quantity'];
+        const inputs = ['edit-id', 'edit-title', 'edit-description', 'edit-tags', 'edit-x', 'edit-y', 'edit-w', 'edit-h', 'edit-max_quantity'];
         
         inputs.forEach(id => {
             const el = document.getElementById(id);
             if (!el) return;
-            const key = id.split('-').pop(); // gets 'max_quantity' correctly
+            const key = id.split('-').pop(); 
             const realKey = (id === 'edit-description') ? 'description' : key;
-            const isNum = ['x','y','w','h', 'max_quantity'].includes(key); // added max_quantity here
+            const isNum = ['x','y','w','h', 'max_quantity'].includes(key); 
             el.addEventListener('input', (e) => update(realKey, e.target.value, isNum));
         });
     }
@@ -3355,6 +3465,7 @@ export class UIRenderer {
 FILE START: src\ui\rule-builder.js
 ============================================================
 
+
 /**
  * Rule Builder - Visual rule editor
  */
@@ -3392,7 +3503,7 @@ export class RuleBuilder {
                 </div>
             </div>
 
-            <!-- Effects Section (NEW) -->
+            <!-- Effects Section -->
             <div class="editor-section">
                 <div class="accordion-header collapsed" onclick="CYOA.editor.toggleAccordion(this)">
                     ⚡ Effects
@@ -3421,14 +3532,11 @@ export class RuleBuilder {
         this.currentGroup = group;
         this.renderCosts();
         this.renderRequirements();
-        this.renderEffects(); // NEW
+        this.renderEffects();
         this.renderIncompatible();
     }
 
-    // ... (COSTS methods remain same) ...
-    // ... (REQUIREMENTS methods remain same) ...
-
-    // ==================== EFFECTS (NEW) ====================
+    // ==================== EFFECTS (UPDATED) ====================
 
     renderEffects() {
         if (!this.currentItem) return;
@@ -3444,7 +3552,7 @@ export class RuleBuilder {
         container.innerHTML = effects.map((eff, index) => {
             let inputs = '';
             
-            // Dynamic inputs based on type
+            // 1. Modify Group Limit
             if (eff.type === 'modify_group_limit') {
                 inputs = `
                     <select onchange="CYOA.editor.ruleBuilder.updateEffectProp(${index}, 'group_id', this.value)" style="width:100px;">
@@ -3455,13 +3563,17 @@ export class RuleBuilder {
                            onchange="CYOA.editor.ruleBuilder.updateEffectProp(${index}, 'value', this.value)"
                            placeholder="+/-" style="width:50px;">
                 `;
-            } else if (eff.type === 'force_selection') {
+            } 
+            // 2. Force Selection
+            else if (eff.type === 'force_selection') {
                 inputs = `
                     <input type="text" value="${eff.target_id || ''}" 
                            onchange="CYOA.editor.ruleBuilder.updateEffectProp(${index}, 'target_id', this.value)"
                            placeholder="Target Item ID">
                 `;
-            } else if (eff.type === 'set_value') {
+            } 
+            // 3. Set Value
+            else if (eff.type === 'set_value') {
                 inputs = `
                     <select onchange="CYOA.editor.ruleBuilder.updateEffectProp(${index}, 'currency', this.value)" style="width:80px;">
                         ${this.getCurrencyOptions(eff.currency)}
@@ -3471,12 +3583,31 @@ export class RuleBuilder {
                            placeholder="Val" style="width:50px;">
                 `;
             }
+            // 4. Modify Cost (NEW)
+            else if (eff.type === 'modify_cost') {
+                inputs = `
+                    <input type="text" value="${eff.tag || ''}" 
+                           onchange="CYOA.editor.ruleBuilder.updateEffectProp(${index}, 'tag', this.value)"
+                           placeholder="Tag (e.g. magic)" style="width: 80px;">
+                    
+                    <select onchange="CYOA.editor.ruleBuilder.updateEffectProp(${index}, 'mode', this.value)" style="width:60px;">
+                        <option value="add" ${(!eff.mode || eff.mode === 'add') ? 'selected' : ''}>Flat (+/-)</option>
+                        <option value="multiply" ${eff.mode === 'multiply' ? 'selected' : ''}>% (Mult)</option>
+                    </select>
+
+                    <input type="number" value="${eff.value}" 
+                           step="0.1"
+                           onchange="CYOA.editor.ruleBuilder.updateEffectProp(${index}, 'value', this.value)"
+                           placeholder="Val" style="width:50px;">
+                `;
+            }
 
             return `
             <div style="background:#222; padding:4px; border:1px solid #333; border-radius:4px; margin-bottom:4px;">
                 <div class="compact-row">
                     <select onchange="CYOA.editor.ruleBuilder.updateEffectType(${index}, this.value)" style="font-weight:bold; color:#4CAF50;">
-                        <option value="modify_group_limit" ${eff.type === 'modify_group_limit' ? 'selected' : ''}>Modify Limit</option>
+                        <option value="modify_group_limit" ${eff.type === 'modify_group_limit' ? 'selected' : ''}>Limit Mod</option>
+                        <option value="modify_cost" ${eff.type === 'modify_cost' ? 'selected' : ''}>Cost Mod (Discount)</option>
                         <option value="force_selection" ${eff.type === 'force_selection' ? 'selected' : ''}>Force Select</option>
                         <option value="set_value" ${eff.type === 'set_value' ? 'selected' : ''}>Set Variable</option>
                     </select>
@@ -3485,6 +3616,7 @@ export class RuleBuilder {
                 <div style="display:flex; gap:4px; margin-top:4px;">
                     ${inputs}
                 </div>
+                ${eff.type === 'modify_cost' && eff.mode === 'multiply' ? '<div style="font-size:0.7em; color:#888;">0.5 = 50% discount</div>' : ''}
             </div>
             `;
         }).join('');
@@ -3514,10 +3646,10 @@ export class RuleBuilder {
 
     updateEffectType(index, newType) {
         if (!this.currentItem?.effects?.[index]) return;
-        const oldEffect = this.currentItem.effects[index];
         
-        // Reset props based on new type to avoid junk data
+        // Reset props based on new type
         const newEffect = { type: newType };
+        
         if (newType === 'modify_group_limit') {
             newEffect.group_id = this.engine.config.groups[0]?.id || '';
             newEffect.value = 1;
@@ -3526,6 +3658,10 @@ export class RuleBuilder {
         } else if (newType === 'set_value') {
             newEffect.currency = 'points';
             newEffect.value = 0;
+        } else if (newType === 'modify_cost') {
+            newEffect.tag = 'magic';
+            newEffect.mode = 'add'; // 'add' (flat) or 'multiply' (%)
+            newEffect.value = 2;    // +2 points (flat) or 0.5 (50%)
         }
         
         this.currentItem.effects[index] = newEffect;
@@ -3536,7 +3672,11 @@ export class RuleBuilder {
     updateEffectProp(index, prop, value) {
         if (!this.currentItem?.effects?.[index]) return;
         
-        if (prop === 'value') value = parseInt(value) || 0;
+        // Parse numbers
+        if (prop === 'value') {
+            const floatVal = parseFloat(value);
+            value = isNaN(floatVal) ? 0 : floatVal;
+        }
         
         this.currentItem.effects[index][prop] = value;
         this.updateParent();
@@ -3558,9 +3698,8 @@ export class RuleBuilder {
         ).join('');
     }
     
-    // ... (Costs/Requirements helper functions remain same) ...
-
-    // (Helper for original costs needed for context)
+    // ... (COSTS & REQUIREMENTS & INCOMPATIBLE methods remain unchanged from previous versions)
+    
     renderCosts() {
         if (!this.currentItem) return;
         const container = document.getElementById('cost-list');
@@ -3583,7 +3722,6 @@ export class RuleBuilder {
         `).join('');
     }
 
-    // Keep existing add/remove cost/req/incompatible methods...
     addCost() {
         if (!this.currentItem) return;
         if (!this.currentItem.cost) this.currentItem.cost = [];
@@ -3610,7 +3748,7 @@ export class RuleBuilder {
         if (!this.currentItem?.cost?.[index]) return;
         if (!isNaN(value) && value.trim() !== '') {
             this.currentItem.cost[index].value = parseInt(value);
-            delete this.currentItem.cost[index].formula;
+            delete this.currentItem.cost[index].formula;ddd
         } else {
             this.currentItem.cost[index].formula = value;
             delete this.currentItem.cost[index].value;
@@ -3631,7 +3769,7 @@ export class RuleBuilder {
             <div class="compact-row" style="grid-template-columns: 1fr 24px;">
                 <input type="text" value="${req}" 
                        onchange="CYOA.editor.ruleBuilder.updateRequirement(${index}, this.value)"
-                       placeholder="item_id">
+                       placeholder="item_id or count.tag('x')>1">
                 <button class="icon-btn" onclick="CYOA.editor.ruleBuilder.removeRequirement(${index})">×</button>
             </div>
         `).join('');
@@ -3712,6 +3850,7 @@ export class RuleBuilder {
 FILE START: src\ui\tooltip.js
 ============================================================
 
+
 /**
  * Tooltip Manager - Handles hover tooltips
  */
@@ -3738,11 +3877,10 @@ export class TooltipManager {
 
             // Delay show
             this.timer = setTimeout(() => {
-                // Don't show if text mode is active
                 if (!document.body.classList.contains('text-mode')) {
                     this.show();
                 }
-            }, 500);
+            }, 300); // Slightly faster than before
         });
 
         element.addEventListener('mousemove', (e) => {
@@ -3770,49 +3908,132 @@ export class TooltipManager {
     // ==================== CONTENT ====================
 
     updateContent(item, group) {
-        const isDebug = document.body.classList.contains('debug-mode');
+        const isDebug = document.body.classList.contains('debug-mode') || document.body.classList.contains('edit-mode-active');
         let html = `<h4>${item.title}</h4>`;
 
-        // Cost
+        // 1. Tags (NEW)
+        if (item.tags && item.tags.length > 0) {
+            html += this.renderTags(item);
+        }
+
+        // 2. Effects (NEW)
+        if (item.effects && item.effects.length > 0) {
+            html += this.renderEffects(item);
+        }
+
+        // 3. Cost
         if (item.cost && item.cost.length > 0) {
             html += this.renderCost(item, group);
         }
 
-        // Requirements
+        // 4. Requirements
         html += this.renderRequirements(item, group);
 
-        // Description (only if not in text mode)
+        // 5. Description
         if (!document.body.classList.contains('text-mode') && item.description) {
             html += `<div class="desc">${item.description}</div>`;
         }
 
-        // Debug info
+        // 6. Debug info
         if (isDebug) {
-            html += `<div class="debug-info">ID: ${item.id}<br>Group: ${group.id}</div>`;
+            html += `<div class="debug-info">
+                ID: ${item.id}<br>
+                Group: ${group.id}<br>
+                Coords: [${item.coords?.x}, ${item.coords?.y}, ${item.coords?.w}, ${item.coords?.h}]
+            </div>`;
         }
 
         this.tooltipEl.innerHTML = html;
     }
 
-    // ==================== COST ====================
+    // ==================== NEW RENDERERS ====================
 
-    renderCost(item, group) {
-        let html = '';
+    renderTags(item) {
+        // Simple badges for tags
+        const tagsHtml = item.tags.map(t => 
+            `<span style="background:#333; color:#aaa; padding:2px 6px; border-radius:4px; font-size:0.75em; margin-right:4px; border:1px solid #444;">${t}</span>`
+        ).join('');
+        return `<div style="margin-bottom:8px;">${tagsHtml}</div>`;
+    }
 
-        item.cost.forEach(c => {
-            const finalVal = this.engine.rules.evaluateCost(c, item, group);
-            const sign = finalVal > 0 ? '+' : '';
-            
-            let colorClass = finalVal < 0 ? 'bad' : '';
-            if (finalVal === 0) colorClass = 'free';
+    renderEffects(item) {
+        let html = '<div style="margin-bottom:8px; border-top:1px solid #444; padding-top:4px;">';
+        
+        item.effects.forEach(eff => {
+            let text = '';
+            let icon = '⚡';
 
-            html += `<div class="cost ${colorClass}">${c.currency}: ${sign}${finalVal}</div>`;
+            switch (eff.type) {
+                case 'modify_group_limit':
+                    const group = this.engine.config.groups.find(g => g.id === eff.group_id);
+                    const gName = group ? (group.title || eff.group_id) : eff.group_id;
+                    const val = eff.value > 0 ? `+${eff.value}` : eff.value;
+                    text = `Allows <b>${val}</b> more choices in <i>${gName}</i>`;
+                    break;
+
+                case 'modify_cost':
+                    const target = eff.tag ? `[${eff.tag}]` : (eff.group_id ? `Group` : 'items');
+                    if (eff.mode === 'multiply') {
+                        const percent = Math.round((1 - eff.value) * 100);
+                        text = `<b>${percent}% Discount</b> on ${target} items`;
+                    } else {
+                        // Assuming positive 'add' reduces cost (engine logic: value += mod)
+                        // If logic is standard: negative cost = spend. 
+                        // If base -10, mod +5 => -5. So +5 is discount.
+                        const sign = eff.value > 0 ? 'Discount' : 'Markup';
+                        text = `<b>${Math.abs(eff.value)} point ${sign}</b> on ${target} items`;
+                    }
+                    icon = '🏷️';
+                    break;
+
+                case 'force_selection':
+                    const forcedItem = this.engine.findItem(eff.target_id);
+                    const name = forcedItem ? forcedItem.title : eff.target_id;
+                    text = `Automatically adds: <b>${name}</b>`;
+                    icon = '🎁';
+                    break;
+
+                case 'set_value':
+                    text = `Sets <b>${eff.currency}</b> to ${eff.value}`;
+                    break;
+
+                default:
+                    text = `Unknown Effect: ${eff.type}`;
+            }
+
+            html += `<div style="color:#4db8ff; font-size:0.9em; margin-bottom:2px;">${icon} ${text}</div>`;
         });
 
+        html += '</div>';
         return html;
     }
 
-    // ==================== REQUIREMENTS ====================
+    // ==================== EXISTING RENDERERS ====================
+
+    renderCost(item, group) {
+        let html = '';
+        item.cost.forEach(c => {
+            // Используем новый метод, который возвращает и цену, и текст модификаторов
+            const { value, modifiers } = this.engine.rules.getCostBreakdown(c, item, group);
+            
+            const sign = value > 0 ? '+' : '';
+            
+            let colorClass = value < 0 ? 'bad' : ''; 
+            if (value === 0) colorClass = 'free';      
+            if (value > 0) colorClass = 'good';        
+
+            // Формируем строку модификаторов: (-50% +5)
+            let modHtml = '';
+            if (modifiers.length > 0) {
+                modHtml = `<span class="mod-applied">(${modifiers.join(' ')})</span>`;
+            }
+
+            html += `<div class="cost ${colorClass}">
+                ${c.currency}: ${sign}${value} ${modHtml}
+            </div>`;
+        });
+        return html;
+    }
 
     renderRequirements(item, group) {
         let reqsHtml = '';
@@ -3827,12 +4048,12 @@ export class TooltipManager {
             });
         }
 
-        // Max choices
+        // Max choices check
         const isSelected = this.engine.state.selected.has(item.id);
         if (!isSelected && group.rules?.max_choices) {
             const currentCount = this.engine.getSelectedInGroup(group).length;
             if (currentCount >= group.rules.max_choices) {
-                reqsHtml += `<span class="req-item fail">⛔ Max limit reached (${group.rules.max_choices})</span>`;
+                reqsHtml += `<span class="req-item fail">⛔ Max choices reached (${group.rules.max_choices})</span>`;
             }
         }
 
@@ -3846,7 +4067,6 @@ export class TooltipManager {
         if (reqsHtml) {
             return `<div class="reqs">${reqsHtml}</div>`;
         }
-
         return '';
     }
 
@@ -3854,26 +4074,35 @@ export class TooltipManager {
         let isMet = false;
         let displayText = req;
 
-        // Complex formula
-        if (req.includes('(') || req.includes('||') || req.includes('&&')) {
+        // Clean up the text for display (remove code syntax)
+        const formatText = (txt) => {
+            return txt
+                .replace(/count\.tag\(['"](.+?)['"]\)/g, "Tag: $1") // count.tag('fire') -> Tag: fire
+                .replace(/count\.([a-zA-Z0-9_]+)/g, "Group: $1")   // count.group -> Group: group
+                .replace(/has\(['"](.+?)['"]\)/g, "$1")            // has('id') -> id
+                .replace(/\|\|/g, " OR ")
+                .replace(/&&/g, " AND ")
+                .replace(/>=/g, "≥")
+                .replace(/<=/g, "≤");
+        };
+
+        if (req.includes('(') || req.includes('||') || req.includes('&&') || req.includes('count.')) {
+            // Complex formula
             isMet = this.engine.rules.evaluateRequirement(req, null);
-            
-            // Make it readable
-            displayText = displayText.replace(/has\(['"](.+?)['"]\)/g, (match, id) => {
-                const item = this.engine.findItem(id);
-                return item?.title || id;
-            });
-            displayText = displayText
-                .replace(/\|\|/g, " <b style='color:#fff'>OR</b> ")
-                .replace(/&&/g, " <b style='color:#fff'>AND</b> ");
+            displayText = formatText(req);
         } else {
-            // Simple requirement
+            // Simple ID requirement
             const isNot = req.startsWith('!');
             const cleanId = isNot ? req.slice(1) : req;
-            isMet = this.engine.rules.evaluateRequirement(req, null);
             
+            // Check logic
+            const targetSelected = this.engine.state.selected.has(cleanId);
+            isMet = isNot ? !targetSelected : targetSelected;
+            
+            // Get nice name
             const targetItem = this.engine.findItem(cleanId);
-            displayText = (isNot ? "NOT " : "") + (targetItem?.title || cleanId);
+            const name = targetItem?.title || cleanId;
+            displayText = (isNot ? "NOT " : "") + name;
         }
 
         if (!isMet) {
@@ -3893,11 +4122,10 @@ export class TooltipManager {
         let top = e.clientY + 20;
         let left = e.clientX + 20;
 
-        // Keep in viewport
+        // Keep in viewport logic
         if (left + ttW > window.innerWidth) {
             left = window.innerWidth - ttW - 20;
         }
-
         if (top + ttH > window.innerHeight) {
             top = e.clientY - ttH - 10;
         }
@@ -3906,6 +4134,7 @@ export class TooltipManager {
         tt.style.left = left + 'px';
     }
 }
+
 
 
 ============================================================
@@ -4054,6 +4283,7 @@ body.text-mode .text-content { display: block; pointer-events: auto; }
 #tooltip .req-item.fail { color: #f88; font-weight: bold; }
 #tooltip .req-item.ok { color: #666; text-decoration: line-through; }
 #tooltip .debug-info { margin-top: 10px; padding-top: 10px; border-top: 1px dashed #555; color: #777; font-size: 0.75em; font-family: monospace; }
+#tooltip .mod-applied { color: #4db8ff; font-size: 0.85em; font-weight: normal; margin-left: 6px; font-family: monospace;}
 
 /* === EDIT MODE VISUALS (Toggle via Edit Button) === */
 body.show-zones .click-zone { border: 2px solid rgba(255,0,0,0.5) !important; background: rgba(255,0,0,0.05) !important; border-radius: 0 !important; box-shadow: none !important; }
