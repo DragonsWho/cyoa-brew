@@ -123,3 +123,79 @@ System auto-converts to percentages.
   "requirements": ["item_a && item_b"]  // Use &&
 }
 ```
+
+
+
+
+## Tag System
+You can extract "Tags" from item descriptions or categories if they are used in the game. 
+
+**Example Extraction:**
+*Image Text:* "Fireball (Spell). blasts enemies with fire."
+*JSON:*
+```json
+{
+  "id": "fireball",
+  "title": "Fireball",
+  "tags": ["spell", "fire", "magic"], // Infer tags from context!
+  ...
+}
+```
+
+## Output Format
+
+```json
+{
+  "meta": { "title": "Game Title", "pages": ["page1.png"] },
+  "points": [{ "id": "points", "name": "Points", "start": 100 }],
+  "groups": [
+    {
+      "id": "group_id",
+      "title": "Group Title",
+      "items": [
+        {
+          "id": "item_id",
+          "title": "Item Name",
+          "tags": ["tag1", "tag2"],  <-- TAGS
+          "cost": [{"currency": "points", "value": -5}],
+          "requirements": ["count.tag('tag1') >= 3"],
+          "effects": []
+        }
+      ]
+    }
+  ]
+}
+```
+  
+## Pattern Recognition Guide
+
+### 1. Requirements
+| Text Pattern | JSON Rule |
+|--------------|-----------|
+| "Requires 3 Magic items" | `"requirements": ["count.tag('magic') >= 3"]` |
+| "Need any Weapon" | `"requirements": ["count.tag('weapon') > 0"]` |
+| "Requires Fireball" | `"requirements": ["fireball"]` |
+
+### 2. Discounts (Global Modifiers)
+| Text Pattern | JSON Effect |
+|--------------|-------------|
+| "Magic items cost 50% less" | `{"type": "modify_cost", "tag": "magic", "mode": "multiply", "value": 0.5}` |
+| "Swords cost -2 points" | `{"type": "modify_cost", "tag": "sword", "mode": "add", "value": 2}` |
+| "Fire spells are free" | `{"type": "modify_cost", "tag": "fire", "mode": "multiply", "value": 0}` |
+
+### 3. Group Limits
+| Text Pattern | JSON Effect |
+|--------------|-------------|
+| "+2 Spell Slots" | `{"type": "modify_group_limit", "group_id": "spells", "value": 2}` |
+| "Can pick 1 extra Companion" | `{"type": "modify_group_limit", "group_id": "companions", "value": 1}` |
+
+## Common Mistakes to AVOID
+
+❌ **Wrong:** `requirements: ["item1 || item2 || item3"]` (Hardcoding IDs)
+✅ **Correct:** `requirements: ["count.tag('magic') > 0"]` (Using Tags)
+
+❌ **Wrong:** `value: 5` for cost (This adds points)
+✅ **Correct:** `value: -5` for cost (This spends points)
+
+❌ **Wrong:** `value: -0.5` for discount multiplier (Result becomes negative)
+✅ **Correct:** `value: 0.5` for discount (Multiplies cost by 0.5)

@@ -488,3 +488,157 @@ Sets a currency/variable to a specific number (ignoring calculations).
 - "Sets your Strength to 10"
 - "Resets Magic to 0"
 ```
+
+
+
+
+
+## 🏷️ Tag System  
+Tags are the primary way to categorize items for requirements and discounts.
+Items can have multiple tags.
+
+```json
+{
+  "id": "fire_sword",
+  "title": "Flaming Sword",
+  "tags": ["weapon", "fire", "magic", "metal"]
+}
+```
+
+---
+
+## 🔒 Requirements with Tags
+
+### Rule: `requires_tag_count`
+Requires X items with a specific tag.
+
+```json
+{
+  "requirements": [
+    "count.tag('magic') >= 3",
+    "count.tag('weapon') > 0"
+  ]
+}
+```
+
+**Patterns:**
+- "Requires 3 Magic items"
+- "Need at least one Weapon"
+- "Unlock after picking 5 Fire spells"
+
+---
+
+## 🪙 Global Modifiers (Discounts)
+
+### Rule: `modify_cost`
+Changes the cost of OTHER items based on tags or groups.
+
+**Percentage Discount (Multiply):**
+```json
+{
+  "effects": [
+    {
+      "type": "modify_cost",
+      "tag": "magic",           // Target items with this tag
+      "mode": "multiply",       // Multiplication mode
+      "value": 0.5              // 0.5 = 50% cost (50% discount)
+    }
+  ]
+}
+```
+*Note: `value` is the multiplier. 0.5 means "half price".*
+
+**Flat Discount (Add):**
+```json
+{
+  "effects": [
+    {
+      "type": "modify_cost",
+      "tag": "weapon",
+      "mode": "add",
+      "value": 2               // Adds +2 to the cost (Reduces spending)
+    }
+  ]
+}
+```
+*Note: Since costs are usually negative (e.g. -10), adding +2 makes it -8 (cheaper).*
+
+**Patterns:**
+- "All Magic items cost 50% less"
+- "Swords are 2 points cheaper"
+- "Fire spells are free" (`mode: multiply, value: 0`)
+
+---
+
+## 💰 Basic Cost & Currency
+
+### Rule: `simple_cost`
+```json
+{
+  "cost": [{"currency": "points", "value": -5}]
+}
+```
+
+### Rule: `max_quantity`
+Allow selecting multiple times.
+```json
+{
+  "max_quantity": 3
+}
+```
+
+---
+
+## 📊 Group Rules
+
+### Rule: `max_choices`
+```json
+{
+  "rules": {
+    "max_choices": 1  // Radio button behavior
+  }
+}
+```
+
+### Rule: `budget`
+```json
+{
+  "rules": {
+    "budget": {
+      "currency": "points",
+      "amount": 5,
+      "name": "Free Picks"
+    }
+  }
+}
+```
+
+---
+
+## ✨ Other Effects
+
+### Rule: `modify_group_limit`
+Increases allowed choices in another group.
+```json
+{
+  "effects": [
+    {
+      "type": "modify_group_limit",
+      "group_id": "spells",
+      "value": 2
+    }
+  ]
+}
+```
+
+### Rule: `force_selection`
+```json
+{
+  "effects": [
+    {
+      "type": "force_selection",
+      "target_id": "basic_sword"
+    }
+  ]
+}
+```
