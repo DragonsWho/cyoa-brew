@@ -1,18 +1,24 @@
+
 /**
  * Game Engine - Core game logic and state management
  */
 
 import { RuleEvaluator } from './rules.js';
 import { GameState } from './state.js';
-import { EffectProcessor } from './effects.js'; // IMPORT NEW MODULE
+import { EffectProcessor } from './effects.js';
 
 export class GameEngine {
     constructor(config) {
         this.config = config;
         this.state = new GameState(config);
         this.rules = new RuleEvaluator(this);
-        this.effects = new EffectProcessor(this); // INIT EFFECTS
+        this.effects = new EffectProcessor(this);
         this.listeners = {};
+        
+        // Хранилище для активных модификаторов (скидки, наценки)
+        this.modifiers = {
+            cost: [] 
+        };
         
         // Capture initial defaults for restoration
         this.defaults = {
@@ -20,7 +26,7 @@ export class GameEngine {
         };
         this.initDefaults();
 
-        console.log('🎮 Engine initialized (Multi-select + Effects)');
+        console.log('🎮 Engine initialized (Tags + Modifiers)');
     }
 
     initDefaults() {
@@ -67,7 +73,6 @@ export class GameEngine {
                 }
             });
         } else if (group.rules?.max_choices) {
-            // NOTE: This check now uses the DYNAMIC max_choices (modified by effects)
             const totalInGroup = this.getGroupQty(group);
             if (totalInGroup >= group.rules.max_choices) {
                 console.log(`Max choices reached in ${group.id} (Limit: ${group.rules.max_choices})`);
@@ -76,7 +81,7 @@ export class GameEngine {
         }
 
         this.state.selected.set(itemId, currentQty + 1);
-        this.recalculate(); // This triggers effect application
+        this.recalculate(); 
         this.emit('selection', { itemId, selected: true, qty: currentQty + 1 });
         return true;
     }
@@ -116,21 +121,22 @@ export class GameEngine {
     // ==================== CALCULATION ====================
 
     recalculate() {
-        // 1. Cleanup invalid selections first (standard)
+        // 1. Cleanup invalid selections first
         this.cleanupInvalidSelections();
         
         // 2. Reset currencies to base
         this.state.resetCurrencies();
 
-        // 3. APPLY EFFECTS (The Magic Step)
-        // This restores default limits, then applies new ones from selections
-        // It might also force-select items
+        // 3. Сброс модификаторов перед новым расчетом
+        this.modifiers = { cost: [] };
+
+        // 4. APPLY EFFECTS (Заполняет this.modifiers и меняет правила групп)
         this.effects.applyAll();
 
-        // 4. Calculate Costs (Deltas)
+        // 5. Calculate Costs (Deltas) - ТЕПЕРЬ С УЧЕТОМ МОДИФИКАТОРОВ
         const groupDeltas = this.calculateGroupDeltas();
         
-        // 5. Apply Logic
+        // 6. Apply Logic
         this.applyBudgets(groupDeltas);
         this.applyDeltas(groupDeltas);
 
@@ -158,6 +164,7 @@ export class GameEngine {
             if (!deltas[group.id]) deltas[group.id] = {};
 
             for (const cost of item.cost) {
+                // Здесь RulesEvaluator применит модификаторы
                 const unitValue = this.rules.evaluateCost(cost, item, group);
                 const currencyId = cost.currency;
                 if (!deltas[group.id][currencyId]) deltas[group.id][currencyId] = 0;
@@ -253,7 +260,7 @@ export class GameEngine {
 
     reset() {
         this.state.reset();
-        this.restoreDefaults(); // Reset rules
+        this.restoreDefaults(); 
         this.recalculate();
         this.emit('reset');
     }

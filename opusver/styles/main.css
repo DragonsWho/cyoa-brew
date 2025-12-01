@@ -63,6 +63,7 @@ body.text-mode .text-content { display: block; pointer-events: auto; }
 #tooltip .req-item.fail { color: #f88; font-weight: bold; }
 #tooltip .req-item.ok { color: #666; text-decoration: line-through; }
 #tooltip .debug-info { margin-top: 10px; padding-top: 10px; border-top: 1px dashed #555; color: #777; font-size: 0.75em; font-family: monospace; }
+#tooltip .mod-applied { color: #4db8ff; font-size: 0.85em; font-weight: normal; margin-left: 6px; font-family: monospace;}
 
 /* === EDIT MODE VISUALS (Toggle via Edit Button) === */
 body.show-zones .click-zone { border: 2px solid rgba(255,0,0,0.5) !important; background: rgba(255,0,0,0.05) !important; border-radius: 0 !important; box-shadow: none !important; }

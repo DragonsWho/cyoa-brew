@@ -1,3 +1,4 @@
+
 /**
  * Tooltip Manager - Handles hover tooltips
  */
@@ -24,11 +25,10 @@ export class TooltipManager {
 
             // Delay show
             this.timer = setTimeout(() => {
-                // Don't show if text mode is active
                 if (!document.body.classList.contains('text-mode')) {
                     this.show();
                 }
-            }, 500);
+            }, 300); // Slightly faster than before
         });
 
         element.addEventListener('mousemove', (e) => {
@@ -56,49 +56,132 @@ export class TooltipManager {
     // ==================== CONTENT ====================
 
     updateContent(item, group) {
-        const isDebug = document.body.classList.contains('debug-mode');
+        const isDebug = document.body.classList.contains('debug-mode') || document.body.classList.contains('edit-mode-active');
         let html = `<h4>${item.title}</h4>`;
 
-        // Cost
+        // 1. Tags (NEW)
+        if (item.tags && item.tags.length > 0) {
+            html += this.renderTags(item);
+        }
+
+        // 2. Effects (NEW)
+        if (item.effects && item.effects.length > 0) {
+            html += this.renderEffects(item);
+        }
+
+        // 3. Cost
         if (item.cost && item.cost.length > 0) {
             html += this.renderCost(item, group);
         }
 
-        // Requirements
+        // 4. Requirements
         html += this.renderRequirements(item, group);
 
-        // Description (only if not in text mode)
+        // 5. Description
         if (!document.body.classList.contains('text-mode') && item.description) {
             html += `<div class="desc">${item.description}</div>`;
         }
 
-        // Debug info
+        // 6. Debug info
         if (isDebug) {
-            html += `<div class="debug-info">ID: ${item.id}<br>Group: ${group.id}</div>`;
+            html += `<div class="debug-info">
+                ID: ${item.id}<br>
+                Group: ${group.id}<br>
+                Coords: [${item.coords?.x}, ${item.coords?.y}, ${item.coords?.w}, ${item.coords?.h}]
+            </div>`;
         }
 
         this.tooltipEl.innerHTML = html;
     }
 
-    // ==================== COST ====================
+    // ==================== NEW RENDERERS ====================
 
-    renderCost(item, group) {
-        let html = '';
+    renderTags(item) {
+        // Simple badges for tags
+        const tagsHtml = item.tags.map(t => 
+            `<span style="background:#333; color:#aaa; padding:2px 6px; border-radius:4px; font-size:0.75em; margin-right:4px; border:1px solid #444;">${t}</span>`
+        ).join('');
+        return `<div style="margin-bottom:8px;">${tagsHtml}</div>`;
+    }
 
-        item.cost.forEach(c => {
-            const finalVal = this.engine.rules.evaluateCost(c, item, group);
-            const sign = finalVal > 0 ? '+' : '';
-            
-            let colorClass = finalVal < 0 ? 'bad' : '';
-            if (finalVal === 0) colorClass = 'free';
+    renderEffects(item) {
+        let html = '<div style="margin-bottom:8px; border-top:1px solid #444; padding-top:4px;">';
+        
+        item.effects.forEach(eff => {
+            let text = '';
+            let icon = '⚡';
 
-            html += `<div class="cost ${colorClass}">${c.currency}: ${sign}${finalVal}</div>`;
+            switch (eff.type) {
+                case 'modify_group_limit':
+                    const group = this.engine.config.groups.find(g => g.id === eff.group_id);
+                    const gName = group ? (group.title || eff.group_id) : eff.group_id;
+                    const val = eff.value > 0 ? `+${eff.value}` : eff.value;
+                    text = `Allows <b>${val}</b> more choices in <i>${gName}</i>`;
+                    break;
+
+                case 'modify_cost':
+                    const target = eff.tag ? `[${eff.tag}]` : (eff.group_id ? `Group` : 'items');
+                    if (eff.mode === 'multiply') {
+                        const percent = Math.round((1 - eff.value) * 100);
+                        text = `<b>${percent}% Discount</b> on ${target} items`;
+                    } else {
+                        // Assuming positive 'add' reduces cost (engine logic: value += mod)
+                        // If logic is standard: negative cost = spend. 
+                        // If base -10, mod +5 => -5. So +5 is discount.
+                        const sign = eff.value > 0 ? 'Discount' : 'Markup';
+                        text = `<b>${Math.abs(eff.value)} point ${sign}</b> on ${target} items`;
+                    }
+                    icon = '🏷️';
+                    break;
+
+                case 'force_selection':
+                    const forcedItem = this.engine.findItem(eff.target_id);
+                    const name = forcedItem ? forcedItem.title : eff.target_id;
+                    text = `Automatically adds: <b>${name}</b>`;
+                    icon = '🎁';
+                    break;
+
+                case 'set_value':
+                    text = `Sets <b>${eff.currency}</b> to ${eff.value}`;
+                    break;
+
+                default:
+                    text = `Unknown Effect: ${eff.type}`;
+            }
+
+            html += `<div style="color:#4db8ff; font-size:0.9em; margin-bottom:2px;">${icon} ${text}</div>`;
         });
 
+        html += '</div>';
         return html;
     }
 
-    // ==================== REQUIREMENTS ====================
+    // ==================== EXISTING RENDERERS ====================
+
+    renderCost(item, group) {
+        let html = '';
+        item.cost.forEach(c => {
+            // Используем новый метод, который возвращает и цену, и текст модификаторов
+            const { value, modifiers } = this.engine.rules.getCostBreakdown(c, item, group);
+            
+            const sign = value > 0 ? '+' : '';
+            
+            let colorClass = value < 0 ? 'bad' : ''; 
+            if (value === 0) colorClass = 'free';      
+            if (value > 0) colorClass = 'good';        
+
+            // Формируем строку модификаторов: (-50% +5)
+            let modHtml = '';
+            if (modifiers.length > 0) {
+                modHtml = `<span class="mod-applied">(${modifiers.join(' ')})</span>`;
+            }
+
+            html += `<div class="cost ${colorClass}">
+                ${c.currency}: ${sign}${value} ${modHtml}
+            </div>`;
+        });
+        return html;
+    }
 
     renderRequirements(item, group) {
         let reqsHtml = '';
@@ -113,12 +196,12 @@ export class TooltipManager {
             });
         }
 
-        // Max choices
+        // Max choices check
         const isSelected = this.engine.state.selected.has(item.id);
         if (!isSelected && group.rules?.max_choices) {
             const currentCount = this.engine.getSelectedInGroup(group).length;
             if (currentCount >= group.rules.max_choices) {
-                reqsHtml += `<span class="req-item fail">⛔ Max limit reached (${group.rules.max_choices})</span>`;
+                reqsHtml += `<span class="req-item fail">⛔ Max choices reached (${group.rules.max_choices})</span>`;
             }
         }
 
@@ -132,7 +215,6 @@ export class TooltipManager {
         if (reqsHtml) {
             return `<div class="reqs">${reqsHtml}</div>`;
         }
-
         return '';
     }
 
@@ -140,26 +222,35 @@ export class TooltipManager {
         let isMet = false;
         let displayText = req;
 
-        // Complex formula
-        if (req.includes('(') || req.includes('||') || req.includes('&&')) {
+        // Clean up the text for display (remove code syntax)
+        const formatText = (txt) => {
+            return txt
+                .replace(/count\.tag\(['"](.+?)['"]\)/g, "Tag: $1") // count.tag('fire') -> Tag: fire
+                .replace(/count\.([a-zA-Z0-9_]+)/g, "Group: $1")   // count.group -> Group: group
+                .replace(/has\(['"](.+?)['"]\)/g, "$1")            // has('id') -> id
+                .replace(/\|\|/g, " OR ")
+                .replace(/&&/g, " AND ")
+                .replace(/>=/g, "≥")
+                .replace(/<=/g, "≤");
+        };
+
+        if (req.includes('(') || req.includes('||') || req.includes('&&') || req.includes('count.')) {
+            // Complex formula
             isMet = this.engine.rules.evaluateRequirement(req, null);
-            
-            // Make it readable
-            displayText = displayText.replace(/has\(['"](.+?)['"]\)/g, (match, id) => {
-                const item = this.engine.findItem(id);
-                return item?.title || id;
-            });
-            displayText = displayText
-                .replace(/\|\|/g, " <b style='color:#fff'>OR</b> ")
-                .replace(/&&/g, " <b style='color:#fff'>AND</b> ");
+            displayText = formatText(req);
         } else {
-            // Simple requirement
+            // Simple ID requirement
             const isNot = req.startsWith('!');
             const cleanId = isNot ? req.slice(1) : req;
-            isMet = this.engine.rules.evaluateRequirement(req, null);
             
+            // Check logic
+            const targetSelected = this.engine.state.selected.has(cleanId);
+            isMet = isNot ? !targetSelected : targetSelected;
+            
+            // Get nice name
             const targetItem = this.engine.findItem(cleanId);
-            displayText = (isNot ? "NOT " : "") + (targetItem?.title || cleanId);
+            const name = targetItem?.title || cleanId;
+            displayText = (isNot ? "NOT " : "") + name;
         }
 
         if (!isMet) {
@@ -179,11 +270,10 @@ export class TooltipManager {
         let top = e.clientY + 20;
         let left = e.clientX + 20;
 
-        // Keep in viewport
+        // Keep in viewport logic
         if (left + ttW > window.innerWidth) {
             left = window.innerWidth - ttW - 20;
         }
-
         if (top + ttH > window.innerHeight) {
             top = e.clientY - ttH - 10;
         }

@@ -1,370 +1,132 @@
+
 {
   "meta": {
-    "title": "Test CYOA - Rule Examples",
-    "author": "System Test",
-    "version": "1.0",
+    "title": "Test CYOA - Advanced Mechanics",
     "pages": [
       "config/test_image.png"
     ]
   },
   "points": [
-    {
-      "id": "points",
-      "name": "Points",
-      "start": 10
-    },
-    {
-      "id": "gold",
-      "name": "Gold",
-      "start": 100
-    }
+    { "id": "points", "name": "Points", "start": 50 }
   ],
   "groups": [
     {
-      "id": "intro",
-      "title": "Introduction",
-      "description": "Welcome to the test CYOA!\n\nThis demonstrates all available mechanics:\n- Simple costs\n- Requirements\n- Incompatibilities\n- Max choices\n- Budgets\n- Formulas",
+      "id": "modifiers",
+      "title": "Global Modifiers",
       "page": 0,
-      "coords": {
-        "x": 50,
-        "y": 50,
-        "w": 1820,
-        "h": 150
-      },
-      "items": []
-    },
-    {
-      "id": "free_items",
-      "title": "Free Items",
-      "description": "These items cost nothing. Click to select!",
-      "page": 0,
-      "coords": {
-        "x": 50,
-        "y": 220,
-        "w": 1820,
-        "h": 200
-      },
+      "coords": { "x": 50, "y": 50, "w": 1200, "h": 150 },
       "items": [
         {
-          "id": "free1",
-          "title": "Free Item 1",
-          "description": "This item is completely free.\nNo requirements, no costs.",
-          "coords": {
-            "x": 50,
-            "y": 250,
-            "w": 400,
-            "h": 150
-          },
-          "cost": []
-        },
-        {
-          "id": "free2",
-          "title": "Free Item 2",
-          "description": "Another free item.\nYou can select both!",
-          "coords": {
-            "x": 470,
-            "y": 250,
-            "w": 400,
-            "h": 150
-          },
-          "cost": []
-        },
-        {
-          "id": "bonus",
-          "title": "Bonus Points",
-          "description": "This actually GIVES you points!\nPositive cost = gain.",
-          "coords": {
-            "x": 890,
-            "y": 250,
-            "w": 400,
-            "h": 150
-          },
-          "cost": [
+          "id": "backpack",
+          "title": "Magic Backpack",
+          "description": "Increases limit in 'Choose Only 1' by +2.\nAllows you to pick A, B, and C!",
+          "coords": { "x": 50, "y": 50, "w": 350, "h": 120 },
+          "cost": [{ "currency": "points", "value": -5 }],
+          "effects": [
             {
-              "currency": "points",
-              "value": 5
+              "type": "modify_group_limit",
+              "group_id": "max_choices",
+              "value": 2
             }
+          ]
+        },
+        {
+          "id": "merchant_ring",
+          "title": "Merchant Ring",
+          "description": "All 'Magic' items cost 50% less!\nWatch the prices of Fire/Ice change.",
+          "coords": { "x": 420, "y": 50, "w": 350, "h": 120 },
+          "cost": [{ "currency": "points", "value": -10 }],
+          "effects": [
+            {
+              "type": "modify_cost",
+              "tag": "magic",
+              "mode": "multiply",
+              "value": 0.5
+            }
+          ]
+        },
+        {
+          "id": "starter_pack",
+          "title": "Starter Pack",
+          "description": "Automatically selects 'Cheap Item'.",
+          "coords": { "x": 790, "y": 50, "w": 350, "h": 120 },
+          "cost": [{ "currency": "points", "value": -2 }],
+          "effects": [
+            { "type": "force_selection", "target_id": "cheap" }
           ]
         }
       ]
     },
     {
-      "id": "paid_items",
-      "title": "Paid Items",
-      "description": "These cost points. Watch the counter at the bottom!",
+      "id": "magic_shop",
+      "title": "Magic Shop (Tags Test)",
       "page": 0,
-      "coords": {
-        "x": 50,
-        "y": 440,
-        "w": 1820,
-        "h": 200
-      },
+      "coords": { "x": 50, "y": 220, "w": 1200, "h": 200 },
       "items": [
         {
-          "id": "cheap",
-          "title": "Cheap Item",
-          "description": "Costs only 2 points.\nAffordable for everyone!",
-          "max_quantity": 5,
-          "coords": {
-            "x": 50,
-            "y": 470,
-            "w": 400,
-            "h": 150
-          },
-          "cost": [
-            {
-              "currency": "points",
-              "value": -2
-            }
-          ]
+          "id": "fire_scroll",
+          "title": "Fire Scroll",
+          "tags": ["magic", "fire"],
+          "description": "Tags: Magic, Fire\nCost: 10 (5 with Ring)",
+          "coords": { "x": 50, "y": 250, "w": 350, "h": 150 },
+          "cost": [{ "currency": "points", "value": -10 }]
         },
         {
-          "id": "expensive",
-          "title": "Expensive Item",
-          "description": "Costs 8 points.\nChoose wisely!",
-          "coords": {
-            "x": 470,
-            "y": 470,
-            "w": 400,
-            "h": 150
-          },
-          "cost": [
-            {
-              "currency": "points",
-              "value": -8
-            }
-          ]
+          "id": "ice_scroll",
+          "title": "Ice Scroll",
+          "tags": ["magic", "ice"],
+          "description": "Tags: Magic, Ice\nCost: 10 (5 with Ring)",
+          "coords": { "x": 420, "y": 250, "w": 350, "h": 150 },
+          "cost": [{ "currency": "points", "value": -10 }]
         },
         {
-          "id": "dual_cost",
-          "title": "Dual Cost",
-          "description": "Costs both points AND gold.\nMultiple currencies!",
-          "coords": {
-            "x": 890,
-            "y": 470,
-            "w": 400,
-            "h": 150
-          },
-          "cost": [
-            {
-              "currency": "points",
-              "value": -3
-            },
-            {
-              "currency": "gold",
-              "value": -25
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "id": "requirements",
-      "title": "Items with Requirements",
-      "description": "These require other items first.",
-      "page": 0,
-      "coords": {
-        "x": 50,
-        "y": 660,
-        "w": 1820,
-        "h": 200
-      },
-      "items": [
-        {
-          "id": "requires_free1",
-          "title": "Requires Free 1",
-          "description": "You must select 'Free Item 1' first.\n\nTry it: select Free Item 1, then this becomes available.",
-          "coords": {
-            "x": 50,
-            "y": 690,
-            "w": 400,
-            "h": 150
-          },
-          "cost": [],
-          "requirements": ["free1"]
-        },
-        {
-          "id": "requires_any",
-          "title": "Requires Any Free",
-          "description": "Requires Free Item 1 OR Free Item 2.\n\nFormula: free1 || free2",
-          "coords": {
-            "x": 470,
-            "y": 690,
-            "w": 400,
-            "h": 150
-          },
-          "cost": [],
-          "requirements": ["has('free1') || has('free2')"]
-        },
-        {
-          "id": "requires_both",
-          "title": "Requires Both",
-          "description": "Requires BOTH Cheap AND Expensive items.\n\nFormula: cheap && expensive",
-          "coords": {
-            "x": 890,
-            "y": 690,
-            "w": 400,
-            "h": 150
-          },
-          "cost": [],
-          "requirements": ["has('cheap') && has('expensive')"]
-        }
-      ]
-    },
-    {
-      "id": "incompatible",
-      "title": "Incompatible Items",
-      "description": "These cannot be selected together.",
-      "page": 0,
-      "coords": {
-        "x": 50,
-        "y": 880,
-        "w": 1820,
-        "h": 200
-      },
-      "items": [
-        {
-          "id": "fire",
-          "title": "Fire Magic",
-          "description": "Incompatible with Ice Magic.\nChoose your element!",
-          "coords": {
-            "x": 50,
-            "y": 910,
-            "w": 400,
-            "h": 150
-          },
-          "cost": [{"currency": "points", "value": -3}],
-          "incompatible": ["ice"]
-        },
-        {
-          "id": "ice",
-          "title": "Ice Magic",
-          "description": "Incompatible with Fire Magic.\nOpposite elements!",
-          "coords": {
-            "x": 470,
-            "y": 910,
-            "w": 400,
-            "h": 150
-          },
-          "cost": [{"currency": "points", "value": -3}],
-          "incompatible": ["fire"]
+          "id": "master_spell",
+          "title": "Master Spell",
+          "description": "Requires 2 items with 'magic' tag.",
+          "coords": { "x": 790, "y": 250, "w": 350, "h": 150 },
+          "cost": [{ "currency": "points", "value": -20 }],
+          "requirements": ["count.tag('magic') >= 2"]
         }
       ]
     },
     {
       "id": "max_choices",
-      "title": "Choose Only 1",
-      "description": "Radio button behavior - only one allowed.",
+      "title": "Choose Only 1 (Limit Test)",
       "page": 0,
-      "coords": {
-        "x": 1310,
-        "y": 220,
-        "w": 560,
-        "h": 640
-      },
-      "rules": {
-        "max_choices": 1
-      },
+      "coords": { "x": 1310, "y": 220, "w": 560, "h": 640 },
+      "rules": { "max_choices": 1 },
       "items": [
         {
           "id": "choice_a",
           "title": "Choice A",
-          "description": "Selecting this deselects B and C.",
-          "coords": {
-            "x": 1330,
-            "y": 250,
-            "w": 520,
-            "h": 150
-          },
+          "coords": { "x": 1330, "y": 250, "w": 520, "h": 150 },
           "cost": []
         },
         {
-      "id": "expansion_pack",
-      "title": "Expansion Pack",
-      "description": "Allows picking +2 options in the 'Choose Only 1' section.",
-      "coords": {             
-          "x": 1330,
-          "y": 50,
-          "w": 520,
-          "h": 150
-          },
-      "cost": [{"currency": "points", "value": -5}],
-      "effects": [
-        {
-          "type": "modify_group_limit",
-          "group_id": "max_choices",
-          "value": 2
-        }
-      ]
-    },
-        {
           "id": "choice_b",
           "title": "Choice B",
-          "description": "Selecting this deselects A and C.",
-          "coords": {
-            "x": 1330,
-            "y": 420,
-            "w": 520,
-            "h": 150
-          },
+          "coords": { "x": 1330, "y": 420, "w": 520, "h": 150 },
           "cost": []
         },
         {
           "id": "choice_c",
           "title": "Choice C",
-          "description": "Selecting this deselects A and B.",
-          "coords": {
-            "x": 1330,
-            "y": 590,
-            "w": 520,
-            "h": 150
-          },
+          "coords": { "x": 1330, "y": 590, "w": 520, "h": 150 },
           "cost": []
         }
       ]
     },
     {
-      "id": "budget_group",
-      "title": "Budget Example",
-      "description": "This group has 5 free picks!\nAfter 5, items cost points.",
+      "id": "paid_items",
+      "title": "Misc Items",
       "page": 0,
-      "coords": {
-        "x": 1310,
-        "y": 880,
-        "w": 560,
-        "h": 200
-      },
-      "rules": {
-        "budget": {
-          "currency": "points",
-          "amount": 5,
-          "name": "Free Picks"
-        }
-      },
+      "coords": { "x": 50, "y": 440, "w": 1200, "h": 200 },
       "items": [
         {
-          "id": "budget1",
-          "title": "Budget Item 1",
-          "description": "Normally costs 2 points.\nFree if budget available!",
-          "coords": {
-            "x": 1330,
-            "y": 910,
-            "w": 250,
-            "h": 150
-          },
-          "cost": [{"currency": "points", "value": -2}]
-        },
-        {
-          "id": "budget2",
-          "title": "Budget Item 2",
-          "description": "Also costs 2 points.\nCovered by budget!",
-          "coords": {
-            "x": 1600,
-            "y": 910,
-            "w": 250,
-            "h": 150
-          },
-          "cost": [{"currency": "points", "value": -2}]
+          "id": "cheap",
+          "title": "Cheap Item",
+          "coords": { "x": 50, "y": 470, "w": 350, "h": 150 },
+          "cost": [{ "currency": "points", "value": -1 }]
         }
       ]
     }
