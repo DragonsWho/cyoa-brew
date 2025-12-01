@@ -34,6 +34,17 @@ export class RuleBuilder {
                     <button class="full-width-btn" onclick="CYOA.editor.ruleBuilder.addRequirement()">+ Add Requirement</button>
                 </div>
             </div>
+
+            <!-- Effects Section (NEW) -->
+            <div class="editor-section">
+                <div class="accordion-header collapsed" onclick="CYOA.editor.toggleAccordion(this)">
+                    ⚡ Effects
+                </div>
+                <div class="accordion-content collapsed">
+                    <div id="effects-list" class="compact-list"></div>
+                    <button class="full-width-btn" onclick="CYOA.editor.ruleBuilder.addEffect()">+ Add Effect</button>
+                </div>
+            </div>
             
             <!-- Incompatible Section -->
             <div class="editor-section">
@@ -53,9 +64,146 @@ export class RuleBuilder {
         this.currentGroup = group;
         this.renderCosts();
         this.renderRequirements();
+        this.renderEffects(); // NEW
         this.renderIncompatible();
     }
 
+    // ... (COSTS methods remain same) ...
+    // ... (REQUIREMENTS methods remain same) ...
+
+    // ==================== EFFECTS (NEW) ====================
+
+    renderEffects() {
+        if (!this.currentItem) return;
+        const container = document.getElementById('effects-list');
+        if (!container) return;
+        const effects = this.currentItem.effects || [];
+        
+        if (effects.length === 0) {
+            container.innerHTML = '<div style="color:#666; font-size:0.8rem; text-align:center; padding:2px;">No effects</div>';
+            return;
+        }
+
+        container.innerHTML = effects.map((eff, index) => {
+            let inputs = '';
+            
+            // Dynamic inputs based on type
+            if (eff.type === 'modify_group_limit') {
+                inputs = `
+                    <select onchange="CYOA.editor.ruleBuilder.updateEffectProp(${index}, 'group_id', this.value)" style="width:100px;">
+                        <option value="">Select Group...</option>
+                        ${this.getGroupOptions(eff.group_id)}
+                    </select>
+                    <input type="number" value="${eff.value || 0}" 
+                           onchange="CYOA.editor.ruleBuilder.updateEffectProp(${index}, 'value', this.value)"
+                           placeholder="+/-" style="width:50px;">
+                `;
+            } else if (eff.type === 'force_selection') {
+                inputs = `
+                    <input type="text" value="${eff.target_id || ''}" 
+                           onchange="CYOA.editor.ruleBuilder.updateEffectProp(${index}, 'target_id', this.value)"
+                           placeholder="Target Item ID">
+                `;
+            } else if (eff.type === 'set_value') {
+                inputs = `
+                    <select onchange="CYOA.editor.ruleBuilder.updateEffectProp(${index}, 'currency', this.value)" style="width:80px;">
+                        ${this.getCurrencyOptions(eff.currency)}
+                    </select>
+                    <input type="number" value="${eff.value || 0}" 
+                           onchange="CYOA.editor.ruleBuilder.updateEffectProp(${index}, 'value', this.value)"
+                           placeholder="Val" style="width:50px;">
+                `;
+            }
+
+            return `
+            <div style="background:#222; padding:4px; border:1px solid #333; border-radius:4px; margin-bottom:4px;">
+                <div class="compact-row">
+                    <select onchange="CYOA.editor.ruleBuilder.updateEffectType(${index}, this.value)" style="font-weight:bold; color:#4CAF50;">
+                        <option value="modify_group_limit" ${eff.type === 'modify_group_limit' ? 'selected' : ''}>Modify Limit</option>
+                        <option value="force_selection" ${eff.type === 'force_selection' ? 'selected' : ''}>Force Select</option>
+                        <option value="set_value" ${eff.type === 'set_value' ? 'selected' : ''}>Set Variable</option>
+                    </select>
+                    <button class="icon-btn" onclick="CYOA.editor.ruleBuilder.removeEffect(${index})">×</button>
+                </div>
+                <div style="display:flex; gap:4px; margin-top:4px;">
+                    ${inputs}
+                </div>
+            </div>
+            `;
+        }).join('');
+    }
+
+    addEffect() {
+        if (!this.currentItem) return;
+        if (!this.currentItem.effects) this.currentItem.effects = [];
+        
+        // Default new effect
+        this.currentItem.effects.push({ 
+            type: 'modify_group_limit', 
+            group_id: this.engine.config.groups[0]?.id || '',
+            value: 1 
+        });
+        
+        this.renderEffects();
+        this.updateParent();
+    }
+
+    removeEffect(index) {
+        if (!this.currentItem?.effects) return;
+        this.currentItem.effects.splice(index, 1);
+        this.renderEffects();
+        this.updateParent();
+    }
+
+    updateEffectType(index, newType) {
+        if (!this.currentItem?.effects?.[index]) return;
+        const oldEffect = this.currentItem.effects[index];
+        
+        // Reset props based on new type to avoid junk data
+        const newEffect = { type: newType };
+        if (newType === 'modify_group_limit') {
+            newEffect.group_id = this.engine.config.groups[0]?.id || '';
+            newEffect.value = 1;
+        } else if (newType === 'force_selection') {
+            newEffect.target_id = '';
+        } else if (newType === 'set_value') {
+            newEffect.currency = 'points';
+            newEffect.value = 0;
+        }
+        
+        this.currentItem.effects[index] = newEffect;
+        this.renderEffects();
+        this.updateParent();
+    }
+
+    updateEffectProp(index, prop, value) {
+        if (!this.currentItem?.effects?.[index]) return;
+        
+        if (prop === 'value') value = parseInt(value) || 0;
+        
+        this.currentItem.effects[index][prop] = value;
+        this.updateParent();
+    }
+
+    // ==================== HELPERS ====================
+
+    getCurrencyOptions(selected) {
+        const currencies = this.engine.config.points || [];
+        return currencies.map(c => 
+            `<option value="${c.id}" ${c.id === selected ? 'selected' : ''}>${c.name}</option>`
+        ).join('');
+    }
+
+    getGroupOptions(selected) {
+        const groups = this.engine.config.groups || [];
+        return groups.map(g => 
+            `<option value="${g.id}" ${g.id === selected ? 'selected' : ''}>${g.title || g.id}</option>`
+        ).join('');
+    }
+    
+    // ... (Costs/Requirements helper functions remain same) ...
+
+    // (Helper for original costs needed for context)
     renderCosts() {
         if (!this.currentItem) return;
         const container = document.getElementById('cost-list');
@@ -78,15 +226,7 @@ export class RuleBuilder {
         `).join('');
     }
 
-    getCurrencyOptions(selected) {
-        const currencies = this.engine.config.points || [];
-        return currencies.map(c => 
-            `<option value="${c.id}" ${c.id === selected ? 'selected' : ''}>
-                ${c.name.substr(0, 10)}
-            </option>`
-        ).join('');
-    }
-
+    // Keep existing add/remove cost/req/incompatible methods...
     addCost() {
         if (!this.currentItem) return;
         if (!this.currentItem.cost) this.currentItem.cost = [];

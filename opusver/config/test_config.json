@@ -279,6 +279,25 @@
           "cost": []
         },
         {
+      "id": "expansion_pack",
+      "title": "Expansion Pack",
+      "description": "Allows picking +2 options in the 'Choose Only 1' section.",
+      "coords": {             
+          "x": 1330,
+          "y": 50,
+          "w": 520,
+          "h": 150
+          },
+      "cost": [{"currency": "points", "value": -5}],
+      "effects": [
+        {
+          "type": "modify_group_limit",
+          "group_id": "max_choices",
+          "value": 2
+        }
+      ]
+    },
+        {
           "id": "choice_b",
           "title": "Choice B",
           "description": "Selecting this deselects A and C.",

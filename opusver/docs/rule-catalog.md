@@ -398,3 +398,93 @@ Always ensure:
 - [ ] Coordinates are within image bounds
 
  
+ 
+## 📦 Multi-Select & Quantity
+
+Allow selecting an item multiple times.
+
+### Rule: `max_quantity`
+```json
+{
+  "max_quantity": 5,
+  "cost": [{"currency": "points", "value": -2}]
+}
+```
+**Behavior:**
+- UI shows `+` and `-` buttons
+- Cost is automatically multiplied (e.g., buying 3 costs 6 points)
+- Formulas can use `qty('item_id')` to get the count.
+
+**Patterns:**
+- "Can be taken up to 3 times"
+- "Buy multiple potions"
+- "Each purchase costs X"
+
+---
+
+## ✨ Effects System
+
+Items can actively modify the game rules or other items.
+
+### Effect: `modify_group_limit`
+Increases (or decreases) the number of allowed choices in a group.
+
+```json
+{
+  "effects": [
+    {
+      "type": "modify_group_limit",
+      "group_id": "spells_section",
+      "value": 2
+    }
+  ]
+}
+```
+*Note: If `max_quantity` > 1, the effect multiplies by the quantity unless `"once": true` is added.*
+
+**Patterns:**
+- "Unlock +2 spell slots"
+- "Allows one extra companion"
+- "Backpack: Increases inventory capacity"
+
+---
+
+### Effect: `force_selection`
+Automatically selects another item.
+
+```json
+{
+  "effects": [
+    {
+      "type": "force_selection",
+      "target_id": "basic_sword"
+    }
+  ]
+}
+```
+
+**Patterns:**
+- "Comes with a free sword"
+- "Knight class includes heavy armor"
+
+---
+
+### Effect: `set_value`
+Sets a currency/variable to a specific number (ignoring calculations).
+
+```json
+{
+  "effects": [
+    {
+      "type": "set_value",
+      "currency": "strength",
+      "value": 10
+    }
+  ]
+}
+```
+
+**Patterns:**
+- "Sets your Strength to 10"
+- "Resets Magic to 0"
+```

@@ -73,6 +73,10 @@ Extract game structure from CYOA images into JSON configuration.
 | "Choose up to 3" | `"rules": {"max_choices": 3}` |
 | "3 free picks" | `"rules": {"budget": {"currency": "points", "amount": 3}}` |
 | "Incompatible with Fire" | `"incompatible": ["fire"]` |
+| "Take up to 3 times" | `"max_quantity": 3` |
+| "+2 Spell Slots" | `"effects": [{"type": "modify_group_limit", "group_id": "spells", "value": 2}]` |
+| "Free Sword included" | `"effects": [{"type": "force_selection", "target_id": "sword"}]` |
+
 
 ## Coordinate System
 

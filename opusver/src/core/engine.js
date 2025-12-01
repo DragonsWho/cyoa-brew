@@ -4,22 +4,46 @@
 
 import { RuleEvaluator } from './rules.js';
 import { GameState } from './state.js';
+import { EffectProcessor } from './effects.js'; // IMPORT NEW MODULE
 
 export class GameEngine {
     constructor(config) {
         this.config = config;
         this.state = new GameState(config);
         this.rules = new RuleEvaluator(this);
+        this.effects = new EffectProcessor(this); // INIT EFFECTS
         this.listeners = {};
         
-        console.log('🎮 Engine initialized (Multi-select enabled)');
+        // Capture initial defaults for restoration
+        this.defaults = {
+            groupRules: {}
+        };
+        this.initDefaults();
+
+        console.log('🎮 Engine initialized (Multi-select + Effects)');
+    }
+
+    initDefaults() {
+        // Deep copy group rules to restore them later
+        this.config.groups.forEach(g => {
+            if (g.rules) {
+                this.defaults.groupRules[g.id] = JSON.parse(JSON.stringify(g.rules));
+            }
+        });
+    }
+
+    restoreDefaults() {
+        // Restore group rules (max_choices, etc)
+        this.config.groups.forEach(g => {
+            if (this.defaults.groupRules[g.id]) {
+                // Restore from copy
+                g.rules = JSON.parse(JSON.stringify(this.defaults.groupRules[g.id]));
+            }
+        });
     }
 
     // ==================== SELECTION ====================
 
-    /**
-     * Select an item (Increments quantity)
-     */
     select(itemId) {
         const item = this.findItem(itemId);
         if (!item) return false;
@@ -27,23 +51,15 @@ export class GameEngine {
         const group = this.findGroupForItem(itemId);
         if (!group) return false;
 
-        // Check if can select (requirements)
-        // Note: For multi-select, we might want to allow checking if we can take *another* one
-        if (!this.canSelect(item, group)) {
-            return false;
-        }
+        // Check requirements
+        if (!this.canSelect(item, group)) return false;
 
-        // CHANGED: Handle Quantity logic
         const currentQty = this.state.selected.get(itemId) || 0;
-        const maxQty = item.max_quantity || 1; // Default to 1 if not specified
+        const maxQty = item.max_quantity || 1;
 
-        if (currentQty >= maxQty) {
-            console.log(`Max quantity (${maxQty}) reached for ${itemId}`);
-            return false;
-        }
+        if (currentQty >= maxQty) return false;
 
-        // Handle max_choices (Radio button behavior)
-        // Only trigger this if we are selecting from 0 to 1, or if it's strict single-choice group
+        // Radio logic (Max choices)
         if (currentQty === 0 && group.rules?.max_choices === 1) {
             group.items.forEach(i => {
                 if (this.state.selected.has(i.id) && i.id !== itemId) {
@@ -51,41 +67,29 @@ export class GameEngine {
                 }
             });
         } else if (group.rules?.max_choices) {
-            // Check total items in group (sum of quantities)
+            // NOTE: This check now uses the DYNAMIC max_choices (modified by effects)
             const totalInGroup = this.getGroupQty(group);
             if (totalInGroup >= group.rules.max_choices) {
-                console.log(`Max choices reached in ${group.id}`);
+                console.log(`Max choices reached in ${group.id} (Limit: ${group.rules.max_choices})`);
                 return false;
             }
         }
 
-        // Increment
         this.state.selected.set(itemId, currentQty + 1);
-
-        this.recalculate();
+        this.recalculate(); // This triggers effect application
         this.emit('selection', { itemId, selected: true, qty: currentQty + 1 });
-        
-        console.log(`✓ Selected: ${item.title} (Qty: ${currentQty + 1})`);
         return true;
     }
 
-    /**
-     * Deselect an item (Decrements quantity)
-     */
     deselect(itemId) {
-        if (!this.state.selected.has(itemId)) {
-            return false;
-        }
+        if (!this.state.selected.has(itemId)) return false;
 
         const currentQty = this.state.selected.get(itemId);
         
-        // CHANGED: Decrement or Remove
         if (currentQty > 1) {
              this.state.selected.set(itemId, currentQty - 1);
-             console.log(`Item decreased: ${itemId} (${currentQty - 1})`);
         } else {
              this.state.selected.delete(itemId);
-             console.log(`Item removed: ${itemId}`);
         }
 
         this.recalculate();
@@ -93,11 +97,6 @@ export class GameEngine {
         return true;
     }
 
-    /**
-     * Toggle item selection
-     * Note: Currently behaves as "Select if 0, Deselect if > 0"
-     * Future UI needs Left/Right click to properly handle + / -
-     */
     toggle(itemId) {
         if (this.state.selected.has(itemId)) {
             return this.deselect(itemId);
@@ -117,10 +116,21 @@ export class GameEngine {
     // ==================== CALCULATION ====================
 
     recalculate() {
+        // 1. Cleanup invalid selections first (standard)
         this.cleanupInvalidSelections();
+        
+        // 2. Reset currencies to base
         this.state.resetCurrencies();
 
+        // 3. APPLY EFFECTS (The Magic Step)
+        // This restores default limits, then applies new ones from selections
+        // It might also force-select items
+        this.effects.applyAll();
+
+        // 4. Calculate Costs (Deltas)
         const groupDeltas = this.calculateGroupDeltas();
+        
+        // 5. Apply Logic
         this.applyBudgets(groupDeltas);
         this.applyDeltas(groupDeltas);
 
@@ -128,11 +138,9 @@ export class GameEngine {
     }
 
     cleanupInvalidSelections() {
-        // Iterating keys of Map is safe
         for (const itemId of this.state.selected.keys()) {
             const item = this.findItem(itemId);
             const group = this.findGroupForItem(itemId);
-            // If requirements no longer met, remove completely (reset to 0)
             if (!item || !this.canSelect(item, group)) {
                 this.state.selected.delete(itemId);
             }
@@ -141,36 +149,27 @@ export class GameEngine {
 
     calculateGroupDeltas() {
         const deltas = {};
-
-        // CHANGED: Iterate over Map Keys
         for (const itemId of this.state.selected.keys()) {
             const item = this.findItem(itemId);
             const group = this.findGroupForItem(itemId);
             const qty = this.state.selected.get(itemId);
             
             if (!item?.cost) continue;
-
             if (!deltas[group.id]) deltas[group.id] = {};
 
             for (const cost of item.cost) {
-                // Evaluate unit cost
                 const unitValue = this.rules.evaluateCost(cost, item, group);
                 const currencyId = cost.currency;
-
                 if (!deltas[group.id][currencyId]) deltas[group.id][currencyId] = 0;
-
-                // CHANGED: Multiply by Quantity
                 deltas[group.id][currencyId] += (unitValue * qty);
             }
         }
-
         return deltas;
     }
 
     applyBudgets(groupDeltas) {
         for (const group of this.config.groups) {
             if (!group.rules?.budget) continue;
-
             const budget = group.rules.budget;
             const targetGroups = [group.id, ...(budget.applies_to || [])];
 
@@ -231,16 +230,10 @@ export class GameEngine {
         return null;
     }
 
-    /**
-     * Get list of Item objects that are selected (Unique items)
-     */
     getSelectedInGroup(group) {
         return group.items.filter(i => this.state.selected.has(i.id));
     }
 
-    /**
-     * CHANGED: New helper to sum up all quantities in a group
-     */
     getGroupQty(group) {
         let total = 0;
         group.items.forEach(i => {
@@ -248,8 +241,6 @@ export class GameEngine {
         });
         return total;
     }
-
-    // ==================== EVENTS & STATE ====================
 
     on(event, callback) {
         if (!this.listeners[event]) this.listeners[event] = [];
@@ -262,6 +253,7 @@ export class GameEngine {
 
     reset() {
         this.state.reset();
+        this.restoreDefaults(); // Reset rules
         this.recalculate();
         this.emit('reset');
     }
