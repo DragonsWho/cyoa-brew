@@ -21,7 +21,19 @@ body { margin: 0; padding: 0 0 120px 0; background: #1a1a1a; color: #eee; font-f
 .page-layer { position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 10; pointer-events: none; }
 
 /* === CLICK ZONES & BUTTONS === */
-.click-zone { position: absolute; cursor: pointer; z-index: 100; pointer-events: auto; border-radius: 12px; transition: all 0.2s; overflow: hidden; display: flex; flex-direction: column; justify-content: flex-end; }
+.click-zone { 
+    position: absolute; 
+    cursor: pointer; 
+    z-index: 100; 
+    pointer-events: auto; 
+    border-radius: 12px; 
+    transition: all 0.2s; 
+    /* CHANGED: Allowed overflow so the badge can stick out */
+    overflow: visible; 
+    display: flex; 
+    flex-direction: column; 
+    justify-content: flex-end; 
+}
 .click-zone:hover { background: rgba(255,255,255,0.07); box-shadow: 0 0 10px rgba(255,255,255,0.1); }
 .click-zone.selected { background: rgba(0,255,0,0.1); box-shadow: 0 0 15px 2px #0f0, inset 0 0 20px 5px rgba(0,255,0,0.3); }
 .click-zone.disabled { cursor: not-allowed; background-image: repeating-linear-gradient(45deg, rgba(0,0,0,0.4), rgba(0,0,0,0.4) 10px, rgba(50,50,50,0.6) 10px, rgba(50,50,50,0.6) 20px); box-shadow: 0 0 15px 5px #000, inset 0 0 20px 10px rgba(0,0,0,0.8); }
@@ -29,6 +41,131 @@ body { margin: 0; padding: 0 0 120px 0; background: #1a1a1a; color: #eee; font-f
 
 .info-zone { z-index: 50; pointer-events: none; border: none; }
 .info-zone .text-content { pointer-events: auto; }
+
+
+
+
+
+/* ==========================================================================
+   ROULETTE & DICE STYLES (Clean UI)
+   ========================================================================== */
+
+.roulette-mask {
+    position: absolute;
+    top: 5px; left: 0; right: 0; bottom: 5px; /* На всю высоту */
+    overflow: hidden;
+    background: transparent; /* УБРАН ТЕМНЫЙ ФОН */
+    z-index: 200;
+    pointer-events: none;
+    
+    /* Мягкий градиент только на краях, чтобы скрыть резкое исчезновение */
+    mask-image: linear-gradient(to bottom, 
+        transparent 0%, 
+        black 15%, 
+        black 85%, 
+        transparent 100%
+    );
+    -webkit-mask-image: linear-gradient(to bottom, 
+        transparent 0%, 
+        black 15%, 
+        black 85%, 
+        transparent 100%
+    );
+}
+
+.roulette-strip {
+    will-change: transform;
+    /* Убираем размытие при движении для четкости, или добавляем для скорости */
+    /* filter: blur(0px); */ 
+}
+
+.roulette-item {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    
+    font-family: 'Impact', 'Arial Black', sans-serif;
+    font-size: 3.5rem; 
+    line-height: 1;
+    color: #fff;
+    
+    /* ИМИТАЦИЯ ОБВОДКИ (STROKE) */
+    /* Тень со всех сторон создает жесткий контур */
+    text-shadow: 
+        3px 3px 0 #000,
+        -1px -1px 0 #000,  
+        1px -1px 0 #000,
+        -1px 1px 0 #000,
+        1px 1px 0 #000;
+        
+ 
+}
+
+.roulette-item.winner {
+    color: #ffd700;
+    /* Усиливаем свечение при победе */
+    text-shadow: 
+        3px 3px 0 #000,
+        -1px -1px 0 #000,
+        0 0 20px #ffd700;
+    transform: scale(1.1); /* Легкое увеличение */
+    transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+/* Финальный бейдж остается тем же, он хороший */
+.roll-result-badge {
+    position: absolute;
+    top: 0; left: 50%;
+    transform: translate(-50%, -50%) scale(1);
+    width: 50px; height: 50px;
+    background: #111;
+    border: 3px solid #ffd700;
+    border-radius: 50%;
+    box-shadow: 0 0 10px rgba(0,0,0,0.8), 0 0 20px rgba(255, 215, 0, 0.4);
+    color: #ffd700;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Impact', sans-serif;
+    font-size: 24px;
+    z-index: 300;
+    pointer-events: none;
+    user-select: none;
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.roll-result-badge.spawn-anim {
+    top: 50%;
+    transform: translate(-50%, -50%) scale(2.0);
+    opacity: 0;
+}
+
+.roulette-mask, .roulette-strip, .roulette-item, .roll-result-badge {
+    /* Стандартный синтаксис */
+    user-select: none;
+    
+    /* Для Safari и Chrome */
+    -webkit-user-select: none;
+    
+    /* Для Firefox */
+    -moz-user-select: none;
+    
+    /* Для старых IE/Edge */
+    -ms-user-select: none;
+    
+    /* Отключаем меню при долгом тапе на мобильных */
+    -webkit-touch-callout: none; 
+}
+
+/* Дополнительно убедимся, что курсор не меняется на текстовый */
+.roulette-item {
+    cursor: default;
+}
+
+
+
+
+
+
 
 /* === MULTI-SELECT CONTROLS === */
 .split-controls { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; z-index: 150; }

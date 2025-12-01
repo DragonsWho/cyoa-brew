@@ -41,9 +41,9 @@ def main():
                         content = infile.read()
                         
                         # Записываем красивый разделитель и имя файла
-                        outfile.write(f"\n{'='*60}\n")
+                        outfile.write(f"\n{'#'*60}\n")
                         outfile.write(f"FILE START: {relative_path}\n")
-                        outfile.write(f"{'='*60}\n\n")
+                        outfile.write(f"{'#'*60}\n\n")
                         
                         # Записываем содержимое файла
                         outfile.write(content)

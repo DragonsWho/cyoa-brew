@@ -1,4 +1,3 @@
-
 {
   "meta": {
     "title": "Test CYOA - Advanced Mechanics",
@@ -46,13 +45,13 @@
           ]
         },
         {
-          "id": "starter_pack",
-          "title": "Starter Pack",
-          "description": "Automatically selects 'Cheap Item'.",
+          "id": "gamblers_coin",
+          "title": "Gambler's Coin",
+          "description": "Feeling Lucky?\nRolls a D20 for bonus points!",
           "coords": { "x": 790, "y": 50, "w": 350, "h": 120 },
-          "cost": [{ "currency": "points", "value": -2 }],
+          "cost": [],
           "effects": [
-            { "type": "force_selection", "target_id": "cheap" }
+            { "type": "roll_dice", "min": 1, "max": 20, "currency": "points" }
           ]
         }
       ]

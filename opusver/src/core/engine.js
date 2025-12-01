@@ -1,4 +1,3 @@
-
 /**
  * Game Engine - Core game logic and state management
  */
@@ -15,22 +14,19 @@ export class GameEngine {
         this.effects = new EffectProcessor(this);
         this.listeners = {};
         
-        // Хранилище для активных модификаторов (скидки, наценки)
         this.modifiers = {
             cost: [] 
         };
         
-        // Capture initial defaults for restoration
         this.defaults = {
             groupRules: {}
         };
         this.initDefaults();
 
-        console.log('🎮 Engine initialized (Tags + Modifiers)');
+        console.log('🎮 Engine initialized (With Dice Logic)');
     }
 
     initDefaults() {
-        // Deep copy group rules to restore them later
         this.config.groups.forEach(g => {
             if (g.rules) {
                 this.defaults.groupRules[g.id] = JSON.parse(JSON.stringify(g.rules));
@@ -39,10 +35,8 @@ export class GameEngine {
     }
 
     restoreDefaults() {
-        // Restore group rules (max_choices, etc)
         this.config.groups.forEach(g => {
             if (this.defaults.groupRules[g.id]) {
-                // Restore from copy
                 g.rules = JSON.parse(JSON.stringify(this.defaults.groupRules[g.id]));
             }
         });
@@ -77,6 +71,23 @@ export class GameEngine {
             if (totalInGroup >= group.rules.max_choices) {
                 console.log(`Max choices reached in ${group.id} (Limit: ${group.rules.max_choices})`);
                 return false;
+            }
+        }
+
+        // === RANDOM ROLL LOGIC ===
+        // If this item has a roll effect, we determine the result NOW.
+        // We only generate if it hasn't been generated before for this ID.
+        // This prevents re-rolling by toggling.
+        if (item.effects) {
+            const rollEffect = item.effects.find(e => e.type === 'roll_dice');
+            if (rollEffect && !this.state.rollResults.has(itemId)) {
+                const min = parseInt(rollEffect.min) || 1;
+                const max = parseInt(rollEffect.max) || 6;
+                // Random integer between min and max (inclusive)
+                const result = Math.floor(Math.random() * (max - min + 1)) + min;
+                
+                this.state.rollResults.set(itemId, result);
+                console.log(`🎲 Rolled for ${itemId}: ${result}`);
             }
         }
 
@@ -121,22 +132,16 @@ export class GameEngine {
     // ==================== CALCULATION ====================
 
     recalculate() {
-        // 1. Cleanup invalid selections first
         this.cleanupInvalidSelections();
-        
-        // 2. Reset currencies to base
         this.state.resetCurrencies();
-
-        // 3. Сброс модификаторов перед новым расчетом
         this.modifiers = { cost: [] };
 
-        // 4. APPLY EFFECTS (Заполняет this.modifiers и меняет правила групп)
+        // Apply Effects (Populates modifiers, applies immediate value changes)
         this.effects.applyAll();
 
-        // 5. Calculate Costs (Deltas) - ТЕПЕРЬ С УЧЕТОМ МОДИФИКАТОРОВ
+        // Calculate Costs with modifiers
         const groupDeltas = this.calculateGroupDeltas();
         
-        // 6. Apply Logic
         this.applyBudgets(groupDeltas);
         this.applyDeltas(groupDeltas);
 
@@ -164,7 +169,6 @@ export class GameEngine {
             if (!deltas[group.id]) deltas[group.id] = {};
 
             for (const cost of item.cost) {
-                // Здесь RulesEvaluator применит модификаторы
                 const unitValue = this.rules.evaluateCost(cost, item, group);
                 const currencyId = cost.currency;
                 if (!deltas[group.id][currencyId]) deltas[group.id][currencyId] = 0;

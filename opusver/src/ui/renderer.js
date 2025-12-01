@@ -115,6 +115,8 @@ export class UIRenderer {
                 });
             }
         });
+        
+        this.updateButtons();
     }
 
     renderBudgetBadge(group, layer, dim) {
@@ -151,8 +153,6 @@ export class UIRenderer {
         layer.appendChild(zone);
     }
 
-    // ==================== ITEM BUTTON (UPDATED) ====================
-
     renderItemButton(item, group, layer, dim) {
         const button = document.createElement('div');
         button.className = 'click-zone item-zone';
@@ -170,21 +170,17 @@ export class UIRenderer {
             ));
         }
 
-        // CHANGED: Multi-select Logic
         const maxQty = item.max_quantity || 1;
 
         if (maxQty > 1) {
-            // 1. Add class for styling
             button.classList.add('multi-select');
-
-            // 2. Create Split Controls (Left -, Right +)
             const controls = document.createElement('div');
             controls.className = 'split-controls';
             
             const minusBtn = document.createElement('div');
             minusBtn.className = 'split-btn minus';
             minusBtn.onclick = (e) => {
-                e.stopPropagation(); // Stop bubbling
+                e.stopPropagation(); 
                 this.engine.deselect(item.id);
             };
 
@@ -199,20 +195,17 @@ export class UIRenderer {
             controls.appendChild(plusBtn);
             button.appendChild(controls);
 
-            // 3. Create Quantity Badge
             const badge = document.createElement('div');
             badge.className = 'qty-badge';
-            badge.style.display = 'none'; // Hidden by default
+            badge.style.display = 'none'; 
             button.appendChild(badge);
 
         } else {
-            // Standard Behavior (Toggle)
             button.onclick = () => {
                 this.engine.toggle(item.id);
             };
         }
 
-        // Tooltip
         this.tooltip.attach(button, item, group);
 
         layer.appendChild(button);
@@ -246,7 +239,7 @@ export class UIRenderer {
         });
     }
 
-    // ==================== UPDATE UI (UPDATED) ====================
+    // ==================== UPDATE UI ====================
 
     updateUI() {
         this.updateButtons();
@@ -264,33 +257,193 @@ export class UIRenderer {
 
             if (!item || !group) return;
 
-            // CHANGED: Use Quantity logic
             const qty = this.engine.state.selected.get(itemId) || 0;
             const isSelected = qty > 0;
             const canSelect = this.engine.canSelect(item, group);
             const maxQty = item.max_quantity || 1;
 
-            // Update classes
             el.classList.toggle('selected', isSelected);
-            // Disabled if cannot select AND not already selected (so you can't start, but if selected you can deselect)
-            // For multi: disable ONLY if maxed out AND cannot increment further
-            if (maxQty > 1) {
-                // Multi-select specific states could go here (e.g., disable only "+" side)
-                el.classList.toggle('maxed', qty >= maxQty);
-            } else {
-                el.classList.toggle('disabled', !canSelect && !isSelected);
-            }
 
-            // CHANGED: Update Badge
             if (maxQty > 1) {
+                el.classList.toggle('maxed', qty >= maxQty);
                 const badge = el.querySelector('.qty-badge');
                 if (badge) {
                     badge.textContent = qty;
                     badge.style.display = isSelected ? 'flex' : 'none';
                 }
+            } else {
+                el.classList.toggle('disabled', !canSelect && !isSelected);
+            }
+
+            // === ROULETTE LOGIC ===
+            const hasDiceEffect = item.effects && item.effects.some(e => e.type === 'roll_dice');
+            
+            if (hasDiceEffect) {
+                const rolledValue = this.engine.state.rollResults.get(itemId);
+                const currentBadge = el.querySelector('.roll-result-badge');
+                const isSpinning = el.classList.contains('spinning-active');
+
+                if (isSelected && rolledValue !== undefined) {
+                    // Only animate if it's the FIRST time (no badge, no spin flag, and we haven't marked it done)
+                    if (!el.dataset.hasAnimated && !isSpinning && !currentBadge) {
+                        this.playRouletteAnimation(el, rolledValue, item);
+                    } else if (el.dataset.hasAnimated && !currentBadge && !isSpinning) {
+                        // Restore badge instantly if animation already happened in history
+                        this.showPermanentBadge(el, rolledValue, true); // true = instant
+                    }
+                } else {
+                    // Deselected: cleanup
+                    const mask = el.querySelector('.roulette-mask');
+                    if (mask) mask.remove();
+                    if (currentBadge) currentBadge.remove();
+                    el.classList.remove('spinning-active');
+                    delete el.dataset.hasAnimated;
+                }
             }
         });
     }
+
+playRouletteAnimation(container, targetNumber, item) {
+        if (container.classList.contains('spinning-active')) return;
+        container.classList.add('spinning-active');
+
+        // 1. Создание DOM
+        const mask = document.createElement('div');
+        mask.className = 'roulette-mask';
+        const strip = document.createElement('div');
+        strip.className = 'roulette-strip';
+        
+        // 2. Расчет размеров
+        const containerHeight = container.offsetHeight;
+        // Высота цифры = 65% от карточки. Это позволяет видеть кусочки соседей.
+        const itemHeight = Math.floor(containerHeight * 0.65); 
+        // Смещение, чтобы цифра встала ровно по центру маски
+        const maskOffset = (containerHeight - itemHeight) / 2;
+
+        // 3. Генерация чисел
+        const diceEffect = item.effects.find(e => e.type === 'roll_dice');
+        const min = parseInt(diceEffect?.min) || 1;
+        const max = parseInt(diceEffect?.max) || 20;
+
+        const totalItems = 30 + Math.floor(Math.random() * 15); // Не слишком длинная лента
+        const numbers = [];
+        for (let i = 0; i < totalItems; i++) {
+            numbers.push(Math.floor(Math.random() * (max - min + 1)) + min);
+        }
+        
+        // Целевая цифра в конце
+        const targetIndex = totalItems - 3; // Оставляем 2 цифры "запаса" снизу
+        numbers[targetIndex] = targetNumber;
+
+        strip.innerHTML = numbers.map(n => 
+            `<div class="roulette-item" style="height:${itemHeight}px; line-height:${itemHeight}px;">${n}</div>`
+        ).join('');
+        
+        mask.appendChild(strip);
+        container.appendChild(mask);
+
+        // 4. БИБЛИОТЕКА ПРОФИЛЕЙ (БЕЗ ОТСКОКОВ НАЗАД)
+        // Все bezier <= 1.0. Никаких возвратов.
+        const spinProfiles = [
+            // Standard: Классическое замедление (Ease Out)
+            { name: 'standard', duration: 2000, bezier: 'cubic-bezier(0.1, 0.7, 0.1, 1)', type: 'direct' },
+            
+            // Hard Slam: Очень резкая остановка, как удар молотком
+            { name: 'slam', duration: 1500, bezier: 'cubic-bezier(0.5, 0.0, 0.1, 1)', type: 'direct' },
+            
+            // Heavy: Медленное, тяжелое торможение
+            { name: 'heavy', duration: 2500, bezier: 'cubic-bezier(0, 0.95, 0.2, 1)', type: 'direct' },
+
+            // Tease Top: Останавливается "над" цифрой, потом падает вниз
+            // Имитирует застревание шестеренки
+            { name: 'tease_top', duration: 2000, bezier: 'cubic-bezier(0.1, 1, 0.8, 1)', type: 'nudge', offsetPercent: 0.45 },
+            
+            // Tease Tiny: Почти докрутил, маленькая пауза, щелчок
+            { name: 'tease_tiny', duration: 2200, bezier: 'cubic-bezier(0.1, 1, 0.6, 1)', type: 'nudge', offsetPercent: 0.2 },
+
+            // Slow Grind: Равномерное замедление (скучно, но реалистично)
+            { name: 'grind', duration: 2800, bezier: 'cubic-bezier(0.25, 1, 0.5, 1)', type: 'direct' }
+        ];
+
+        const profile = spinProfiles[Math.floor(Math.random() * spinProfiles.length)];
+        console.log(`🎰 Spin: ${profile.name}`);
+
+        // 5. Логика координат
+        // Базовая позиция: сдвигаем ленту вверх, чтобы targetIndex оказался в центре
+        const baseTargetY = -1 * (targetIndex * itemHeight) + maskOffset;
+        
+        let initialY = baseTargetY;
+        
+        // Если это "Nudge" (толчок), мы сначала едем не до конца
+        if (profile.type === 'nudge') {
+            // Сдвигаем "вверх" (меньше Y), значит мы увидим то, что НАД цифрой (предыдущую)
+            // Или сдвигаем "вниз" (больше Y), значит лента не доехала
+            // Нам нужно "недоехать". Лента едет вверх (значения Y уменьшаются).
+            // Значит, чтобы не доехать, Y должен быть БОЛЬШЕ.
+            initialY = baseTargetY + (itemHeight * profile.offsetPercent);
+        }
+
+        // 6. Запуск
+        strip.offsetHeight; // Reflow
+        strip.style.transition = `transform ${profile.duration}ms ${profile.bezier}`;
+        strip.style.transform = `translateY(${initialY}px)`;
+
+        // Функция финала
+        const finalize = () => {
+            const winnerEl = strip.querySelectorAll('.roulette-item')[targetIndex];
+            if(winnerEl) winnerEl.classList.add('winner');
+
+            setTimeout(() => {
+                mask.style.opacity = '0';
+                mask.style.transition = 'opacity 0.2s';
+                this.showPermanentBadge(container, targetNumber);
+                
+                container.dataset.hasAnimated = "true";
+                container.classList.remove('spinning-active');
+                setTimeout(() => mask.remove(), 200);
+            }, 400);
+        };
+
+        // Обработка двухэтапной анимации
+        if (profile.type === 'nudge') {
+            // Ждем почти до конца анимации
+            setTimeout(() => {
+                // "Добиваем" в нужную позицию резким ударом
+                strip.style.transition = 'transform 300ms cubic-bezier(0.5, 0, 0.5, 1)'; // Линейно-ударный
+                strip.style.transform = `translateY(${baseTargetY}px)`;
+                
+                setTimeout(finalize, 300);
+            }, profile.duration - 50); 
+        } else {
+            // Обычная анимация
+            setTimeout(finalize, profile.duration);
+        }
+    }
+
+    // Обновленный метод для отображения значка (на границе)
+    showPermanentBadge(container, value, instant = false) {
+        // Удаляем старый, если есть (на всякий случай)
+        const old = container.querySelector('.roll-result-badge');
+        if (old) old.remove();
+
+        const badge = document.createElement('div');
+        badge.className = 'roll-result-badge';
+        badge.textContent = value;
+        
+        if (!instant) {
+            badge.classList.add('spawn-anim');
+            container.appendChild(badge);
+            
+            // Trigger anim
+            requestAnimationFrame(() => {
+                 badge.classList.remove('spawn-anim');
+            });
+        } else {
+            container.appendChild(badge);
+        }
+    }
+
+ 
 
     updatePointsBar() {
         for (const currencyId in this.engine.state.currencies) {

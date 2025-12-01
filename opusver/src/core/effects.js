@@ -1,4 +1,3 @@
-
 /**
  * Effect Processor - Handles active card effects
  */
@@ -40,9 +39,13 @@ export class EffectProcessor {
                 this.applySetValue(effect, qty);
                 break;
             
-            // NEW: Modifies costs of other items
             case 'modify_cost':
                 this.applyModifyCost(effect, qty);
+                break;
+            
+            // NEW: Roll Dice Logic (Applying the result)
+            case 'roll_dice':
+                this.applyRollDice(effect, sourceItem, qty);
                 break;
 
             default:
@@ -82,14 +85,7 @@ export class EffectProcessor {
         this.engine.state.currencies[currency] = value;
     }
 
-    // NEW: Adds a modifier to the engine for the calculation phase
     applyModifyCost(effect, qty) {
-        // Effect structure example:
-        // { type: "modify_cost", tag: "magic", mode: "multiply", value: 0.5 } 
-        
-        // If qty > 1, do we stack discounts? Usually yes.
-        // But for "multiply" (50% off), stacking acts like 0.5 * 0.5 = 0.25 (75% off)
-        
         for (let i = 0; i < qty; i++) {
             this.engine.modifiers.cost.push({
                 tag: effect.tag,
@@ -98,9 +94,27 @@ export class EffectProcessor {
                 mode: effect.mode || 'add',
                 value: effect.value
             });
-            
-            // If "once" flag is true, don't stack for quantity
             if (effect.once) break;
+        }
+    }
+
+    // NEW: Apply the pre-rolled value to the currency
+    applyRollDice(effect, sourceItem, qty) {
+        if (!effect.currency) return;
+        
+        // Retrieve the frozen result from state
+        const rolledValue = this.engine.state.rollResults.get(sourceItem.id);
+        
+        // If (for some reason) it wasn't rolled yet, we skip adding (should have happened in engine.select)
+        if (rolledValue !== undefined) {
+            if (this.engine.state.currencies[effect.currency] !== undefined) {
+                // If quantity > 1, do we multiply the result?
+                // Usually random rolls are "Unique", but if allowed multiple, 
+                // currently logic uses ONE roll for all copies. 
+                // To support multiple separate rolls, state structure would need to change.
+                // Assuming multiply for now.
+                this.engine.state.currencies[effect.currency] += (rolledValue * qty);
+            }
         }
     }
 }

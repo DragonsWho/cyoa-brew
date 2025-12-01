@@ -1,4 +1,3 @@
-
 /**
  * Tooltip Manager - Handles hover tooltips
  */
@@ -28,7 +27,7 @@ export class TooltipManager {
                 if (!document.body.classList.contains('text-mode')) {
                     this.show();
                 }
-            }, 300); // Slightly faster than before
+            }, 300);
         });
 
         element.addEventListener('mousemove', (e) => {
@@ -59,12 +58,12 @@ export class TooltipManager {
         const isDebug = document.body.classList.contains('debug-mode') || document.body.classList.contains('edit-mode-active');
         let html = `<h4>${item.title}</h4>`;
 
-        // 1. Tags (NEW)
+        // 1. Tags
         if (item.tags && item.tags.length > 0) {
             html += this.renderTags(item);
         }
 
-        // 2. Effects (NEW)
+        // 2. Effects
         if (item.effects && item.effects.length > 0) {
             html += this.renderEffects(item);
         }
@@ -94,10 +93,9 @@ export class TooltipManager {
         this.tooltipEl.innerHTML = html;
     }
 
-    // ==================== NEW RENDERERS ====================
+    // ==================== RENDERERS ====================
 
     renderTags(item) {
-        // Simple badges for tags
         const tagsHtml = item.tags.map(t => 
             `<span style="background:#333; color:#aaa; padding:2px 6px; border-radius:4px; font-size:0.75em; margin-right:4px; border:1px solid #444;">${t}</span>`
         ).join('');
@@ -125,9 +123,6 @@ export class TooltipManager {
                         const percent = Math.round((1 - eff.value) * 100);
                         text = `<b>${percent}% Discount</b> on ${target} items`;
                     } else {
-                        // Assuming positive 'add' reduces cost (engine logic: value += mod)
-                        // If logic is standard: negative cost = spend. 
-                        // If base -10, mod +5 => -5. So +5 is discount.
                         const sign = eff.value > 0 ? 'Discount' : 'Markup';
                         text = `<b>${Math.abs(eff.value)} point ${sign}</b> on ${target} items`;
                     }
@@ -145,6 +140,19 @@ export class TooltipManager {
                     text = `Sets <b>${eff.currency}</b> to ${eff.value}`;
                     break;
 
+                case 'roll_dice':
+                    // Check if already rolled
+                    const current = this.engine.state.rollResults.get(item.id);
+                    const range = `${eff.min || 1}-${eff.max || 6}`;
+                    if (current !== undefined) {
+                        text = `Rolled Result: <b>${current}</b> ${eff.currency}`;
+                        icon = '🎲';
+                    } else {
+                        text = `Rolls <b>${range}</b> ${eff.currency}`;
+                        icon = '🎲';
+                    }
+                    break;
+
                 default:
                     text = `Unknown Effect: ${eff.type}`;
             }
@@ -156,21 +164,16 @@ export class TooltipManager {
         return html;
     }
 
-    // ==================== EXISTING RENDERERS ====================
-
     renderCost(item, group) {
         let html = '';
         item.cost.forEach(c => {
-            // Используем новый метод, который возвращает и цену, и текст модификаторов
             const { value, modifiers } = this.engine.rules.getCostBreakdown(c, item, group);
-            
             const sign = value > 0 ? '+' : '';
             
             let colorClass = value < 0 ? 'bad' : ''; 
             if (value === 0) colorClass = 'free';      
             if (value > 0) colorClass = 'good';        
 
-            // Формируем строку модификаторов: (-50% +5)
             let modHtml = '';
             if (modifiers.length > 0) {
                 modHtml = `<span class="mod-applied">(${modifiers.join(' ')})</span>`;
@@ -186,7 +189,6 @@ export class TooltipManager {
     renderRequirements(item, group) {
         let reqsHtml = '';
 
-        // Incompatible
         if (item.incompatible) {
             item.incompatible.forEach(badId => {
                 if (this.engine.state.selected.has(badId)) {
@@ -196,7 +198,6 @@ export class TooltipManager {
             });
         }
 
-        // Max choices check
         const isSelected = this.engine.state.selected.has(item.id);
         if (!isSelected && group.rules?.max_choices) {
             const currentCount = this.engine.getSelectedInGroup(group).length;
@@ -205,7 +206,6 @@ export class TooltipManager {
             }
         }
 
-        // Requirements
         if (item.requirements) {
             item.requirements.forEach(req => {
                 reqsHtml += this.renderRequirement(req);
@@ -222,12 +222,11 @@ export class TooltipManager {
         let isMet = false;
         let displayText = req;
 
-        // Clean up the text for display (remove code syntax)
         const formatText = (txt) => {
             return txt
-                .replace(/count\.tag\(['"](.+?)['"]\)/g, "Tag: $1") // count.tag('fire') -> Tag: fire
-                .replace(/count\.([a-zA-Z0-9_]+)/g, "Group: $1")   // count.group -> Group: group
-                .replace(/has\(['"](.+?)['"]\)/g, "$1")            // has('id') -> id
+                .replace(/count\.tag\(['"](.+?)['"]\)/g, "Tag: $1")
+                .replace(/count\.([a-zA-Z0-9_]+)/g, "Group: $1")
+                .replace(/has\(['"](.+?)['"]\)/g, "$1")
                 .replace(/\|\|/g, " OR ")
                 .replace(/&&/g, " AND ")
                 .replace(/>=/g, "≥")
@@ -235,19 +234,13 @@ export class TooltipManager {
         };
 
         if (req.includes('(') || req.includes('||') || req.includes('&&') || req.includes('count.')) {
-            // Complex formula
             isMet = this.engine.rules.evaluateRequirement(req, null);
             displayText = formatText(req);
         } else {
-            // Simple ID requirement
             const isNot = req.startsWith('!');
             const cleanId = isNot ? req.slice(1) : req;
-            
-            // Check logic
             const targetSelected = this.engine.state.selected.has(cleanId);
             isMet = isNot ? !targetSelected : targetSelected;
-            
-            // Get nice name
             const targetItem = this.engine.findItem(cleanId);
             const name = targetItem?.title || cleanId;
             displayText = (isNot ? "NOT " : "") + name;
@@ -260,8 +253,6 @@ export class TooltipManager {
         }
     }
 
-    // ==================== POSITION ====================
-
     updatePosition(e) {
         const tt = this.tooltipEl;
         const ttH = tt.offsetHeight;
@@ -270,7 +261,6 @@ export class TooltipManager {
         let top = e.clientY + 20;
         let left = e.clientX + 20;
 
-        // Keep in viewport logic
         if (left + ttW > window.innerWidth) {
             left = window.innerWidth - ttW - 20;
         }
