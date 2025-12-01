@@ -5,11 +5,8 @@ PROJECT STRUCTURE:
     index.html
     readme
     [config/]
-        config.json
         example.json
-        project.zip
         schema.json
-        Test CYOA - Advanced Mechanics_edited.json
         test_config.json
         test_image.png
     [docs/]
@@ -296,349 +293,6 @@ PROJECT STRUCTURE:
     <script type="module" src="src/main.js"></script>
 </body>
 </html>
-</file>
-
-<file path="config/config.json">
-{
-  "meta": {
-    "title": "Test CYOA - Advanced Mechanics",
-    "pages": [
-      "image.png"
-    ]
-  },
-  "points": [
-    {
-      "id": "points",
-      "name": "Points",
-      "start": 0
-    }
-  ],
-  "groups": [
-    {
-      "id": "generated_group",
-      "title": "Detected Items",
-      "page": 0,
-      "coords": {
-        "x": 50,
-        "y": 50,
-        "w": 500,
-        "h": 200
-      },
-      "items": [
-        {
-          "id": "item_001",
-          "title": "Item 1",
-          "coords": {
-            "x": 30,
-            "y": 22,
-            "w": 1841,
-            "h": 454
-          }
-        },
-        {
-          "id": "item_002",
-          "title": "Item 2",
-          "coords": {
-            "x": 399,
-            "y": 487,
-            "w": 354,
-            "h": 608
-          }
-        },
-        {
-          "id": "item_003",
-          "title": "Item 3",
-          "coords": {
-            "x": 778,
-            "y": 485,
-            "w": 352,
-            "h": 602
-          }
-        },
-        {
-          "id": "item_004",
-          "title": "Item 4",
-          "coords": {
-            "x": 1147,
-            "y": 495,
-            "w": 349,
-            "h": 602
-          }
-        },
-        {
-          "id": "item_005",
-          "title": "Item 5",
-          "coords": {
-            "x": 23,
-            "y": 504,
-            "w": 353,
-            "h": 599
-          }
-        },
-        {
-          "id": "item_006",
-          "title": "Item 6",
-          "coords": {
-            "x": 1522,
-            "y": 500,
-            "w": 350,
-            "h": 591
-          }
-        },
-        {
-          "id": "item_007",
-          "title": "Item 7",
-          "coords": {
-            "x": 22,
-            "y": 1123,
-            "w": 355,
-            "h": 605
-          }
-        },
-        {
-          "id": "item_008",
-          "title": "Item 8",
-          "coords": {
-            "x": 397,
-            "y": 1124,
-            "w": 354,
-            "h": 599
-          }
-        },
-        {
-          "id": "item_009",
-          "title": "Item 9",
-          "coords": {
-            "x": 773,
-            "y": 1135,
-            "w": 354,
-            "h": 585
-          }
-        },
-        {
-          "id": "item_010",
-          "title": "Item 10",
-          "coords": {
-            "x": 1148,
-            "y": 1136,
-            "w": 355,
-            "h": 586
-          }
-        },
-        {
-          "id": "item_011",
-          "title": "Item 11",
-          "coords": {
-            "x": 1524,
-            "y": 1126,
-            "w": 349,
-            "h": 595
-          }
-        },
-        {
-          "id": "item_012",
-          "title": "Item 12",
-          "coords": {
-            "x": 21,
-            "y": 1752,
-            "w": 355,
-            "h": 595
-          }
-        },
-        {
-          "id": "item_013",
-          "title": "Item 13",
-          "coords": {
-            "x": 398,
-            "y": 1751,
-            "w": 353,
-            "h": 597
-          }
-        },
-        {
-          "id": "item_014",
-          "title": "Item 14",
-          "coords": {
-            "x": 772,
-            "y": 1754,
-            "w": 354,
-            "h": 593
-          }
-        },
-        {
-          "id": "item_015",
-          "title": "Item 15",
-          "coords": {
-            "x": 1148,
-            "y": 1755,
-            "w": 351,
-            "h": 592
-          }
-        },
-        {
-          "id": "item_016",
-          "title": "Item 16",
-          "coords": {
-            "x": 1520,
-            "y": 1752,
-            "w": 352,
-            "h": 596
-          }
-        },
-        {
-          "id": "item_017",
-          "title": "Item 17",
-          "coords": {
-            "x": 23,
-            "y": 2379,
-            "w": 356,
-            "h": 598
-          }
-        },
-        {
-          "id": "item_018",
-          "title": "Item 18",
-          "coords": {
-            "x": 401,
-            "y": 2380,
-            "w": 351,
-            "h": 600
-          }
-        },
-        {
-          "id": "item_019",
-          "title": "Item 19",
-          "coords": {
-            "x": 772,
-            "y": 2381,
-            "w": 355,
-            "h": 596
-          }
-        },
-        {
-          "id": "item_020",
-          "title": "Item 20",
-          "coords": {
-            "x": 1147,
-            "y": 2380,
-            "w": 356,
-            "h": 598
-          }
-        },
-        {
-          "id": "item_021",
-          "title": "Item 21",
-          "coords": {
-            "x": 1522,
-            "y": 2381,
-            "w": 351,
-            "h": 595
-          }
-        },
-        {
-          "id": "item_022",
-          "title": "Item 22",
-          "coords": {
-            "x": 21,
-            "y": 3178,
-            "w": 359,
-            "h": 599
-          }
-        },
-        {
-          "id": "item_023",
-          "title": "Item 23",
-          "coords": {
-            "x": 396,
-            "y": 3178,
-            "w": 356,
-            "h": 591
-          }
-        },
-        {
-          "id": "item_024",
-          "title": "Item 24",
-          "coords": {
-            "x": 772,
-            "y": 3176,
-            "w": 355,
-            "h": 597
-          }
-        },
-        {
-          "id": "item_025",
-          "title": "Item 25",
-          "coords": {
-            "x": 1146,
-            "y": 3177,
-            "w": 354,
-            "h": 592
-          }
-        },
-        {
-          "id": "item_026",
-          "title": "Item 26",
-          "coords": {
-            "x": 1520,
-            "y": 3179,
-            "w": 355,
-            "h": 593
-          }
-        },
-        {
-          "id": "item_027",
-          "title": "Item 27",
-          "coords": {
-            "x": 21,
-            "y": 3798,
-            "w": 356,
-            "h": 600
-          }
-        },
-        {
-          "id": "item_028",
-          "title": "Item 28",
-          "coords": {
-            "x": 396,
-            "y": 3796,
-            "w": 355,
-            "h": 604
-          }
-        },
-        {
-          "id": "item_029",
-          "title": "Item 29",
-          "coords": {
-            "x": 771,
-            "y": 3797,
-            "w": 355,
-            "h": 598
-          }
-        },
-        {
-          "id": "item_030",
-          "title": "Item 30",
-          "coords": {
-            "x": 1148,
-            "y": 3798,
-            "w": 354,
-            "h": 598
-          }
-        },
-        {
-          "id": "item_031",
-          "title": "Item 31",
-          "coords": {
-            "x": 1522,
-            "y": 3796,
-            "w": 350,
-            "h": 601
-          }
-        }
-      ]
-    }
-  ]
-}
 </file>
 
 <file path="config/example.json">
@@ -2882,20 +2536,11 @@ export class CYOAEditor {
                     const reader = new FileReader();
                     reader.onload = (evt) => {
                         const dataUrl = evt.target.result;
-                        // 1. Сохраняем DataURL прямо в конфиг.
-                        // Это предотвращает ошибку 404 memory_blob при renderAll()
                         this.engine.config.meta.pages[0] = dataUrl;
-
-                        // 2. Сбрасываем группы и валюты
                         this.engine.config.groups = [];
                         this.engine.config.points = [{id:"points", name:"Points", start:0}];
-                        
-                        // 3. Сбрасываем движок
                         this.engine.reset();
-                        
-                        // 4. Перерисовываем UI (теперь renderPages возьмет dataUrl из конфига)
                         this.renderer.renderAll().then(() => {
-                             // Обновляем dimensions для корректной работы координат
                              const img = document.querySelector('#page-0 .page-image');
                              if(img) {
                                  this.renderer.pageDimensions[0] = { w: img.naturalWidth, h: img.naturalHeight };
@@ -2998,7 +2643,6 @@ export class CYOAEditor {
         btn.style.opacity = 1;
     }
 
-    // ... Event listeners (Mouse/Keyboard) - without changes ...
     attachEventListeners() {
         document.addEventListener('mousedown', this.handleMouseDown.bind(this));
         document.addEventListener('mousemove', this.handleMouseMove.bind(this));
@@ -3081,7 +2725,6 @@ export class CYOAEditor {
         }
     }
 
-    // ... Selection methods (Same as before) ...
     selectChoice(item, element) {
         this.selectedItem = item;
         document.querySelectorAll('.editor-selected').forEach(el => el.classList.remove('editor-selected'));
@@ -3146,7 +2789,6 @@ export class CYOAEditor {
         }
     }
 
-    // ... Listeners Setup (Same as before) ...
     setupChoiceListeners() {
         const update = (key, val, isNum) => {
             if (!this.selectedItem) return;
@@ -3201,7 +2843,6 @@ export class CYOAEditor {
         }
     }
 
-    // ... Actions (Delete, Add) ...
     deleteSelectedItem() {
         if (!this.selectedItem) return; if (!confirm('Delete item?')) return;
         const group = this.engine.findGroupForItem(this.selectedItem.id);
@@ -3229,7 +2870,6 @@ export class CYOAEditor {
         this.renderer.renderButtons();
     }
 
-    // ... Export Logic ...
     exportConfig() {
         const config = this.engine.config;
         const blob = new Blob([JSON.stringify(config, null, 2)], { type: 'application/json' });
@@ -3244,21 +2884,17 @@ export class CYOAEditor {
 
         const zip = new JSZip();
         
-        // 1. Prepare Config for Zip (Replace DataURL with relative filename)
         const configToSave = JSON.parse(JSON.stringify(this.engine.config));
         configToSave.meta.pages[0] = "image.png"; 
         
         zip.file("config.json", JSON.stringify(configToSave, null, 2));
 
-        // 2. Add Image
-        // Extract DataURL from config (because we stored it there on load)
         const dataUrl = this.engine.config.meta.pages[0];
         if (dataUrl && dataUrl.startsWith('data:image')) {
             const resp = await fetch(dataUrl);
             const blob = await resp.blob();
             zip.file("image.png", blob);
         } else {
-            // Fallback: Try to fetch if it's a normal URL
             try {
                 const resp = await fetch(dataUrl);
                 const blob = await resp.blob();
@@ -3268,7 +2904,6 @@ export class CYOAEditor {
             }
         }
 
-        // 3. Generate
         const content = await zip.generateAsync({type:"blob"});
         const url = URL.createObjectURL(content);
         const a = document.createElement('a'); a.href = url; a.download = "project.zip"; a.click(); URL.revokeObjectURL(url);
@@ -4425,7 +4060,7 @@ export class TooltipManager {
 <file path="src/utils/autodetect.js">
 /**
  * AutoDetect - SAM3 Integration logic
- * Replicates Python OpenCV Morphology (Erode/Dilate) in JS
+ * Optimized: Smart Downscaling + Sliding Window Morphology
  */
 
 import { Client } from "@gradio/client";
@@ -4434,7 +4069,12 @@ export class AutoDetector {
     constructor() {
         this.client = null;
         this.statusCallback = null;
-        this.debugCallback = null; // Функция для отправки картинок в UI
+        this.debugCallback = null;
+        
+        // Увеличили лимит до 2000px. 
+        // Это дает высокую точность, а алгоритм "скользящего окна" 
+        // справится с такой скоростью без проблем.
+        this.MAX_PROCESSING_SIZE = 2000;
     }
 
     setStatus(msg) {
@@ -4450,11 +4090,6 @@ export class AutoDetector {
 
     /**
      * Main function to process image
-     * @param {File} imageFile 
-     * @param {string} prompt 
-     * @param {number} shaveRatio 
-     * @param {string} hfToken 
-     * @param {number} targetDebugIndex - Index to generate debug images for (-1 for none)
      */
     async processImage(imageFile, prompt, shaveRatio, hfToken, targetDebugIndex = -1) {
         if (!this.client) {
@@ -4483,25 +4118,35 @@ export class AutoDetector {
                 return [];
             }
 
-            this.setStatus(`Processing ${rawAnnotations.length} masks (Morphology)...`);
-
             // Подготовка битмапа оригинала для размеров
             const imgBitmap = await createImageBitmap(imageFile);
-            const w = imgBitmap.width;
-            const h = imgBitmap.height;
+            const originalW = imgBitmap.width;
+            const originalH = imgBitmap.height;
+
+            // Вычисляем масштаб для уменьшения
+            const scale = this.calculateScale(originalW, originalH);
+            const processW = Math.round(originalW * scale);
+            const processH = Math.round(originalH * scale);
+
+            this.setStatus(`Processing ${rawAnnotations.length} masks. Scale: ${scale.toFixed(3)} (${processW}x${processH})`);
 
             const detectedItems = [];
 
             for (let i = 0; i < rawAnnotations.length; i++) {
                 this.setStatus(`Processing mask ${i+1}/${rawAnnotations.length}...`);
                 
-                // ЛОГИКА ДЕБАГА
-                // Если targetDebugIndex >= 0, показываем только этот элемент. Иначе - ничего.
                 const isDebugItem = (targetDebugIndex >= 0 && i === targetDebugIndex);
 
-                const bbox = await this.processMaskMorphology(
+                // Даём браузеру "вздохнуть" каждые 3 маски, чтобы интерфейс не фризился
+                if (i > 0 && i % 3 === 0) {
+                    await this.yieldToMain();
+                }
+
+                const bbox = await this.processMaskMorphologyOptimized(
                     rawAnnotations[i].image.url, 
-                    w, h, 
+                    originalW, originalH,
+                    processW, processH,
+                    scale,
                     shaveRatio, 
                     isDebugItem ? `Item ${i+1}` : null
                 );
@@ -4540,75 +4185,109 @@ export class AutoDetector {
         }
     }
 
+    calculateScale(w, h) {
+        const maxDim = Math.max(w, h);
+        if (maxDim <= this.MAX_PROCESSING_SIZE) {
+            return 1; // Не нужно уменьшать
+        }
+        return this.MAX_PROCESSING_SIZE / maxDim;
+    }
+
     /**
-     * JS реализация cv2.morphologyEx
+     * Позволяет браузеру обработать UI события, чтобы не было фризов
      */
-    async processMaskMorphology(maskUrl, targetW, targetH, shaveRatio, debugName) {
+    yieldToMain() {
+        return new Promise(resolve => {
+            if ('scheduler' in window && 'yield' in window.scheduler) {
+                window.scheduler.yield().then(resolve);
+            } else {
+                setTimeout(resolve, 0);
+            }
+        });
+    }
+
+    async processMaskMorphologyOptimized(maskUrl, originalW, originalH, processW, processH, scale, shaveRatio, debugName) {
         return new Promise((resolve) => {
             const img = new Image();
             img.crossOrigin = "Anonymous";
             img.src = maskUrl;
             
             img.onload = () => {
-                // 1. Рисуем маску на Canvas
+                // 1. Создаём canvas уменьшенного размера для обработки
                 const canvas = document.createElement('canvas');
-                canvas.width = targetW;
-                canvas.height = targetH;
-                const ctx = canvas.getContext('2d');
-                ctx.drawImage(img, 0, 0, targetW, targetH);
+                canvas.width = processW;
+                canvas.height = processH;
+                const ctx = canvas.getContext('2d', { willReadFrequently: true });
+                
+                // Рисуем маску
+                ctx.drawImage(img, 0, 0, processW, processH);
 
-                if (debugName) this.sendDebugImage(`${debugName} - 1. Original`, canvas);
+                if (debugName) {
+                    this.sendDebugImage(`${debugName} - 1. Original (${processW}×${processH})`, canvas);
+                }
 
                 // 2. Получаем пиксели
-                const imgData = ctx.getImageData(0, 0, targetW, targetH);
-                let binary = new Uint8Array(targetW * targetH);
+                const imgData = ctx.getImageData(0, 0, processW, processH);
+                let binary = new Uint8Array(processW * processH);
                 
-                // Threshold (Бинаризация)
-                for (let k = 0; k < imgData.data.length; k += 4) {
-                    binary[k / 4] = imgData.data[k] > 128 ? 1 : 0;
+                const data = imgData.data;
+                const len = binary.length;
+                for (let k = 0; k < len; k++) {
+                    binary[k] = data[k << 2] > 128 ? 1 : 0; 
                 }
 
                 // ==========================================
                 // STEP 3: MORPH OPEN (Shaving)
-                // ERODE -> DILATE
                 // ==========================================
                 
-                let shaveSize = Math.floor(targetW * shaveRatio);
+                let shaveSize = Math.floor(processW * shaveRatio);
                 if (shaveSize < 3) shaveSize = 3;
-                if (shaveSize % 2 === 0) shaveSize++; // нечетное
+                if (shaveSize % 2 === 0) shaveSize++;
 
-                let eroded = this.morphErode(binary, targetW, targetH, shaveSize);
-                let shaved = this.morphDilate(eroded, targetW, targetH, shaveSize);
+                let eroded = this.morphErodeOptimized(binary, processW, processH, shaveSize);
+                let shaved = this.morphDilateOptimized(eroded, processW, processH, shaveSize);
 
                 if (debugName) {
-                    this.drawBinaryToCanvas(shaved, ctx, targetW, targetH);
+                    this.drawBinaryToCanvas(shaved, ctx, processW, processH);
                     this.sendDebugImage(`${debugName} - 2. Shaved (K=${shaveSize})`, canvas);
                 }
 
                 // ==========================================
                 // STEP 4: MORPH CLOSE (Closing holes)
-                // DILATE -> ERODE
                 // ==========================================
-                const closeSize = 15; 
+                let closeSize = Math.max(3, Math.round(15 * scale)); 
+                if (closeSize % 2 === 0) closeSize++;
                 
-                let dilated2 = this.morphDilate(shaved, targetW, targetH, closeSize);
-                let closed = this.morphErode(dilated2, targetW, targetH, closeSize);
+                let dilated2 = this.morphDilateOptimized(shaved, processW, processH, closeSize);
+                let closed = this.morphErodeOptimized(dilated2, processW, processH, closeSize);
 
                 if (debugName) {
-                    this.drawBinaryToCanvas(closed, ctx, targetW, targetH);
+                    this.drawBinaryToCanvas(closed, ctx, processW, processH);
                     this.sendDebugImage(`${debugName} - 3. Closed (Final)`, canvas);
                 }
 
                 // ==========================================
-                // STEP 5: Find BBox
+                // STEP 5: Find BBox в уменьшенных координатах
                 // ==========================================
-                const bbox = this.findBoundingBox(closed, targetW, targetH);
+                const bboxSmall = this.findBoundingBoxOptimized(closed, processW, processH);
                 
-                if (bbox) {
+                if (bboxSmall) {
+                    // Масштабируем координаты обратно к оригинальному размеру
+                    const bbox = {
+                        x: Math.round(bboxSmall.x / scale),
+                        y: Math.round(bboxSmall.y / scale),
+                        w: Math.round(bboxSmall.w / scale),
+                        h: Math.round(bboxSmall.h / scale)
+                    };
+                    
                     const area = bbox.w * bbox.h;
-                    const minArea = (targetW * targetH) * 0.0005;
-                    if (area < minArea) resolve(null);
-                    else resolve(bbox);
+                    const minArea = (originalW * originalH) * 0.0005;
+                    
+                    if (area < minArea) {
+                        resolve(null);
+                    } else {
+                        resolve(bbox);
+                    }
                 } else {
                     resolve(null);
                 }
@@ -4617,102 +4296,186 @@ export class AutoDetector {
         });
     }
 
-    // --- Helpers ---
-
     drawBinaryToCanvas(binary, ctx, w, h) {
         const output = ctx.createImageData(w, h);
-        for (let i = 0; i < binary.length; i++) {
+        const outData = output.data;
+        const len = binary.length;
+        
+        for (let i = 0; i < len; i++) {
             const val = binary[i] === 1 ? 255 : 0;
-            output.data[i*4] = val;     // R
-            output.data[i*4+1] = val;   // G
-            output.data[i*4+2] = val;   // B
-            output.data[i*4+3] = 255;   // Alpha
+            const idx = i << 2; 
+            outData[idx] = val;
+            outData[idx + 1] = val;
+            outData[idx + 2] = val;
+            outData[idx + 3] = 255;
         }
         ctx.putImageData(output, 0, 0);
     }
 
-    findBoundingBox(binary, w, h) {
-        let minX = w, minY = h, maxX = 0, maxY = 0;
-        let found = false;
+    findBoundingBoxOptimized(binary, w, h) {
+        let minX = w, minY = h, maxX = -1, maxY = -1;
         
-        for (let y = 0; y < h; y++) {
+        // Оптимизированный поиск границ
+        let foundFirst = false;
+        for (let y = 0; y < h && !foundFirst; y++) {
+            const rowStart = y * w;
             for (let x = 0; x < w; x++) {
-                if (binary[y * w + x] === 1) {
-                    if (x < minX) minX = x;
-                    if (x > maxX) maxX = x;
-                    if (y < minY) minY = y;
-                    if (y > maxY) maxY = y;
-                    found = true;
+                if (binary[rowStart + x] === 1) {
+                    minY = y;
+                    foundFirst = true;
+                    break;
                 }
             }
         }
-        if (!found) return null;
+        
+        if (!foundFirst) return null;
+        
+        for (let y = h - 1; y >= minY; y--) {
+            const rowStart = y * w;
+            for (let x = 0; x < w; x++) {
+                if (binary[rowStart + x] === 1) {
+                    maxY = y;
+                    break;
+                }
+            }
+            if (maxY !== -1) break;
+        }
+        
+        for (let y = minY; y <= maxY; y++) {
+            const rowStart = y * w;
+            for (let x = 0; x < w; x++) {
+                if (binary[rowStart + x] === 1) {
+                    if (x < minX) minX = x;
+                    break;
+                }
+            }
+            for (let x = w - 1; x >= 0; x--) {
+                if (binary[rowStart + x] === 1) {
+                    if (x > maxX) maxX = x;
+                    break;
+                }
+            }
+        }
+        
+        if (maxX < 0) return null;
         return { x: minX, y: minY, w: maxX - minX, h: maxY - minY };
     }
 
-    morphErode(input, w, h, kSize) {
-        const output = new Uint8Array(input.length);
-        const temp = new Uint8Array(input.length);
-        const r = Math.floor(kSize / 2);
+    /**
+     * Супер-быстрая эрозия (Sliding Window)
+     * O(N) вместо O(N*K)
+     */
+    morphErodeOptimized(input, w, h, kSize) {
+        const r = kSize >> 1; 
+        const temp = new Uint8Array(w * h);
+        const output = new Uint8Array(w * h);
 
         // Pass 1: Horizontal
         for (let y = 0; y < h; y++) {
+            const rowStart = y * w;
+            let count = 0;
+            
+            // Заполняем начальное окно
+            for (let x = 0; x < r; x++) {
+                count += input[rowStart + x];
+            }
+            
             for (let x = 0; x < w; x++) {
-                let allOnes = true;
-                for (let k = -r; k <= r; k++) {
-                    const px = x + k;
-                    if (px < 0 || px >= w) { allOnes = false; break; } 
-                    if (input[y * w + px] === 0) { allOnes = false; break; }
+                if (x + r < w) {
+                    count += input[rowStart + x + r];
                 }
-                temp[y * w + x] = allOnes ? 1 : 0;
+                
+                const left = x - r;
+                const right = Math.min(x + r, w - 1);
+                const windowSize = right - Math.max(0, left) + 1;
+                
+                // Если сумма в окне равна размеру окна, значит все пиксели = 1
+                temp[rowStart + x] = (count === windowSize) ? 1 : 0;
+                
+                if (left >= 0) {
+                    count -= input[rowStart + left];
+                }
             }
         }
 
         // Pass 2: Vertical
         for (let x = 0; x < w; x++) {
+            let count = 0;
+            
+            for (let y = 0; y < r; y++) {
+                count += temp[y * w + x];
+            }
+            
             for (let y = 0; y < h; y++) {
-                let allOnes = true;
-                for (let k = -r; k <= r; k++) {
-                    const py = y + k;
-                    if (py < 0 || py >= h) { allOnes = false; break; }
-                    if (temp[py * w + x] === 0) { allOnes = false; break; }
+                if (y + r < h) {
+                    count += temp[(y + r) * w + x];
                 }
-                output[y * w + x] = allOnes ? 1 : 0;
+                
+                const top = y - r;
+                const bottom = Math.min(y + r, h - 1);
+                const windowSize = bottom - Math.max(0, top) + 1;
+                
+                output[y * w + x] = (count === windowSize) ? 1 : 0;
+                
+                if (top >= 0) {
+                    count -= temp[top * w + x];
+                }
             }
         }
         return output;
     }
 
-    morphDilate(input, w, h, kSize) {
-        const output = new Uint8Array(input.length);
-        const temp = new Uint8Array(input.length);
-        const r = Math.floor(kSize / 2);
+    /**
+     * Супер-быстрая дилатация (Sliding Window)
+     */
+    morphDilateOptimized(input, w, h, kSize) {
+        const r = kSize >> 1;
+        const temp = new Uint8Array(w * h);
+        const output = new Uint8Array(w * h);
 
         // Pass 1: Horizontal
         for (let y = 0; y < h; y++) {
+            const rowStart = y * w;
+            let count = 0;
+            
+            for (let x = 0; x < r; x++) {
+                count += input[rowStart + x];
+            }
+            
             for (let x = 0; x < w; x++) {
-                let anyOne = false;
-                for (let k = -r; k <= r; k++) {
-                    const px = x + k;
-                    if (px >= 0 && px < w) {
-                        if (input[y * w + px] === 1) { anyOne = true; break; }
-                    }
+                if (x + r < w) {
+                    count += input[rowStart + x + r];
                 }
-                temp[y * w + x] = anyOne ? 1 : 0;
+                
+                // Если сумма > 0, значит хотя бы один пиксель = 1
+                temp[rowStart + x] = (count > 0) ? 1 : 0;
+                
+                const left = x - r;
+                if (left >= 0) {
+                    count -= input[rowStart + left];
+                }
             }
         }
 
         // Pass 2: Vertical
         for (let x = 0; x < w; x++) {
+            let count = 0;
+            
+            for (let y = 0; y < r; y++) {
+                count += temp[y * w + x];
+            }
+            
             for (let y = 0; y < h; y++) {
-                let anyOne = false;
-                for (let k = -r; k <= r; k++) {
-                    const py = y + k;
-                    if (py >= 0 && py < h) {
-                        if (temp[py * w + x] === 1) { anyOne = true; break; }
-                    }
+                if (y + r < h) {
+                    count += temp[(y + r) * w + x];
                 }
-                output[y * w + x] = anyOne ? 1 : 0;
+                
+                output[y * w + x] = (count > 0) ? 1 : 0;
+                
+                const top = y - r;
+                if (top >= 0) {
+                    count -= temp[top * w + x];
+                }
             }
         }
         return output;

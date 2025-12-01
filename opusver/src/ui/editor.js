@@ -33,6 +33,27 @@ export class CYOAEditor {
         this.enabled = false;
         this.triggerLabelCheck = null;
 
+        // LLM Defaults
+        this.llmConfig = {
+            provider: 'google', // google, openai, manual
+            baseUrl: 'https://generativelanguage.googleapis.com/v1beta/models/',
+            apiKey: '',
+            model: 'gemini-2.0-flash',
+            systemPrompt: `У меня есть JSON с координатами кнопок для веб-верстки. Они были распознаны автоматически и немного "пляшут".
+Твоя задача — "причесать" координаты (Smart Align) и сгруппировать элементы.
+
+ПРАВИЛА:
+1. Если элементы визуально идут в ряд (у них почти одинаковый y/top), сделай им абсолютно одинаковый y.
+2. Если элементы выглядят как карточки одного типа, сделай им одинаковые w (width) и h (height).
+3. Элементы НЕ должны накладываться друг на друга. Минимальный зазор: 10px.
+4. Выровняй отступы между элементами.
+5. Если это список карточек, помести их всех в массив "items" одной группы (Groups).
+6. НЕ меняй ID элементов.
+7. Верни ТОЛЬКО валидный JSON (структуру groups). Без markdown блоков, без лишнего текста.
+
+Исходный JSON ниже:`
+        };
+
         console.log('✏️ Editor initialized');
     }
 
@@ -205,12 +226,73 @@ export class CYOAEditor {
                 <!-- TAB 3: SETTINGS -->
                 <div id="tab-content-settings" class="tab-content" style="display:none;">
                     
-                    <!-- SAM3 DETECTOR -->
+                    <!-- LLM REFINEMENT -->
                     <div class="editor-section">
-                        <div class="accordion-header" onclick="CYOA.editor.toggleAccordion(this)">
-                            🤖 Auto-Detect (SAM3)
+                         <div class="accordion-header" onclick="CYOA.editor.toggleAccordion(this)">
+                            🧠 AI Smart Refine
                         </div>
                         <div class="accordion-content">
+                            <div class="info-text" style="font-size:0.75rem; margin:5px 0;">
+                                Send current layout to LLM to fix alignments and groupings. 
+                                <br><span style="color:#4CAF50;">Recommended: Gemini 2.0 Flash</span>
+                            </div>
+
+                            <div class="input-group">
+                                <select id="llm-provider" style="width:100%; padding:8px; background:#222; color:#fff; border:1px solid #333; border-radius:4px;">
+                                    <option value="google">Google AI Studio (Gemini)</option>
+                                    <option value="openai">OpenAI / Compatible</option>
+                                    <option value="manual">Manual (Copy/Paste)</option>
+                                </select>
+                            </div>
+
+                            <div id="llm-api-fields">
+                                <div class="input-group">
+                                    <input type="password" id="llm-key" placeholder="API Key">
+                                    <span class="input-label">API Key</span>
+                                </div>
+                                <div class="input-group">
+                                    <input type="text" id="llm-model" value="gemini-2.0-flash">
+                                    <span class="input-label">Model Name</span>
+                                </div>
+                                <div class="input-group" id="llm-base-url-group">
+                                    <input type="text" id="llm-base-url" value="https://generativelanguage.googleapis.com/v1beta/models/">
+                                    <span class="input-label">Base URL</span>
+                                </div>
+                            </div>
+
+                            <div class="editor-section" style="border:none; padding:0; margin-top:10px;">
+                                <div class="accordion-header collapsed" onclick="CYOA.editor.toggleAccordion(this)" style="font-size:0.8rem;">
+                                    📝 Edit System Prompt
+                                </div>
+                                <div class="accordion-content collapsed">
+                                    <textarea id="llm-prompt" class="code-editor" style="height:150px;"></textarea>
+                                </div>
+                            </div>
+
+                            <button id="btn-run-llm" class="full-width-btn primary-btn" style="margin-top:15px; background: linear-gradient(45deg, #9C27B0, #673AB7);">
+                                ✨ Refine Coordinates
+                            </button>
+                            
+                            <!-- MANUAL MODE UI -->
+                            <div id="llm-manual-ui" style="display:none; margin-top:15px; border-top:1px dashed #444; padding-top:10px;">
+                                <div style="font-size:0.8rem; color:#aaa; margin-bottom:5px;">1. Copy Prompt</div>
+                                <textarea id="llm-manual-out" class="code-editor" style="height:80px;" readonly></textarea>
+                                <button class="full-width-btn" onclick="CYOA.editor.copyManualPrompt()" style="margin-bottom:10px;">📋 Copy to Clipboard</button>
+                                
+                                <div style="font-size:0.8rem; color:#aaa; margin-bottom:5px;">2. Paste Response (JSON)</div>
+                                <textarea id="llm-manual-in" class="code-editor" style="height:80px;" placeholder="Paste JSON response here..."></textarea>
+                                <button class="full-width-btn primary-btn" onclick="CYOA.editor.processLlmResponse(document.getElementById('llm-manual-in').value)">Apply JSON</button>
+                            </div>
+
+                        </div>
+                    </div>
+
+                    <!-- SAM3 DETECTOR -->
+                    <div class="editor-section">
+                        <div class="accordion-header collapsed" onclick="CYOA.editor.toggleAccordion(this)">
+                            🤖 Auto-Detect (SAM3)
+                        </div>
+                        <div class="accordion-content collapsed">
                             
                             <!-- Help Accordion -->
                             <div style="margin-bottom:10px; border:1px solid #333; border-radius:4px;">
@@ -290,6 +372,21 @@ export class CYOAEditor {
                 </div>
 
             </div>
+
+            <!-- LLM PREVIEW MODAL -->
+            <div id="llm-preview-modal" class="modal-overlay" style="display:none;">
+                <div class="modal-content">
+                    <h3>🔍 Review Changes</h3>
+                    <div style="font-size:0.8rem; color:#aaa; margin-bottom:10px;">
+                        The AI suggests the following structure. Check coordinates and groups.
+                    </div>
+                    <textarea id="llm-result-json" class="code-editor" style="height:400px; font-size:11px;"></textarea>
+                    <div class="row-buttons" style="margin-top:10px;">
+                        <button class="action-btn" onclick="document.getElementById('llm-preview-modal').style.display='none'" style="background:#444;">Cancel</button>
+                        <button class="action-btn primary-btn" onclick="CYOA.editor.applyLlmChanges()">✅ Apply Changes</button>
+                    </div>
+                </div>
+            </div>
         `;
         
         document.body.appendChild(sidebar);
@@ -300,6 +397,7 @@ export class CYOAEditor {
         this.setupJsonListeners();
         this.setupLabelAutoHiding();
         this.setupSamListeners();
+        this.setupLlmListeners(); // New listener setup
     }
 
     switchTab(tabName) {
@@ -339,6 +437,209 @@ export class CYOAEditor {
         const content = header.nextElementSibling;
         content.classList.toggle('collapsed');
     }
+
+    // ==================== LLM LOGIC ====================
+
+    setupLlmListeners() {
+        const providerSel = document.getElementById('llm-provider');
+        const baseUrlGroup = document.getElementById('llm-base-url-group');
+        const baseUrlInput = document.getElementById('llm-base-url');
+        const manualUi = document.getElementById('llm-manual-ui');
+        const apiFields = document.getElementById('llm-api-fields');
+        const runBtn = document.getElementById('btn-run-llm');
+        const promptArea = document.getElementById('llm-prompt');
+
+        if (promptArea) promptArea.value = this.llmConfig.systemPrompt;
+
+        if (providerSel) {
+            providerSel.addEventListener('change', (e) => {
+                const val = e.target.value;
+                this.llmConfig.provider = val;
+                
+                // Defaults
+                if (val === 'google') {
+                    baseUrlInput.value = 'https://generativelanguage.googleapis.com/v1beta/models/';
+                    document.getElementById('llm-model').value = 'gemini-2.0-flash';
+                    manualUi.style.display = 'none';
+                    apiFields.style.display = 'block';
+                    baseUrlGroup.style.display = 'block';
+                    runBtn.textContent = '✨ Refine Coordinates';
+                } else if (val === 'openai') {
+                    baseUrlInput.value = 'https://api.openai.com/v1'; // Or openrouter
+                    document.getElementById('llm-model').value = 'gpt-4o';
+                    manualUi.style.display = 'none';
+                    apiFields.style.display = 'block';
+                    baseUrlGroup.style.display = 'block';
+                    runBtn.textContent = '✨ Refine Coordinates';
+                } else if (val === 'manual') {
+                    manualUi.style.display = 'block';
+                    apiFields.style.display = 'none';
+                    runBtn.textContent = '📝 Generate Prompt';
+                }
+            });
+        }
+
+        if (runBtn) {
+            runBtn.addEventListener('click', async () => {
+                // Update config from UI
+                this.llmConfig.apiKey = document.getElementById('llm-key').value;
+                this.llmConfig.model = document.getElementById('llm-model').value;
+                this.llmConfig.baseUrl = document.getElementById('llm-base-url').value;
+                this.llmConfig.systemPrompt = document.getElementById('llm-prompt').value;
+
+                // Prepare Data (Strip images to save tokens)
+                const cleanConfig = JSON.parse(JSON.stringify(this.engine.config));
+                if (cleanConfig.meta) cleanConfig.meta.pages = ["<IMAGE_PLACEHOLDER>"];
+                
+                // Keep only relevant data
+                const contextData = {
+                    groups: cleanConfig.groups,
+                    points: cleanConfig.points
+                };
+
+                const fullPrompt = `${this.llmConfig.systemPrompt}\n\n${JSON.stringify(contextData, null, 2)}`;
+
+                if (this.llmConfig.provider === 'manual') {
+                    document.getElementById('llm-manual-out').value = fullPrompt;
+                    alert("Prompt generated below. Copy it to your LLM.");
+                    return;
+                }
+
+                if (!this.llmConfig.apiKey) {
+                    alert("Please enter an API Key!");
+                    return;
+                }
+
+                runBtn.disabled = true;
+                runBtn.textContent = '⏳ Processing...';
+
+                try {
+                    const result = await this.callLlmApi(fullPrompt);
+                    this.processLlmResponse(result);
+                } catch (e) {
+                    alert(`LLM Error: ${e.message}`);
+                    console.error(e);
+                } finally {
+                    runBtn.disabled = false;
+                    runBtn.textContent = '✨ Refine Coordinates';
+                }
+            });
+        }
+    }
+
+    async callLlmApi(prompt) {
+        const { provider, baseUrl, apiKey, model } = this.llmConfig;
+        let url, body, headers;
+
+        if (provider === 'google') {
+            // Google AI Studio logic
+            url = `${baseUrl}${model}:generateContent?key=${apiKey}`;
+            headers = { 'Content-Type': 'application/json' };
+            body = JSON.stringify({
+                contents: [{ parts: [{ text: prompt }] }]
+            });
+        } else {
+            // OpenAI Compatible logic
+            url = `${baseUrl.replace(/\/+$/, '')}/chat/completions`;
+            headers = {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiKey}`
+            };
+            // Support for OpenRouter specific headers if needed, but basic bearer usually works
+            if (url.includes('openrouter')) {
+                headers['HTTP-Referer'] = window.location.href;
+            }
+
+            body = JSON.stringify({
+                model: model,
+                messages: [
+                    { role: "user", content: prompt } // Using user role for simplicity with prompt provided
+                ],
+                temperature: 0.1 // Low temp for deterministic JSON
+            });
+        }
+
+        const response = await fetch(url, { method: 'POST', headers, body });
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.error?.message || JSON.stringify(data));
+        }
+
+        // Parse Response
+        let text = '';
+        if (provider === 'google') {
+            text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        } else {
+            text = data.choices?.[0]?.message?.content || '';
+        }
+
+        return text;
+    }
+
+    processLlmResponse(text) {
+        // 1. Extract JSON from markdown fences if present
+        let jsonStr = text;
+        if (text.includes('```json')) {
+            jsonStr = text.split('```json')[1].split('```')[0];
+        } else if (text.includes('```')) {
+            jsonStr = text.split('```')[1].split('```')[0];
+        }
+
+        try {
+            // 2. Format and show in modal
+            const jsonObj = JSON.parse(jsonStr);
+            
+            // Validate basic structure
+            if (!jsonObj.groups) throw new Error("Missing 'groups' array in response");
+
+            document.getElementById('llm-result-json').value = JSON.stringify(jsonObj, null, 2);
+            document.getElementById('llm-preview-modal').style.display = 'flex';
+        } catch (e) {
+            alert(`Failed to parse JSON response: ${e.message}\nCheck console for raw output.`);
+            console.log("Raw LLM Output:", text);
+        }
+    }
+
+    applyLlmChanges() {
+        try {
+            const raw = document.getElementById('llm-result-json').value;
+            const newConfig = JSON.parse(raw);
+            
+            // Merge logic: Keep the original image, update groups/items
+            const currentImage = this.engine.config.meta.pages[0];
+            
+            // Preserve meta if not returned
+            if (!newConfig.meta) newConfig.meta = this.engine.config.meta;
+            newConfig.meta.pages[0] = currentImage; // Restore image
+
+            // Apply
+            this.engine.config.groups = newConfig.groups;
+            if (newConfig.points) this.engine.config.points = newConfig.points;
+
+            this.engine.reset(); // Reset selections
+            this.engine.recalculate(); // Recalc state
+            this.renderer.renderAll(); // Re-render DOM
+            
+            // Reset editor selection
+            this.deselectChoice();
+            
+            document.getElementById('llm-preview-modal').style.display = 'none';
+            alert("Changes applied successfully!");
+            
+        } catch (e) {
+            alert(`Error applying changes: ${e.message}`);
+        }
+    }
+
+    copyManualPrompt() {
+        const el = document.getElementById('llm-manual-out');
+        el.select();
+        document.execCommand('copy');
+        // Modern API: navigator.clipboard.writeText(el.value);
+    }
+
+    // ==================== END LLM LOGIC ====================
 
     setupLabelAutoHiding() {
         const checkCollision = (input) => {
@@ -383,6 +684,8 @@ export class CYOAEditor {
 
     setupSamListeners() {
         const fileInput = document.getElementById('sam-image-upload');
+        const runBtn = document.getElementById('btn-run-sam');
+
         if (fileInput) {
             fileInput.addEventListener('change', (e) => {
                 const file = e.target.files[0];
@@ -406,7 +709,6 @@ export class CYOAEditor {
             });
         }
 
-        const runBtn = document.getElementById('btn-run-sam');
         if (runBtn) {
             runBtn.addEventListener('click', () => this.runSamDetection());
         }
@@ -508,6 +810,8 @@ export class CYOAEditor {
     handleMouseDown(e) {
         if (!this.enabled) return;
         if (e.target.closest('#editor-sidebar')) return;
+        if (e.target.closest('.modal-content')) return; // Ignore clicks in modal
+
         let target = null;
         let objectToEdit = null;
         if (this.activeTab === 'group') {
@@ -571,11 +875,10 @@ export class CYOAEditor {
 
     handleKeyDown(e) {
         if (!this.enabled) return;
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+        
         if (e.key === 'Delete') {
-             const tag = document.activeElement.tagName;
-             if (tag !== 'INPUT' && tag !== 'TEXTAREA') {
-                 if (this.activeTab === 'choice') this.deleteSelectedItem();
-             }
+             if (this.activeTab === 'choice') this.deleteSelectedItem();
         }
     }
 
