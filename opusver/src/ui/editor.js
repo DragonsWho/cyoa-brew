@@ -390,20 +390,11 @@ export class CYOAEditor {
                     const reader = new FileReader();
                     reader.onload = (evt) => {
                         const dataUrl = evt.target.result;
-                        // 1. Сохраняем DataURL прямо в конфиг.
-                        // Это предотвращает ошибку 404 memory_blob при renderAll()
                         this.engine.config.meta.pages[0] = dataUrl;
-
-                        // 2. Сбрасываем группы и валюты
                         this.engine.config.groups = [];
                         this.engine.config.points = [{id:"points", name:"Points", start:0}];
-                        
-                        // 3. Сбрасываем движок
                         this.engine.reset();
-                        
-                        // 4. Перерисовываем UI (теперь renderPages возьмет dataUrl из конфига)
                         this.renderer.renderAll().then(() => {
-                             // Обновляем dimensions для корректной работы координат
                              const img = document.querySelector('#page-0 .page-image');
                              if(img) {
                                  this.renderer.pageDimensions[0] = { w: img.naturalWidth, h: img.naturalHeight };
@@ -506,7 +497,6 @@ export class CYOAEditor {
         btn.style.opacity = 1;
     }
 
-    // ... Event listeners (Mouse/Keyboard) - without changes ...
     attachEventListeners() {
         document.addEventListener('mousedown', this.handleMouseDown.bind(this));
         document.addEventListener('mousemove', this.handleMouseMove.bind(this));
@@ -589,7 +579,6 @@ export class CYOAEditor {
         }
     }
 
-    // ... Selection methods (Same as before) ...
     selectChoice(item, element) {
         this.selectedItem = item;
         document.querySelectorAll('.editor-selected').forEach(el => el.classList.remove('editor-selected'));
@@ -654,7 +643,6 @@ export class CYOAEditor {
         }
     }
 
-    // ... Listeners Setup (Same as before) ...
     setupChoiceListeners() {
         const update = (key, val, isNum) => {
             if (!this.selectedItem) return;
@@ -709,7 +697,6 @@ export class CYOAEditor {
         }
     }
 
-    // ... Actions (Delete, Add) ...
     deleteSelectedItem() {
         if (!this.selectedItem) return; if (!confirm('Delete item?')) return;
         const group = this.engine.findGroupForItem(this.selectedItem.id);
@@ -737,7 +724,6 @@ export class CYOAEditor {
         this.renderer.renderButtons();
     }
 
-    // ... Export Logic ...
     exportConfig() {
         const config = this.engine.config;
         const blob = new Blob([JSON.stringify(config, null, 2)], { type: 'application/json' });
@@ -752,21 +738,17 @@ export class CYOAEditor {
 
         const zip = new JSZip();
         
-        // 1. Prepare Config for Zip (Replace DataURL with relative filename)
         const configToSave = JSON.parse(JSON.stringify(this.engine.config));
         configToSave.meta.pages[0] = "image.png"; 
         
         zip.file("config.json", JSON.stringify(configToSave, null, 2));
 
-        // 2. Add Image
-        // Extract DataURL from config (because we stored it there on load)
         const dataUrl = this.engine.config.meta.pages[0];
         if (dataUrl && dataUrl.startsWith('data:image')) {
             const resp = await fetch(dataUrl);
             const blob = await resp.blob();
             zip.file("image.png", blob);
         } else {
-            // Fallback: Try to fetch if it's a normal URL
             try {
                 const resp = await fetch(dataUrl);
                 const blob = await resp.blob();
@@ -776,7 +758,6 @@ export class CYOAEditor {
             }
         }
 
-        // 3. Generate
         const content = await zip.generateAsync({type:"blob"});
         const url = URL.createObjectURL(content);
         const a = document.createElement('a'); a.href = url; a.download = "project.zip"; a.click(); URL.revokeObjectURL(url);
