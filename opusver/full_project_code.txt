@@ -1,8 +1,39 @@
+PROJECT STRUCTURE:
+==================
+[opusver/]
+    generate_test_image.html
+    index.html
+    readme
+    [config/]
+        example.json
+        schema.json
+        test_config.json
+        test_image.png
+    [docs/]
+        llm-guide.md
+        rule-catalog.md
+    [src/]
+        main.js
+        [core/]
+            effects.js
+            engine.js
+            rules.js
+            state.js
+        [ui/]
+            controls.js
+            editor.js
+            renderer.js
+            rule-builder.js
+            tooltip.js
+        [utils/]
+            coords.js
+            evaluator.js
+    [styles/]
+        main.css
+        themes.css
+==================
 
-############################################################
-FILE START: generate_test_image.html
-############################################################
-
+<file path="generate_test_image.html">
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -205,12 +236,9 @@ FILE START: generate_test_image.html
     </script>
 </body>
 </html>
+</file>
 
-
-############################################################
-FILE START: index.html
-############################################################
-
+<file path="index.html">
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -257,331 +285,17 @@ FILE START: index.html
     <script type="module" src="src/main.js"></script>
 </body>
 </html>
+</file>
 
+<file path="config/example.json">
 
-############################################################
-FILE START: readme
-############################################################
+</file>
 
-cyoa-interactive/
-├── index.html                 # Минимальный loader
-├── styles/
-│   ├── main.css              # Основные стили
-│   └── themes.css            # Темы оформления
-├── src/
-│   ├── core/
-│   │   ├── engine.js         # Игровая логика
-│   │   ├── state.js          # Управление состоянием
-│   │   └── rules.js          # Система правил
-│   ├── ui/
-│   │   ├── renderer.js       # Отрисовка страниц
-│   │   ├── tooltip.js        # Система подсказок
-│   │   └── controls.js       # Элементы управления
-│   └── utils/
-│       ├── coords.js         # Работа с координатами
-│       └── evaluator.js      # Безопасный eval
-├── config/
-│   ├── schema.json           # JSON Schema валидация
-│   └── example.json          # Пример конфига
-└── docs/
-    ├── llm-guide.md          # Руководство для LLM
-    └── rule-catalog.md       # Каталог правил
+<file path="config/schema.json">
 
+</file>
 
-
-
-    # CYOA Interactive System - Quick Start Guide
-
-Система для превращения статичных CYOA в интерактивные игры.
-
-## 🎯 Что это делает?
-
-1. Показывает оригинальную картинку CYOA
-2. Рисует прозрачные кнопки поверх карточек
-3. Считает очки автоматически
-4. Проверяет требования и несовместимости
-
-## 📁 Структура файлов
-
-```
-cyoa-interactive/
-├── README.md                  ← вы здесь
-├── index.html                 ← ЗАПУСКАТЬ ЭТОТ ФАЙЛ
-├── generate_test_image.html   ← генератор тестовой картинки
-├── styles/
-│   └── main.css
-├── src/
-│   ├── main.js
-│   ├── core/
-│   │   ├── engine.js
-│   │   ├── state.js
-│   │   └── rules.js
-│   ├── ui/
-│   │   ├── renderer.js
-│   │   ├── tooltip.js
-│   │   └── controls.js
-│   └── utils/
-│       └── coords.js
-└── config/
-    ├── test_config.json       ← тестовая конфигурация
-    └── test_image.png         ← тестовая картинка
-
-```
-
-## 🚀 Как запустить (3 способа)
-
-### Способ 1: Локальный сервер (РЕКОМЕНДУЕТСЯ)
-
-ES6 модули требуют HTTP сервер. Выберите один из вариантов:
-
-#### Python (если установлен):
-```bash
-# Python 3
-python -m http.server 8000
-
-# Python 2
-python -m SimpleHTTPServer 8000
-```
-
-#### Node.js (если установлен):
-```bash
-npx http-server -p 8000
-```
-
-#### VS Code:
-Установите расширение "Live Server" и нажмите "Go Live"
-
-Затем откройте: **http://localhost:8000**
-
----
-
-### Способ 2: Без сервера (Firefox)
-
-Firefox разрешает модули с `file://`:
-
-1. Откройте Firefox
-2. Перетащите `index.html` в окно браузера
-3. ✅ Должно работать!
-
----
-
-### Способ 3: Chrome с флагом (не рекомендуется)
-
-```bash
-chrome.exe --allow-file-access-from-files
-```
-
-⚠️ Небезопасно для постоянного использования!
-
----
-
-## 📝 Как создать тестовую картинку
-
-### Вариант А: Автоматически
-
-1. Откройте `generate_test_image.html` в браузере
-2. Нажмите "Generate Test Image"
-3. Сохраните как `config/test_image.png`
-
-### Вариант Б: Вручную
-
-Создайте любую картинку 1920x1080px с несколькими зонами для кнопок.
-Можно в Paint, Photoshop, или онлайн на https://pixlr.com
-
----
-
-## 🎮 Интерфейс управления
-
-После запуска вы увидите:
-
-| Кнопка | Что делает |
-|--------|------------|
-| 📖 Translation | Показать текст поверх карточек (для переводов) |
-| 🐞 Debug | Показать границы всех зон |
-| 🔄 Reset | Сбросить все выбранное |
-
-Внизу экрана - панель с очками.
-
----
-
-## 🧪 Тестирование системы
-
-### Что должно работать в тестовом примере:
-
-✅ Клик по карточке выделяет её зелёным  
-✅ Очки пересчитываются автоматически  
-✅ Карточки с требованиями становятся доступны после выбора нужных  
-✅ Несовместимые карточки блокируются  
-✅ При наведении показывается подсказка  
-✅ "Choose 1" группа работает как радио-кнопка  
-
----
-
-## 📊 Структура конфига
-
-Минимальный рабочий пример:
-
-```json
-{
-  "meta": {
-    "title": "Test CYOA",
-    "pages": ["config/test_image.png"]
-  },
-  "points": [
-    {
-      "id": "points",
-      "name": "Points",
-      "start": 10
-    }
-  ],
-  "groups": [
-    {
-      "id": "test_group",
-      "title": "Test Group",
-      "page": 0,
-      "items": [
-        {
-          "id": "item1",
-          "title": "Free Item",
-          "coords": {"x": 100, "y": 100, "w": 300, "h": 200},
-          "description": "This item is free!",
-          "cost": []
-        },
-        {
-          "id": "item2",
-          "title": "Costs 5 Points",
-          "coords": {"x": 450, "y": 100, "w": 300, "h": 200},
-          "description": "This costs 5 points",
-          "cost": [{"currency": "points", "value": -5}]
-        }
-      ]
-    }
-  ]
-}
-```
-
----
-
-## 🐛 Устранение проблем
-
-### "Failed to load module" ошибка
-
-**Причина:** Браузер блокирует ES6 модули с `file://`
-
-**Решение:** Используйте локальный сервер (см. выше)
-
----
-
-### Картинка не загружается
-
-**Проверьте:**
-1. Путь в `config.json` → `"pages": ["config/test_image.png"]`
-2. Файл существует в папке `config/`
-3. Имя файла написано правильно (регистр важен!)
-
-**Отладка:**
-Откройте консоль браузера (F12) и посмотрите ошибки сети
-
----
-
-### Кнопки не реагируют
-
-**Откройте Debug Mode** (кнопка 🐞):
-- Должны появиться красные рамки вокруг зон
-- Если рамок нет - проблема с координатами
-
-**Проверьте координаты:**
-```json
-{
-  "coords": {
-    "x": 100,    // от 0 до ширины картинки
-    "y": 100,    // от 0 до высоты картинки  
-    "w": 300,    // ширина зоны
-    "h": 200     // высота зоны
-  }
-}
-```
-
----
-
-### Очки считаются неправильно
-
-**Проверьте знак `value`:**
-- Отрицательное число = трата: `"value": -5`
-- Положительное число = получение: `"value": 5`
-- Ноль = бесплатно: `"value": 0`
-
-**Откройте консоль (F12)** и ищите ошибки
-
----
-
-## 📖 Дальнейшее изучение
-
-После успешного запуска тестового примера:
-
-1. **Изучите** `docs/rule-catalog.md` - все доступные правила
-2. **Посмотрите** `config/test_config.json` - примеры всех механик
-3. **Измените** координаты и посмотрите как двигаются кнопки
-4. **Добавьте** свою картинку и создайте конфиг
-
----
-
-## 🆘 Помощь
-
-**Консоль браузера (F12)** - ваш лучший друг!
-
-Полезные команды в консоли:
-```javascript
-// Посмотреть текущее состояние
-CYOA.engine.state
-
-// Посмотреть конфиг
-CYOA.engine.config
-
-// Выбрать карточку программно
-CYOA.engine.select('item_id')
-
-// Сбросить всё
-CYOA.engine.reset()
-```
-
----
-
-## ✨ Следующие шаги
-
-1. ✅ Запустить тестовый пример
-2. ✅ Понять как работают координаты
-3. ✅ Изучить config структуру
-4. 📚 Прочитать `docs/rule-catalog.md`
-5. 🎨 Создать свою первую CYOA
-6. 🤖 Использовать LLM для автоматизации
-
----
-
-**Готово к запуску! 🚀**
-
-Если что-то не работает - смотрите консоль браузера (F12) и ищите красный текст с ошибками.
-
-
-############################################################
-FILE START: config\example.json
-############################################################
-
-
-
-
-############################################################
-FILE START: config\schema.json
-############################################################
-
-
-
-
-############################################################
-FILE START: config\test_config.json
-############################################################
-
-
+<file path="config/test_config.json">
 {
   "meta": {
     "title": "Test CYOA - Advanced Mechanics",
@@ -629,13 +343,13 @@ FILE START: config\test_config.json
           ]
         },
         {
-          "id": "starter_pack",
-          "title": "Starter Pack",
-          "description": "Automatically selects 'Cheap Item'.",
+          "id": "gamblers_coin",
+          "title": "Gambler's Coin",
+          "description": "Feeling Lucky?\nRolls a D20 for bonus points!",
           "coords": { "x": 790, "y": 50, "w": 350, "h": 120 },
-          "cost": [{ "currency": "points", "value": -2 }],
+          "cost": [],
           "effects": [
-            { "type": "force_selection", "target_id": "cheap" }
+            { "type": "roll_dice", "min": 1, "max": 20, "currency": "points" }
           ]
         }
       ]
@@ -715,12 +429,9 @@ FILE START: config\test_config.json
     }
   ]
 }
+</file>
 
-
-############################################################
-FILE START: docs\llm-guide.md
-############################################################
-
+<file path="docs/llm-guide.md">
 # LLM Guide: CYOA Extraction
 
 ## Your Task
@@ -922,12 +633,9 @@ You can extract "Tags" from item descriptions or categories if they are used in 
 
 ❌ **Wrong:** `value: -0.5` for discount multiplier (Result becomes negative)
 ✅ **Correct:** `value: 0.5` for discount (Multiplies cost by 0.5)
+</file>
 
-
-############################################################
-FILE START: docs\rule-catalog.md
-############################################################
-
+<file path="docs/rule-catalog.md">
 ### `docs/rule-catalog.md`
 
 # CYOA Rule Catalog for LLM
@@ -1572,12 +1280,9 @@ Increases allowed choices in another group.
   ]
 }
 ```
+</file>
 
-
-############################################################
-FILE START: src\main.js
-############################################################
-
+<file path="src/main.js">
 /**
  * CYOA Interactive System - Main Entry Point
  * 
@@ -1662,13 +1367,9 @@ console.log('  CYOA.engine.select("item_id")  - Select an item');
 console.log('  CYOA.engine.reset()            - Reset everything');
 console.log('  CYOA.editor.enable()           - Enable editor');
 console.log('  CYOA.state                     - View current state');
+</file>
 
-
-############################################################
-FILE START: src\core\effects.js
-############################################################
-
-
+<file path="src/core/effects.js">
 /**
  * Effect Processor - Handles active card effects
  */
@@ -1710,9 +1411,13 @@ export class EffectProcessor {
                 this.applySetValue(effect, qty);
                 break;
             
-            // NEW: Modifies costs of other items
             case 'modify_cost':
                 this.applyModifyCost(effect, qty);
+                break;
+            
+            // NEW: Roll Dice Logic (Applying the result)
+            case 'roll_dice':
+                this.applyRollDice(effect, sourceItem, qty);
                 break;
 
             default:
@@ -1752,14 +1457,7 @@ export class EffectProcessor {
         this.engine.state.currencies[currency] = value;
     }
 
-    // NEW: Adds a modifier to the engine for the calculation phase
     applyModifyCost(effect, qty) {
-        // Effect structure example:
-        // { type: "modify_cost", tag: "magic", mode: "multiply", value: 0.5 } 
-        
-        // If qty > 1, do we stack discounts? Usually yes.
-        // But for "multiply" (50% off), stacking acts like 0.5 * 0.5 = 0.25 (75% off)
-        
         for (let i = 0; i < qty; i++) {
             this.engine.modifiers.cost.push({
                 tag: effect.tag,
@@ -1768,20 +1466,33 @@ export class EffectProcessor {
                 mode: effect.mode || 'add',
                 value: effect.value
             });
-            
-            // If "once" flag is true, don't stack for quantity
             if (effect.once) break;
         }
     }
+
+    // NEW: Apply the pre-rolled value to the currency
+    applyRollDice(effect, sourceItem, qty) {
+        if (!effect.currency) return;
+        
+        // Retrieve the frozen result from state
+        const rolledValue = this.engine.state.rollResults.get(sourceItem.id);
+        
+        // If (for some reason) it wasn't rolled yet, we skip adding (should have happened in engine.select)
+        if (rolledValue !== undefined) {
+            if (this.engine.state.currencies[effect.currency] !== undefined) {
+                // If quantity > 1, do we multiply the result?
+                // Usually random rolls are "Unique", but if allowed multiple, 
+                // currently logic uses ONE roll for all copies. 
+                // To support multiple separate rolls, state structure would need to change.
+                // Assuming multiply for now.
+                this.engine.state.currencies[effect.currency] += (rolledValue * qty);
+            }
+        }
+    }
 }
+</file>
 
-
-
-############################################################
-FILE START: src\core\engine.js
-############################################################
-
-
+<file path="src/core/engine.js">
 /**
  * Game Engine - Core game logic and state management
  */
@@ -1798,22 +1509,19 @@ export class GameEngine {
         this.effects = new EffectProcessor(this);
         this.listeners = {};
         
-        // Хранилище для активных модификаторов (скидки, наценки)
         this.modifiers = {
             cost: [] 
         };
         
-        // Capture initial defaults for restoration
         this.defaults = {
             groupRules: {}
         };
         this.initDefaults();
 
-        console.log('🎮 Engine initialized (Tags + Modifiers)');
+        console.log('🎮 Engine initialized (With Dice Logic)');
     }
 
     initDefaults() {
-        // Deep copy group rules to restore them later
         this.config.groups.forEach(g => {
             if (g.rules) {
                 this.defaults.groupRules[g.id] = JSON.parse(JSON.stringify(g.rules));
@@ -1822,10 +1530,8 @@ export class GameEngine {
     }
 
     restoreDefaults() {
-        // Restore group rules (max_choices, etc)
         this.config.groups.forEach(g => {
             if (this.defaults.groupRules[g.id]) {
-                // Restore from copy
                 g.rules = JSON.parse(JSON.stringify(this.defaults.groupRules[g.id]));
             }
         });
@@ -1860,6 +1566,23 @@ export class GameEngine {
             if (totalInGroup >= group.rules.max_choices) {
                 console.log(`Max choices reached in ${group.id} (Limit: ${group.rules.max_choices})`);
                 return false;
+            }
+        }
+
+        // === RANDOM ROLL LOGIC ===
+        // If this item has a roll effect, we determine the result NOW.
+        // We only generate if it hasn't been generated before for this ID.
+        // This prevents re-rolling by toggling.
+        if (item.effects) {
+            const rollEffect = item.effects.find(e => e.type === 'roll_dice');
+            if (rollEffect && !this.state.rollResults.has(itemId)) {
+                const min = parseInt(rollEffect.min) || 1;
+                const max = parseInt(rollEffect.max) || 6;
+                // Random integer between min and max (inclusive)
+                const result = Math.floor(Math.random() * (max - min + 1)) + min;
+                
+                this.state.rollResults.set(itemId, result);
+                console.log(`🎲 Rolled for ${itemId}: ${result}`);
             }
         }
 
@@ -1904,22 +1627,16 @@ export class GameEngine {
     // ==================== CALCULATION ====================
 
     recalculate() {
-        // 1. Cleanup invalid selections first
         this.cleanupInvalidSelections();
-        
-        // 2. Reset currencies to base
         this.state.resetCurrencies();
-
-        // 3. Сброс модификаторов перед новым расчетом
         this.modifiers = { cost: [] };
 
-        // 4. APPLY EFFECTS (Заполняет this.modifiers и меняет правила групп)
+        // Apply Effects (Populates modifiers, applies immediate value changes)
         this.effects.applyAll();
 
-        // 5. Calculate Costs (Deltas) - ТЕПЕРЬ С УЧЕТОМ МОДИФИКАТОРОВ
+        // Calculate Costs with modifiers
         const groupDeltas = this.calculateGroupDeltas();
         
-        // 6. Apply Logic
         this.applyBudgets(groupDeltas);
         this.applyDeltas(groupDeltas);
 
@@ -1947,7 +1664,6 @@ export class GameEngine {
             if (!deltas[group.id]) deltas[group.id] = {};
 
             for (const cost of item.cost) {
-                // Здесь RulesEvaluator применит модификаторы
                 const unitValue = this.rules.evaluateCost(cost, item, group);
                 const currencyId = cost.currency;
                 if (!deltas[group.id][currencyId]) deltas[group.id][currencyId] = 0;
@@ -2048,12 +1764,9 @@ export class GameEngine {
         this.emit('reset');
     }
 }
+</file>
 
-
-############################################################
-FILE START: src\core\rules.js
-############################################################
-
+<file path="src/core/rules.js">
 
 /**
  * Rule Evaluator - Handles requirements, costs, and formulas
@@ -2276,12 +1989,9 @@ export class RuleEvaluator {
         return counts;
     }
 }
+</file>
 
-
-############################################################
-FILE START: src\core\state.js
-############################################################
-
+<file path="src/core/state.js">
 /**
  * Game State - Manages current selection and currencies
  */
@@ -2293,8 +2003,12 @@ export class GameState {
     }
 
     reset() {
-        // CHANGED: Use Map instead of Set to store Quantity (ID -> Integer)
+        // ID -> Quantity (Integer)
         this.selected = new Map();
+        
+        // ID -> Rolled Result (Integer) - Stores the result of random rolls so they persist
+        this.rollResults = new Map();
+
         this.currencies = {};
         this.budgets = {};
         this.resetCurrencies();
@@ -2313,8 +2027,8 @@ export class GameState {
 
     export() {
         return {
-            // CHANGED: Convert Map to array of entries [[id, qty], [id, qty]]
             selected: Array.from(this.selected.entries()),
+            rollResults: Array.from(this.rollResults.entries()),
             currencies: { ...this.currencies },
             budgets: { ...this.budgets },
             timestamp: new Date().toISOString()
@@ -2322,24 +2036,22 @@ export class GameState {
     }
 
     import(data) {
-        // CHANGED: Reconstruct Map from entries
-        // Support legacy format (array of strings) just in case old save loads
         if (Array.isArray(data.selected) && typeof data.selected[0] === 'string') {
             this.selected = new Map(data.selected.map(id => [id, 1]));
         } else {
             this.selected = new Map(data.selected || []);
         }
+
+        // Import roll results
+        this.rollResults = new Map(data.rollResults || []);
         
         this.currencies = { ...data.currencies };
         this.budgets = { ...data.budgets };
     }
 }
+</file>
 
-
-############################################################
-FILE START: src\ui\controls.js
-############################################################
-
+<file path="src/ui/controls.js">
 /**
  * Control Panel - Handles UI controls (buttons, settings)
  */
@@ -2421,12 +2133,9 @@ export class ControlPanel {
         }
     }
 }
+</file>
 
-
-############################################################
-FILE START: src\ui\editor.js
-############################################################
-
+<file path="src/ui/editor.js">
 
 /**
  * CYOA Editor - Visual editing mode
@@ -3122,12 +2831,9 @@ export class CYOAEditor {
         URL.revokeObjectURL(url);
     }
 }
+</file>
 
-
-############################################################
-FILE START: src\ui\renderer.js
-############################################################
-
+<file path="src/ui/renderer.js">
 /**
  * UI Renderer - Handles all visual rendering
  */
@@ -3245,6 +2951,8 @@ export class UIRenderer {
                 });
             }
         });
+        
+        this.updateButtons();
     }
 
     renderBudgetBadge(group, layer, dim) {
@@ -3281,8 +2989,6 @@ export class UIRenderer {
         layer.appendChild(zone);
     }
 
-    // ==================== ITEM BUTTON (UPDATED) ====================
-
     renderItemButton(item, group, layer, dim) {
         const button = document.createElement('div');
         button.className = 'click-zone item-zone';
@@ -3300,21 +3006,17 @@ export class UIRenderer {
             ));
         }
 
-        // CHANGED: Multi-select Logic
         const maxQty = item.max_quantity || 1;
 
         if (maxQty > 1) {
-            // 1. Add class for styling
             button.classList.add('multi-select');
-
-            // 2. Create Split Controls (Left -, Right +)
             const controls = document.createElement('div');
             controls.className = 'split-controls';
             
             const minusBtn = document.createElement('div');
             minusBtn.className = 'split-btn minus';
             minusBtn.onclick = (e) => {
-                e.stopPropagation(); // Stop bubbling
+                e.stopPropagation(); 
                 this.engine.deselect(item.id);
             };
 
@@ -3329,20 +3031,17 @@ export class UIRenderer {
             controls.appendChild(plusBtn);
             button.appendChild(controls);
 
-            // 3. Create Quantity Badge
             const badge = document.createElement('div');
             badge.className = 'qty-badge';
-            badge.style.display = 'none'; // Hidden by default
+            badge.style.display = 'none'; 
             button.appendChild(badge);
 
         } else {
-            // Standard Behavior (Toggle)
             button.onclick = () => {
                 this.engine.toggle(item.id);
             };
         }
 
-        // Tooltip
         this.tooltip.attach(button, item, group);
 
         layer.appendChild(button);
@@ -3376,7 +3075,7 @@ export class UIRenderer {
         });
     }
 
-    // ==================== UPDATE UI (UPDATED) ====================
+    // ==================== UPDATE UI ====================
 
     updateUI() {
         this.updateButtons();
@@ -3394,33 +3093,193 @@ export class UIRenderer {
 
             if (!item || !group) return;
 
-            // CHANGED: Use Quantity logic
             const qty = this.engine.state.selected.get(itemId) || 0;
             const isSelected = qty > 0;
             const canSelect = this.engine.canSelect(item, group);
             const maxQty = item.max_quantity || 1;
 
-            // Update classes
             el.classList.toggle('selected', isSelected);
-            // Disabled if cannot select AND not already selected (so you can't start, but if selected you can deselect)
-            // For multi: disable ONLY if maxed out AND cannot increment further
-            if (maxQty > 1) {
-                // Multi-select specific states could go here (e.g., disable only "+" side)
-                el.classList.toggle('maxed', qty >= maxQty);
-            } else {
-                el.classList.toggle('disabled', !canSelect && !isSelected);
-            }
 
-            // CHANGED: Update Badge
             if (maxQty > 1) {
+                el.classList.toggle('maxed', qty >= maxQty);
                 const badge = el.querySelector('.qty-badge');
                 if (badge) {
                     badge.textContent = qty;
                     badge.style.display = isSelected ? 'flex' : 'none';
                 }
+            } else {
+                el.classList.toggle('disabled', !canSelect && !isSelected);
+            }
+
+            // === ROULETTE LOGIC ===
+            const hasDiceEffect = item.effects && item.effects.some(e => e.type === 'roll_dice');
+            
+            if (hasDiceEffect) {
+                const rolledValue = this.engine.state.rollResults.get(itemId);
+                const currentBadge = el.querySelector('.roll-result-badge');
+                const isSpinning = el.classList.contains('spinning-active');
+
+                if (isSelected && rolledValue !== undefined) {
+                    // Only animate if it's the FIRST time (no badge, no spin flag, and we haven't marked it done)
+                    if (!el.dataset.hasAnimated && !isSpinning && !currentBadge) {
+                        this.playRouletteAnimation(el, rolledValue, item);
+                    } else if (el.dataset.hasAnimated && !currentBadge && !isSpinning) {
+                        // Restore badge instantly if animation already happened in history
+                        this.showPermanentBadge(el, rolledValue, true); // true = instant
+                    }
+                } else {
+                    // Deselected: cleanup
+                    const mask = el.querySelector('.roulette-mask');
+                    if (mask) mask.remove();
+                    if (currentBadge) currentBadge.remove();
+                    el.classList.remove('spinning-active');
+                    delete el.dataset.hasAnimated;
+                }
             }
         });
     }
+
+playRouletteAnimation(container, targetNumber, item) {
+        if (container.classList.contains('spinning-active')) return;
+        container.classList.add('spinning-active');
+
+        // 1. Создание DOM
+        const mask = document.createElement('div');
+        mask.className = 'roulette-mask';
+        const strip = document.createElement('div');
+        strip.className = 'roulette-strip';
+        
+        // 2. Расчет размеров
+        const containerHeight = container.offsetHeight;
+        // Высота цифры = 65% от карточки. Это позволяет видеть кусочки соседей.
+        const itemHeight = Math.floor(containerHeight * 0.65); 
+        // Смещение, чтобы цифра встала ровно по центру маски
+        const maskOffset = (containerHeight - itemHeight) / 2;
+
+        // 3. Генерация чисел
+        const diceEffect = item.effects.find(e => e.type === 'roll_dice');
+        const min = parseInt(diceEffect?.min) || 1;
+        const max = parseInt(diceEffect?.max) || 20;
+
+        const totalItems = 30 + Math.floor(Math.random() * 15); // Не слишком длинная лента
+        const numbers = [];
+        for (let i = 0; i < totalItems; i++) {
+            numbers.push(Math.floor(Math.random() * (max - min + 1)) + min);
+        }
+        
+        // Целевая цифра в конце
+        const targetIndex = totalItems - 3; // Оставляем 2 цифры "запаса" снизу
+        numbers[targetIndex] = targetNumber;
+
+        strip.innerHTML = numbers.map(n => 
+            `<div class="roulette-item" style="height:${itemHeight}px; line-height:${itemHeight}px;">${n}</div>`
+        ).join('');
+        
+        mask.appendChild(strip);
+        container.appendChild(mask);
+
+        // 4. БИБЛИОТЕКА ПРОФИЛЕЙ (БЕЗ ОТСКОКОВ НАЗАД)
+        // Все bezier <= 1.0. Никаких возвратов.
+        const spinProfiles = [
+            // Standard: Классическое замедление (Ease Out)
+            { name: 'standard', duration: 2000, bezier: 'cubic-bezier(0.1, 0.7, 0.1, 1)', type: 'direct' },
+            
+            // Hard Slam: Очень резкая остановка, как удар молотком
+            { name: 'slam', duration: 1500, bezier: 'cubic-bezier(0.5, 0.0, 0.1, 1)', type: 'direct' },
+            
+            // Heavy: Медленное, тяжелое торможение
+            { name: 'heavy', duration: 2500, bezier: 'cubic-bezier(0, 0.95, 0.2, 1)', type: 'direct' },
+
+            // Tease Top: Останавливается "над" цифрой, потом падает вниз
+            // Имитирует застревание шестеренки
+            { name: 'tease_top', duration: 2000, bezier: 'cubic-bezier(0.1, 1, 0.8, 1)', type: 'nudge', offsetPercent: 0.45 },
+            
+            // Tease Tiny: Почти докрутил, маленькая пауза, щелчок
+            { name: 'tease_tiny', duration: 2200, bezier: 'cubic-bezier(0.1, 1, 0.6, 1)', type: 'nudge', offsetPercent: 0.2 },
+
+            // Slow Grind: Равномерное замедление (скучно, но реалистично)
+            { name: 'grind', duration: 2800, bezier: 'cubic-bezier(0.25, 1, 0.5, 1)', type: 'direct' }
+        ];
+
+        const profile = spinProfiles[Math.floor(Math.random() * spinProfiles.length)];
+        console.log(`🎰 Spin: ${profile.name}`);
+
+        // 5. Логика координат
+        // Базовая позиция: сдвигаем ленту вверх, чтобы targetIndex оказался в центре
+        const baseTargetY = -1 * (targetIndex * itemHeight) + maskOffset;
+        
+        let initialY = baseTargetY;
+        
+        // Если это "Nudge" (толчок), мы сначала едем не до конца
+        if (profile.type === 'nudge') {
+            // Сдвигаем "вверх" (меньше Y), значит мы увидим то, что НАД цифрой (предыдущую)
+            // Или сдвигаем "вниз" (больше Y), значит лента не доехала
+            // Нам нужно "недоехать". Лента едет вверх (значения Y уменьшаются).
+            // Значит, чтобы не доехать, Y должен быть БОЛЬШЕ.
+            initialY = baseTargetY + (itemHeight * profile.offsetPercent);
+        }
+
+        // 6. Запуск
+        strip.offsetHeight; // Reflow
+        strip.style.transition = `transform ${profile.duration}ms ${profile.bezier}`;
+        strip.style.transform = `translateY(${initialY}px)`;
+
+        // Функция финала
+        const finalize = () => {
+            const winnerEl = strip.querySelectorAll('.roulette-item')[targetIndex];
+            if(winnerEl) winnerEl.classList.add('winner');
+
+            setTimeout(() => {
+                mask.style.opacity = '0';
+                mask.style.transition = 'opacity 0.2s';
+                this.showPermanentBadge(container, targetNumber);
+                
+                container.dataset.hasAnimated = "true";
+                container.classList.remove('spinning-active');
+                setTimeout(() => mask.remove(), 200);
+            }, 400);
+        };
+
+        // Обработка двухэтапной анимации
+        if (profile.type === 'nudge') {
+            // Ждем почти до конца анимации
+            setTimeout(() => {
+                // "Добиваем" в нужную позицию резким ударом
+                strip.style.transition = 'transform 300ms cubic-bezier(0.5, 0, 0.5, 1)'; // Линейно-ударный
+                strip.style.transform = `translateY(${baseTargetY}px)`;
+                
+                setTimeout(finalize, 300);
+            }, profile.duration - 50); 
+        } else {
+            // Обычная анимация
+            setTimeout(finalize, profile.duration);
+        }
+    }
+
+    // Обновленный метод для отображения значка (на границе)
+    showPermanentBadge(container, value, instant = false) {
+        // Удаляем старый, если есть (на всякий случай)
+        const old = container.querySelector('.roll-result-badge');
+        if (old) old.remove();
+
+        const badge = document.createElement('div');
+        badge.className = 'roll-result-badge';
+        badge.textContent = value;
+        
+        if (!instant) {
+            badge.classList.add('spawn-anim');
+            container.appendChild(badge);
+            
+            // Trigger anim
+            requestAnimationFrame(() => {
+                 badge.classList.remove('spawn-anim');
+            });
+        } else {
+            container.appendChild(badge);
+        }
+    }
+
+ 
 
     updatePointsBar() {
         for (const currencyId in this.engine.state.currencies) {
@@ -3459,12 +3318,9 @@ export class UIRenderer {
         badge.classList.toggle('empty', remaining === 0);
     }
 }
+</file>
 
-
-############################################################
-FILE START: src\ui\rule-builder.js
-############################################################
-
+<file path="src/ui/rule-builder.js">
 
 /**
  * Rule Builder - Visual rule editor
@@ -3844,13 +3700,9 @@ export class RuleBuilder {
         }
     }
 }
+</file>
 
-
-############################################################
-FILE START: src\ui\tooltip.js
-############################################################
-
-
+<file path="src/ui/tooltip.js">
 /**
  * Tooltip Manager - Handles hover tooltips
  */
@@ -3880,7 +3732,7 @@ export class TooltipManager {
                 if (!document.body.classList.contains('text-mode')) {
                     this.show();
                 }
-            }, 300); // Slightly faster than before
+            }, 300);
         });
 
         element.addEventListener('mousemove', (e) => {
@@ -3911,12 +3763,12 @@ export class TooltipManager {
         const isDebug = document.body.classList.contains('debug-mode') || document.body.classList.contains('edit-mode-active');
         let html = `<h4>${item.title}</h4>`;
 
-        // 1. Tags (NEW)
+        // 1. Tags
         if (item.tags && item.tags.length > 0) {
             html += this.renderTags(item);
         }
 
-        // 2. Effects (NEW)
+        // 2. Effects
         if (item.effects && item.effects.length > 0) {
             html += this.renderEffects(item);
         }
@@ -3946,10 +3798,9 @@ export class TooltipManager {
         this.tooltipEl.innerHTML = html;
     }
 
-    // ==================== NEW RENDERERS ====================
+    // ==================== RENDERERS ====================
 
     renderTags(item) {
-        // Simple badges for tags
         const tagsHtml = item.tags.map(t => 
             `<span style="background:#333; color:#aaa; padding:2px 6px; border-radius:4px; font-size:0.75em; margin-right:4px; border:1px solid #444;">${t}</span>`
         ).join('');
@@ -3977,9 +3828,6 @@ export class TooltipManager {
                         const percent = Math.round((1 - eff.value) * 100);
                         text = `<b>${percent}% Discount</b> on ${target} items`;
                     } else {
-                        // Assuming positive 'add' reduces cost (engine logic: value += mod)
-                        // If logic is standard: negative cost = spend. 
-                        // If base -10, mod +5 => -5. So +5 is discount.
                         const sign = eff.value > 0 ? 'Discount' : 'Markup';
                         text = `<b>${Math.abs(eff.value)} point ${sign}</b> on ${target} items`;
                     }
@@ -3997,6 +3845,19 @@ export class TooltipManager {
                     text = `Sets <b>${eff.currency}</b> to ${eff.value}`;
                     break;
 
+                case 'roll_dice':
+                    // Check if already rolled
+                    const current = this.engine.state.rollResults.get(item.id);
+                    const range = `${eff.min || 1}-${eff.max || 6}`;
+                    if (current !== undefined) {
+                        text = `Rolled Result: <b>${current}</b> ${eff.currency}`;
+                        icon = '🎲';
+                    } else {
+                        text = `Rolls <b>${range}</b> ${eff.currency}`;
+                        icon = '🎲';
+                    }
+                    break;
+
                 default:
                     text = `Unknown Effect: ${eff.type}`;
             }
@@ -4008,21 +3869,16 @@ export class TooltipManager {
         return html;
     }
 
-    // ==================== EXISTING RENDERERS ====================
-
     renderCost(item, group) {
         let html = '';
         item.cost.forEach(c => {
-            // Используем новый метод, который возвращает и цену, и текст модификаторов
             const { value, modifiers } = this.engine.rules.getCostBreakdown(c, item, group);
-            
             const sign = value > 0 ? '+' : '';
             
             let colorClass = value < 0 ? 'bad' : ''; 
             if (value === 0) colorClass = 'free';      
             if (value > 0) colorClass = 'good';        
 
-            // Формируем строку модификаторов: (-50% +5)
             let modHtml = '';
             if (modifiers.length > 0) {
                 modHtml = `<span class="mod-applied">(${modifiers.join(' ')})</span>`;
@@ -4038,7 +3894,6 @@ export class TooltipManager {
     renderRequirements(item, group) {
         let reqsHtml = '';
 
-        // Incompatible
         if (item.incompatible) {
             item.incompatible.forEach(badId => {
                 if (this.engine.state.selected.has(badId)) {
@@ -4048,7 +3903,6 @@ export class TooltipManager {
             });
         }
 
-        // Max choices check
         const isSelected = this.engine.state.selected.has(item.id);
         if (!isSelected && group.rules?.max_choices) {
             const currentCount = this.engine.getSelectedInGroup(group).length;
@@ -4057,7 +3911,6 @@ export class TooltipManager {
             }
         }
 
-        // Requirements
         if (item.requirements) {
             item.requirements.forEach(req => {
                 reqsHtml += this.renderRequirement(req);
@@ -4074,12 +3927,11 @@ export class TooltipManager {
         let isMet = false;
         let displayText = req;
 
-        // Clean up the text for display (remove code syntax)
         const formatText = (txt) => {
             return txt
-                .replace(/count\.tag\(['"](.+?)['"]\)/g, "Tag: $1") // count.tag('fire') -> Tag: fire
-                .replace(/count\.([a-zA-Z0-9_]+)/g, "Group: $1")   // count.group -> Group: group
-                .replace(/has\(['"](.+?)['"]\)/g, "$1")            // has('id') -> id
+                .replace(/count\.tag\(['"](.+?)['"]\)/g, "Tag: $1")
+                .replace(/count\.([a-zA-Z0-9_]+)/g, "Group: $1")
+                .replace(/has\(['"](.+?)['"]\)/g, "$1")
                 .replace(/\|\|/g, " OR ")
                 .replace(/&&/g, " AND ")
                 .replace(/>=/g, "≥")
@@ -4087,19 +3939,13 @@ export class TooltipManager {
         };
 
         if (req.includes('(') || req.includes('||') || req.includes('&&') || req.includes('count.')) {
-            // Complex formula
             isMet = this.engine.rules.evaluateRequirement(req, null);
             displayText = formatText(req);
         } else {
-            // Simple ID requirement
             const isNot = req.startsWith('!');
             const cleanId = isNot ? req.slice(1) : req;
-            
-            // Check logic
             const targetSelected = this.engine.state.selected.has(cleanId);
             isMet = isNot ? !targetSelected : targetSelected;
-            
-            // Get nice name
             const targetItem = this.engine.findItem(cleanId);
             const name = targetItem?.title || cleanId;
             displayText = (isNot ? "NOT " : "") + name;
@@ -4112,8 +3958,6 @@ export class TooltipManager {
         }
     }
 
-    // ==================== POSITION ====================
-
     updatePosition(e) {
         const tt = this.tooltipEl;
         const ttH = tt.offsetHeight;
@@ -4122,7 +3966,6 @@ export class TooltipManager {
         let top = e.clientY + 20;
         let left = e.clientX + 20;
 
-        // Keep in viewport logic
         if (left + ttW > window.innerWidth) {
             left = window.innerWidth - ttW - 20;
         }
@@ -4134,13 +3977,9 @@ export class TooltipManager {
         tt.style.left = left + 'px';
     }
 }
+</file>
 
-
-
-############################################################
-FILE START: src\utils\coords.js
-############################################################
-
+<file path="src/utils/coords.js">
 /**
  * Coordinate Helper - Converts between pixels and percentages
  */
@@ -4205,19 +4044,13 @@ export class CoordHelper {
         };
     }
 }
+</file>
 
+<file path="src/utils/evaluator.js">
 
-############################################################
-FILE START: src\utils\evaluator.js
-############################################################
+</file>
 
-
-
-
-############################################################
-FILE START: styles\main.css
-############################################################
-
+<file path="styles/main.css">
 /* ==========================================================================
    CYOA INTERACTIVE STYLES
    ========================================================================== */
@@ -4241,7 +4074,19 @@ body { margin: 0; padding: 0 0 120px 0; background: #1a1a1a; color: #eee; font-f
 .page-layer { position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 10; pointer-events: none; }
 
 /* === CLICK ZONES & BUTTONS === */
-.click-zone { position: absolute; cursor: pointer; z-index: 100; pointer-events: auto; border-radius: 12px; transition: all 0.2s; overflow: hidden; display: flex; flex-direction: column; justify-content: flex-end; }
+.click-zone { 
+    position: absolute; 
+    cursor: pointer; 
+    z-index: 100; 
+    pointer-events: auto; 
+    border-radius: 12px; 
+    transition: all 0.2s; 
+    /* CHANGED: Allowed overflow so the badge can stick out */
+    overflow: visible; 
+    display: flex; 
+    flex-direction: column; 
+    justify-content: flex-end; 
+}
 .click-zone:hover { background: rgba(255,255,255,0.07); box-shadow: 0 0 10px rgba(255,255,255,0.1); }
 .click-zone.selected { background: rgba(0,255,0,0.1); box-shadow: 0 0 15px 2px #0f0, inset 0 0 20px 5px rgba(0,255,0,0.3); }
 .click-zone.disabled { cursor: not-allowed; background-image: repeating-linear-gradient(45deg, rgba(0,0,0,0.4), rgba(0,0,0,0.4) 10px, rgba(50,50,50,0.6) 10px, rgba(50,50,50,0.6) 20px); box-shadow: 0 0 15px 5px #000, inset 0 0 20px 10px rgba(0,0,0,0.8); }
@@ -4249,6 +4094,131 @@ body { margin: 0; padding: 0 0 120px 0; background: #1a1a1a; color: #eee; font-f
 
 .info-zone { z-index: 50; pointer-events: none; border: none; }
 .info-zone .text-content { pointer-events: auto; }
+
+
+
+
+
+/* ==========================================================================
+   ROULETTE & DICE STYLES (Clean UI)
+   ========================================================================== */
+
+.roulette-mask {
+    position: absolute;
+    top: 5px; left: 0; right: 0; bottom: 5px; /* На всю высоту */
+    overflow: hidden;
+    background: transparent; /* УБРАН ТЕМНЫЙ ФОН */
+    z-index: 200;
+    pointer-events: none;
+    
+    /* Мягкий градиент только на краях, чтобы скрыть резкое исчезновение */
+    mask-image: linear-gradient(to bottom, 
+        transparent 0%, 
+        black 15%, 
+        black 85%, 
+        transparent 100%
+    );
+    -webkit-mask-image: linear-gradient(to bottom, 
+        transparent 0%, 
+        black 15%, 
+        black 85%, 
+        transparent 100%
+    );
+}
+
+.roulette-strip {
+    will-change: transform;
+    /* Убираем размытие при движении для четкости, или добавляем для скорости */
+    /* filter: blur(0px); */ 
+}
+
+.roulette-item {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    
+    font-family: 'Impact', 'Arial Black', sans-serif;
+    font-size: 3.5rem; 
+    line-height: 1;
+    color: #fff;
+    
+    /* ИМИТАЦИЯ ОБВОДКИ (STROKE) */
+    /* Тень со всех сторон создает жесткий контур */
+    text-shadow: 
+        3px 3px 0 #000,
+        -1px -1px 0 #000,  
+        1px -1px 0 #000,
+        -1px 1px 0 #000,
+        1px 1px 0 #000;
+        
+ 
+}
+
+.roulette-item.winner {
+    color: #ffd700;
+    /* Усиливаем свечение при победе */
+    text-shadow: 
+        3px 3px 0 #000,
+        -1px -1px 0 #000,
+        0 0 20px #ffd700;
+    transform: scale(1.1); /* Легкое увеличение */
+    transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+/* Финальный бейдж остается тем же, он хороший */
+.roll-result-badge {
+    position: absolute;
+    top: 0; left: 50%;
+    transform: translate(-50%, -50%) scale(1);
+    width: 50px; height: 50px;
+    background: #111;
+    border: 3px solid #ffd700;
+    border-radius: 50%;
+    box-shadow: 0 0 10px rgba(0,0,0,0.8), 0 0 20px rgba(255, 215, 0, 0.4);
+    color: #ffd700;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Impact', sans-serif;
+    font-size: 24px;
+    z-index: 300;
+    pointer-events: none;
+    user-select: none;
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.roll-result-badge.spawn-anim {
+    top: 50%;
+    transform: translate(-50%, -50%) scale(2.0);
+    opacity: 0;
+}
+
+.roulette-mask, .roulette-strip, .roulette-item, .roll-result-badge {
+    /* Стандартный синтаксис */
+    user-select: none;
+    
+    /* Для Safari и Chrome */
+    -webkit-user-select: none;
+    
+    /* Для Firefox */
+    -moz-user-select: none;
+    
+    /* Для старых IE/Edge */
+    -ms-user-select: none;
+    
+    /* Отключаем меню при долгом тапе на мобильных */
+    -webkit-touch-callout: none; 
+}
+
+/* Дополнительно убедимся, что курсор не меняется на текстовый */
+.roulette-item {
+    cursor: default;
+}
+
+
+
+
+
+
 
 /* === MULTI-SELECT CONTROLS === */
 .split-controls { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; z-index: 150; }
@@ -4364,11 +4334,9 @@ body.edit-mode-active #game-wrapper { margin-right: 340px; transition: margin-ri
 /* === MOBILE === */
 @media (max-width: 1200px) { .editor-sidebar { width: 100%; max-width: 340px; } body.edit-mode-active #game-wrapper { margin-right: 0; } }
 @media (max-width: 768px) { .top-controls { top: 5px; right: 5px; gap: 5px; } .ctrl-btn { padding: 6px 10px; font-size: 12px; } #points-bar { gap: 20px; padding: 10px; } }
+</file>
 
+<file path="styles/themes.css">
 
-############################################################
-FILE START: styles\themes.css
-############################################################
-
-
+</file>
 
