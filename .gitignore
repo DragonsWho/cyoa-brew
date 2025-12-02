@@ -1,8 +1,8 @@
-# Вспомогательные файлы — НЕ заливать в репозиторий!
-!!_pack_code.py
-!!_full_project_code.txt
 
-# Остальное как было
+\!!_pack_code.py
+\!!_full_project_code.txt
+
+ 
 /notes
 /old
 todo
