@@ -1,0 +1,34 @@
+{
+  "name": "cyoa-brew",
+  "version": "1.0.0",
+  "description": "Script for automatically converting static CYOA into interactive ones",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/DragonsWho/cyoabrew.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/DragonsWho/cyoabrew/issues"
+  },
+  "homepage": "https://github.com/DragonsWho/cyoabrew#readme",
+  "devDependencies": {
+    "vite": "^7.2.6"
+  },
+  "dependencies": {
+    "@gradio/client": "^2.0.0",
+    "jszip": "^3.10.1"
+  }
+}

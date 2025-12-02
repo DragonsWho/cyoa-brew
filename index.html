@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CYOA Brew</title>
+    <!-- CSS подключится автоматически через main.js -->
+</head>
+<body>
+    <div id="app">
+        <!-- Top controls -->
+        <div class="top-controls">
+            <button id="text-toggle" class="ctrl-btn">📖 Translation</button>
+            <button id="edit-toggle" class="ctrl-btn">✏️ Edit</button>
+            <button id="reset-btn" class="ctrl-btn">🔄 Reset</button>
+        </div>
+        
+        <!-- Game content -->
+        <div id="game-wrapper"></div>
+        
+        <!-- Points bar -->
+        <div id="points-bar"></div>
+        
+        <!-- Tooltip -->
+        <div id="tooltip"></div>
+    </div>
+
+    <!-- Loading indicator -->
+    <div id="loading" style="
+        position: fixed; 
+        top: 50%; 
+        left: 50%; 
+        transform: translate(-50%, -50%);
+        font-size: 24px;
+        color: #fff;
+        text-align: center;
+        font-family: sans-serif;
+    ">
+        Loading CYOA...<br>
+        <small style="color: #888; font-size: 14px;">
+            Initializing App...
+        </small>
+    </div>
+
+    <!-- Vite Entry Point -->
+    <script type="module" src="/src/main.js"></script>
+</body>
+</html>
