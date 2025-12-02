@@ -89,6 +89,27 @@ Return ONLY valid JSON, no explanations.`
         return pages[index] || null;
     }
 
+    // ==================== HELPER: Count page elements ====================
+    
+    countPageElements(page) {
+        let groups = 0;
+        let items = 0;
+        
+        if (!page || !page.layout) return { groups: 0, items: 0 };
+        
+        for (const element of page.layout) {
+            if (element.type === 'group') {
+                groups++;
+                // Count items inside the group
+                items += element.items?.length || 0;
+            } else if (element.type === 'item') {
+                items++;
+            }
+        }
+        
+        return { groups, items };
+    }
+
     // ==================== HELPER: Find item's parent ====================
     
     findItemParent(itemId) {
@@ -341,7 +362,7 @@ Return ONLY valid JSON, no explanations.`
                 <!-- TAB 1: CHOICE -->
                 <div id="tab-content-choice" class="tab-content" style="display:none;">
                     <div id="choice-empty-state" class="info-text">
-                        Select an item on the page to edit.
+                        <p>Select an item on the page to edit, or add a new one.</p>
                     </div>
 
                     <div id="choice-props" style="display:none;">
@@ -404,18 +425,20 @@ Return ONLY valid JSON, no explanations.`
                         </div>
                         
                         <div class="editor-section" style="margin-top: 10px; border-top: 1px solid #222;">
-                            <div class="row-buttons">
-                                <button class="action-btn btn-delete" onclick="CYOA.editor.deleteSelectedItem()">🗑️ Delete</button>
-                                <button class="action-btn btn-add" onclick="CYOA.editor.addNewItem()">➕ Add New</button>
-                            </div>
+                            <button class="action-btn btn-delete" onclick="CYOA.editor.deleteSelectedItem()">🗑️ Delete</button>
                         </div>
+                    </div>
+                    
+                    <!-- Always visible add button -->
+                    <div class="editor-section editor-actions-fixed">
+                        <button class="action-btn btn-add full-width-btn" onclick="CYOA.editor.addNewItem()">➕ Add New Item</button>
                     </div>
                 </div>
 
                 <!-- TAB 2: GROUP -->
                 <div id="tab-content-group" class="tab-content" style="display:none;">
                     <div id="group-empty-state" class="info-text">
-                        Select a group (Info Box) or a choice first.
+                        <p>Select a group (Info Box) on the page to edit, or create a new one.</p>
                     </div>
 
                     <div id="group-props" style="display:none;">
@@ -458,11 +481,13 @@ Return ONLY valid JSON, no explanations.`
                          </div>
 
                         <div class="editor-section" style="margin-top: 10px; border-top: 1px solid #222;">
-                            <div class="row-buttons">
-                                <button class="action-btn btn-delete" onclick="CYOA.editor.deleteSelectedGroup()">🗑️ Delete Group</button>
-                                <button class="action-btn btn-add" onclick="CYOA.editor.addNewGroup()">➕ Add Group</button>
-                            </div>
+                            <button class="action-btn btn-delete" onclick="CYOA.editor.deleteSelectedGroup()">🗑️ Delete Group</button>
                         </div>
+                    </div>
+                    
+                    <!-- Always visible add button -->
+                    <div class="editor-section editor-actions-fixed">
+                        <button class="action-btn btn-add full-width-btn" onclick="CYOA.editor.addNewGroup()">➕ Add New Group</button>
                     </div>
                 </div>
 
@@ -471,9 +496,11 @@ Return ONLY valid JSON, no explanations.`
                     
                     <!-- Page Management -->
                     <div class="editor-section">
-                        <div class="accordion-header">📄 Pages</div>
-                        <div class="accordion-content" style="display:block">
-                            <div id="pages-list" style="margin-bottom:10px; max-height:150px; overflow-y:auto;"></div>
+                        <div class="accordion-header" onclick="CYOA.editor.toggleAccordion(this)">
+                            📄 Pages
+                        </div>
+                        <div class="accordion-content">
+                            <div id="pages-list" style="margin-bottom:10px; max-height:200px; overflow-y:auto;"></div>
                             <button class="full-width-btn" style="background:#2e7d32;" onclick="document.getElementById('add-page-image-input').click()">
                                 ➕ Add New Page
                             </button>
@@ -482,8 +509,10 @@ Return ONLY valid JSON, no explanations.`
                     
                     <!-- File Operations -->
                     <div class="editor-section">
-                        <div class="accordion-header">File Operations</div>
-                        <div class="accordion-content" style="display:block">
+                        <div class="accordion-header" onclick="CYOA.editor.toggleAccordion(this)">
+                            💾 File Operations
+                        </div>
+                        <div class="accordion-content">
                             <button class="full-width-btn" style="background:#4b6cb7; margin-bottom:10px;" onclick="document.getElementById('load-config-input').click()">
                                 📂 Load Project (JSON)
                             </button>
@@ -647,19 +676,36 @@ Return ONLY valid JSON, no explanations.`
         const pages = this.engine.config.pages || [];
         
         if (pages.length === 0) {
-            container.innerHTML = '<div style="color:#666; font-size:0.8rem; padding:10px;">No pages yet. Add an image to create a page.</div>';
+            container.innerHTML = `
+                <div style="color:#888; font-size:0.8rem; padding:15px; text-align:center; background:#1a1a1a; border-radius:4px;">
+                    <div style="font-size:1.5rem; margin-bottom:8px;">📄</div>
+                    <div>No pages yet.</div>
+                    <div style="color:#666; font-size:0.75rem; margin-top:4px;">Add an image to create your first page.</div>
+                </div>
+            `;
             return;
         }
         
-        container.innerHTML = pages.map((page, idx) => `
-            <div class="page-list-item ${idx === this.activePageIndex ? 'active' : ''}" 
-                 onclick="CYOA.editor.selectPage(${idx})"
-                 style="display:flex; align-items:center; justify-content:space-between; padding:8px; margin-bottom:4px; background:${idx === this.activePageIndex ? '#2e7d32' : '#333'}; border-radius:4px; cursor:pointer;">
-                <span style="font-size:0.85rem;">📄 Page ${idx + 1} (${page.layout?.length || 0} items)</span>
-                <button onclick="event.stopPropagation(); CYOA.editor.deletePage(${idx})" 
-                        style="background:#d32f2f; border:none; color:white; padding:2px 6px; border-radius:3px; cursor:pointer; font-size:0.7rem;">✕</button>
-            </div>
-        `).join('');
+        container.innerHTML = pages.map((page, idx) => {
+            const counts = this.countPageElements(page);
+            const isActive = idx === this.activePageIndex;
+            
+            return `
+                <div class="page-list-item ${isActive ? 'active' : ''}" 
+                     onclick="CYOA.editor.selectPage(${idx})"
+                     style="display:flex; align-items:center; justify-content:space-between; padding:8px 10px; margin-bottom:4px; background:${isActive ? '#2e7d32' : '#2a2a2a'}; border-radius:4px; cursor:pointer; border: 1px solid ${isActive ? '#4caf50' : '#333'};">
+                    <div style="display:flex; flex-direction:column;">
+                        <span style="font-size:0.85rem; font-weight:${isActive ? '600' : '400'};">📄 Page ${idx + 1}</span>
+                        <span style="font-size:0.7rem; color:${isActive ? '#c8e6c9' : '#888'}; margin-top:2px;">
+                            ${counts.groups} groups, ${counts.items} items
+                        </span>
+                    </div>
+                    <button onclick="event.stopPropagation(); CYOA.editor.deletePage(${idx})" 
+                            style="background:#d32f2f; border:none; color:white; padding:4px 8px; border-radius:3px; cursor:pointer; font-size:0.7rem; opacity:0.8;"
+                            onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.8'">✕</button>
+                </div>
+            `;
+        }).join('');
     }
 
     selectPage(index) {
@@ -667,6 +713,13 @@ Return ONLY valid JSON, no explanations.`
         this.renderPagesList();
         this.deselectChoice();
         this.selectedGroup = null;
+        
+        // Update group tab if active
+        if (this.activeTab === 'group') {
+            document.getElementById('group-props').style.display = 'none';
+            document.getElementById('group-empty-state').style.display = 'block';
+        }
+        
         console.log(`📄 Switched to page ${index + 1}`);
     }
 
@@ -677,7 +730,12 @@ Return ONLY valid JSON, no explanations.`
             return;
         }
         
-        if (!confirm(`Delete page ${index + 1}? This will remove all items on this page.`)) return;
+        const counts = this.countPageElements(pages[index]);
+        const msg = counts.items > 0 || counts.groups > 0 
+            ? `Delete page ${index + 1}? This will remove ${counts.groups} groups and ${counts.items} items.`
+            : `Delete page ${index + 1}?`;
+            
+        if (!confirm(msg)) return;
         
         pages.splice(index, 1);
         
@@ -1145,6 +1203,7 @@ Return ONLY valid JSON, no explanations.`
             this.renderer.renderLayout();
             
             statusEl.textContent = `Done! Added ${detectedItems.length} items.`;
+            this.renderPagesList(); // Update counts
             this.switchTab('choice');
         } else {
             statusEl.textContent = "No items found.";
@@ -1244,11 +1303,31 @@ Return ONLY valid JSON, no explanations.`
         const { scaleX, scaleY, dim, targetObj, pageIndex } = this.dragContext;
         
         if (this.isDragging) {
-            targetObj.coords.x = Math.round(this.initialRect.x + dx * scaleX);
-            targetObj.coords.y = Math.round(this.initialRect.y + dy * scaleY);
+            let newX = Math.round(this.initialRect.x + dx * scaleX);
+            let newY = Math.round(this.initialRect.y + dy * scaleY);
+            
+            // Constrain to page boundaries
+            if (dim) {
+                const w = targetObj.coords.w || 0;
+                const h = targetObj.coords.h || 0;
+                newX = Math.max(0, Math.min(newX, dim.w - w));
+                newY = Math.max(0, Math.min(newY, dim.h - h));
+            }
+            
+            targetObj.coords.x = newX;
+            targetObj.coords.y = newY;
         } else if (this.isResizing) {
-            targetObj.coords.w = Math.max(20, Math.round(this.initialRect.w + dx * scaleX));
-            targetObj.coords.h = Math.max(20, Math.round(this.initialRect.h + dy * scaleY));
+            let newW = Math.max(20, Math.round(this.initialRect.w + dx * scaleX));
+            let newH = Math.max(20, Math.round(this.initialRect.h + dy * scaleY));
+            
+            // Constrain resize within page boundaries
+            if (dim) {
+                if (targetObj.coords.x + newW > dim.w) newW = dim.w - targetObj.coords.x;
+                if (targetObj.coords.y + newH > dim.h) newH = dim.h - targetObj.coords.y;
+            }
+            
+            targetObj.coords.w = newW;
+            targetObj.coords.h = newH;
         }
         
         let domId = targetObj.type === 'group' ? `group-${targetObj.id}` : `btn-${targetObj.id}`;
@@ -1283,6 +1362,9 @@ Return ONLY valid JSON, no explanations.`
             // Re-render to reflect changes
             this.renderer.renderLayout();
             
+            // Update page list to show correct counts
+            this.renderPagesList();
+            
             // Update UI to show new group assignment
             if (!isGroup && this.selectedItem) {
                 this.updateChoiceInputs();
@@ -1300,7 +1382,11 @@ Return ONLY valid JSON, no explanations.`
         if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
         
         if (e.key === 'Delete') {
-            if (this.activeTab === 'choice') this.deleteSelectedItem();
+            if (this.activeTab === 'choice' && this.selectedItem) {
+                this.deleteSelectedItem();
+            } else if (this.activeTab === 'group' && this.selectedGroup) {
+                this.deleteSelectedGroup();
+            }
         }
     }
 
@@ -1476,7 +1562,7 @@ Return ONLY valid JSON, no explanations.`
 
     deleteSelectedItem() {
         if (!this.selectedItem) return; 
-        if (!confirm('Delete item?')) return;
+        if (!confirm('Delete this item?')) return;
         
         const parent = this.findItemParent(this.selectedItem.id);
         if (parent) {
@@ -1486,12 +1572,13 @@ Return ONLY valid JSON, no explanations.`
         
         this.deselectChoice(); 
         this.renderer.renderLayout();
+        this.renderPagesList(); // Update counts
     }
     
     addNewItem() {
         const page = this.getCurrentPage();
         if (!page) {
-            alert('No page available. Please add an image first.');
+            alert('No page available. Please add a page image first via Settings tab.');
             return;
         }
         
@@ -1504,7 +1591,8 @@ Return ONLY valid JSON, no explanations.`
             cost: [] 
         };
         
-        if (this.selectedGroup) {
+        // If a group is selected in Group tab, add to that group
+        if (this.selectedGroup && this.activeTab === 'group') {
             if (!this.selectedGroup.items) this.selectedGroup.items = [];
             this.selectedGroup.items.push(newItem);
         } else {
@@ -1513,7 +1601,10 @@ Return ONLY valid JSON, no explanations.`
         
         this.engine.buildMaps();
         this.renderer.renderLayout();
+        this.renderPagesList(); // Update counts
         
+        // Switch to choice tab and select new item
+        this.switchTab('choice');
         setTimeout(() => { 
             const el = document.getElementById(`btn-${newItem.id}`); 
             if (el) this.selectChoice(newItem, el); 
@@ -1523,7 +1614,7 @@ Return ONLY valid JSON, no explanations.`
     addNewGroup() {
         const page = this.getCurrentPage();
         if (!page) {
-            alert('No page available. Please add an image first.');
+            alert('No page available. Please add a page image first via Settings tab.');
             return;
         }
         
@@ -1540,6 +1631,7 @@ Return ONLY valid JSON, no explanations.`
         
         this.engine.buildMaps();
         this.renderer.renderLayout();
+        this.renderPagesList(); // Update counts
         
         setTimeout(() => { 
             const el = document.getElementById(`group-${newGroup.id}`); 
@@ -1552,9 +1644,9 @@ Return ONLY valid JSON, no explanations.`
         
         const itemCount = this.selectedGroup.items?.length || 0;
         if (itemCount > 0) { 
-            if (!confirm(`Group has ${itemCount} items. Delete group and ALL items?`)) return; 
+            if (!confirm(`Group has ${itemCount} items. Delete group and ALL items inside?`)) return; 
         } else { 
-            if (!confirm('Delete this group?')) return; 
+            if (!confirm('Delete this empty group?')) return; 
         }
         
         const parent = this.findGroupParent(this.selectedGroup.id);
@@ -1568,6 +1660,7 @@ Return ONLY valid JSON, no explanations.`
         document.getElementById('group-props').style.display = 'none'; 
         document.getElementById('group-empty-state').style.display = 'block';
         this.renderer.renderLayout();
+        this.renderPagesList(); // Update counts
     }
 
     // ==================== EXPORT ====================
