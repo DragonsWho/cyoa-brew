@@ -2,7 +2,7 @@
  * CYOA Editor - Visual editing mode
  * 
  * Architecture v2: Works with config.pages[].layout[]
- * Features: Auto-grouping by coordinates, auto-sorting, Center-screen spawn, Context Menu
+ * Features: Auto-grouping, Context Menu, Copy/Paste, Undo-like logic (via duplicate)
  */
 
 import { CoordHelper } from '../utils/coords.js';
@@ -33,11 +33,12 @@ export class CYOAEditor {
         this.resizeMode = null; // 'tl', 'tr', 'bl', 'br'
         this.dragStart = { x: 0, y: 0 };
         this.initialRect = {};
-        this.handleSize = 15; // Increased slightly for easier grabbing
+        this.handleSize = 15; 
         this.dragContext = null;
         
-        // Context Menu State
-        this.contextMenuContext = null; // Stores { x, y, pageIndex } of right click
+        // Context Menu & Clipboard State
+        this.contextMenuContext = null; // { x, y, pageIndex, targetType, targetId }
+        this.clipboard = null; // { type: 'item'|'group', data: object }
         
         this.enabled = false;
         this.triggerLabelCheck = null;
@@ -339,48 +340,36 @@ Return ONLY valid JSON, no explanations.`
 
     // ==================== HELPER: Smart Coordinates (Center or Mouse) ====================
 
-    /**
-     * Calculates the best coordinates for a new item/group.
-     * If mouseEvent is provided (Context Menu), uses mouse position.
-     * If not (Button click), uses the center of the current viewport projected onto the page.
-     */
     getSmartCoords(objWidth, objHeight, mouseEvent = null) {
         const pageIndex = this.activePageIndex;
         const pageEl = document.getElementById(`page-${pageIndex}`);
         
-        if (!pageEl) return { x: 0, y: 0 }; // Fallback
+        if (!pageEl) return { x: 0, y: 0 }; 
         
-        const rect = pageEl.getBoundingClientRect(); // Position relative to viewport
+        const rect = pageEl.getBoundingClientRect(); 
         const imgDim = this.renderer.pageDimensions[pageIndex];
         
-        if (!imgDim) return { x: 50, y: 50 }; // Fallback if image not loaded yet
+        if (!imgDim) return { x: 50, y: 50 }; 
 
         let clientX, clientY;
 
         if (mouseEvent) {
-            // Use specific mouse coordinates
             clientX = mouseEvent.x;
             clientY = mouseEvent.y;
         } else {
-            // Use center of the visible window
             clientX = window.innerWidth / 2;
             clientY = window.innerHeight / 2;
         }
 
-        // Calculate position relative to the top-left of the page image
         const relX = clientX - rect.left;
         const relY = clientY - rect.top;
 
-        // Calculate scaling factor (Internal Image Pixels / CSS Pixels)
         const scaleX = imgDim.w / rect.width;
         const scaleY = imgDim.h / rect.height;
 
-        // Convert to internal coordinate system
-        // Center the object on the point
         let finalX = (relX * scaleX) - (objWidth / 2);
         let finalY = (relY * scaleY) - (objHeight / 2);
 
-        // Constrain to page boundaries
         finalX = Math.max(0, Math.min(finalX, imgDim.w - objWidth));
         finalY = Math.max(0, Math.min(finalY, imgDim.h - objHeight));
 
@@ -392,7 +381,6 @@ Return ONLY valid JSON, no explanations.`
     createEditorUI() {
         if (document.getElementById('editor-sidebar')) return;
         
-        // 1. Sidebar
         const sidebar = document.createElement('div');
         sidebar.id = 'editor-sidebar';
         sidebar.className = 'editor-sidebar';
@@ -402,6 +390,7 @@ Return ONLY valid JSON, no explanations.`
         fileInput.id = 'load-config-input';
         fileInput.accept = '.json';
         fileInput.style.display = 'none';
+        
         sidebar.appendChild(fileInput);
 
         const pageImageInput = document.createElement('input');
@@ -409,6 +398,7 @@ Return ONLY valid JSON, no explanations.`
         pageImageInput.id = 'add-page-image-input';
         pageImageInput.accept = 'image/*';
         pageImageInput.style.display = 'none';
+        
         sidebar.appendChild(pageImageInput);
 
         sidebar.innerHTML += `
@@ -550,7 +540,6 @@ Return ONLY valid JSON, no explanations.`
                     </div>
                 </div>
 
-                <!-- Settings Tab (omitted internal content for brevity, same as before) -->
                 <div id="tab-content-settings" class="tab-content" style="display:none;">
                     <div class="editor-section">
                         <div class="accordion-header" onclick="CYOA.editor.toggleAccordion(this)">
@@ -641,7 +630,6 @@ Return ONLY valid JSON, no explanations.`
                             🤖 Auto-Detect (SAM3)
                         </div>
                         <div class="accordion-content collapsed">
-                            <!-- SAM UI Content -->
                             <div style="margin-bottom:10px; border:1px solid #333; border-radius:4px;">
                                 <div style="padding:5px 10px; background:#222; font-size:0.8rem; cursor:pointer;" onclick="this.nextElementSibling.style.display = this.nextElementSibling.style.display==='none'?'block':'none'">
                                     ❓ How to get HF Token (Free)
@@ -687,9 +675,9 @@ Return ONLY valid JSON, no explanations.`
                         </div>
                     </div>
                 </div>
+
             </div>
 
-            <!-- LLM Preview Modal (Same) -->
             <div id="llm-preview-modal" class="modal-overlay" style="display:none;">
                 <div class="modal-content">
                     <h3>🔍 Review Changes</h3>
@@ -705,14 +693,26 @@ Return ONLY valid JSON, no explanations.`
             </div>
         `;
         
-        // 2. Context Menu (Hidden by default)
+        // 2. Context Menu
         const contextMenu = document.createElement('div');
         contextMenu.id = 'editor-context-menu';
         contextMenu.className = 'custom-context-menu';
         contextMenu.style.display = 'none';
         contextMenu.innerHTML = `
-            <div class="menu-item" onclick="CYOA.editor.handleContextAction('add-item')">➕ Add Item Here</div>
-            <div class="menu-item" onclick="CYOA.editor.handleContextAction('add-group')">📂 Add Group Here</div>
+            <div class="menu-label" id="ctx-label">Actions</div>
+            <div class="menu-divider"></div>
+            
+            <div class="menu-item ctx-common" onclick="CYOA.editor.handleContextAction('add-item')">➕ Add Item Here</div>
+            <div class="menu-item ctx-common" onclick="CYOA.editor.handleContextAction('add-group')">📂 Add Group Here</div>
+            
+            <div class="menu-divider ctx-obj"></div>
+            <div class="menu-item ctx-obj" onclick="CYOA.editor.handleContextAction('duplicate')">📄 Duplicate</div>
+            <div class="menu-item ctx-obj" onclick="CYOA.editor.handleContextAction('copy')">📋 Copy</div>
+            <div class="menu-item ctx-obj" style="color:#ff6b6b;" onclick="CYOA.editor.handleContextAction('delete')">🗑️ Delete</div>
+            
+            <div class="menu-divider ctx-paste"></div>
+            <div class="menu-item ctx-paste" id="ctx-paste-btn" onclick="CYOA.editor.handleContextAction('paste')">📌 Paste</div>
+            
             <div class="menu-divider"></div>
             <div class="menu-item" onclick="CYOA.editor.handleContextAction('auto-detect')">🚀 Auto-Detect (SAM)</div>
         `;
@@ -734,8 +734,49 @@ Return ONLY valid JSON, no explanations.`
         this.renderPagesList();
     }
 
+    // ==================== UI STATE MANAGEMENT ====================
+
+    switchTab(tabName) {
+        this.activeTab = tabName;
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.tab === tabName);
+        });
+        document.querySelectorAll('.tab-content').forEach(content => {
+            content.style.display = 'none';
+        });
+        document.getElementById(`tab-content-${tabName}`).style.display = 'block';
+
+        document.body.classList.remove('edit-mode-choice', 'edit-mode-group');
+
+        if (tabName === 'choice') {
+            document.body.classList.add('edit-mode-choice');
+            if (this.selectedItem) {
+                this.updateChoiceInputs();
+                document.getElementById('choice-empty-state').style.display = 'none';
+                document.getElementById('choice-props').style.display = 'block';
+            }
+        } else if (tabName === 'group') {
+            document.body.classList.add('edit-mode-group');
+            if (this.selectedItem) {
+                const group = this.engine.findGroupForItem(this.selectedItem.id);
+                if (group) this.selectGroup(group);
+            }
+            if (this.selectedGroup) {
+                document.getElementById('group-empty-state').style.display = 'none';
+                document.getElementById('group-props').style.display = 'block';
+            }
+        } else if (tabName === 'settings') {
+            this.renderPagesList();
+        }
+    }
+
+    toggleAccordion(header) {
+        header.classList.toggle('collapsed');
+        const content = header.nextElementSibling;
+        content.classList.toggle('collapsed');
+    }
+
     // ==================== PAGE MANAGEMENT ====================
-    // (Same as before)
 
     renderPagesList() {
         const container = document.getElementById('pages-list');
@@ -897,48 +938,7 @@ Return ONLY valid JSON, no explanations.`
         });
     }
 
-    switchTab(tabName) {
-        this.activeTab = tabName;
-        document.querySelectorAll('.tab-btn').forEach(btn => {
-            btn.classList.toggle('active', btn.dataset.tab === tabName);
-        });
-        document.querySelectorAll('.tab-content').forEach(content => {
-            content.style.display = 'none';
-        });
-        document.getElementById(`tab-content-${tabName}`).style.display = 'block';
-
-        document.body.classList.remove('edit-mode-choice', 'edit-mode-group');
-
-        if (tabName === 'choice') {
-            document.body.classList.add('edit-mode-choice');
-            if (this.selectedItem) {
-                this.updateChoiceInputs();
-                document.getElementById('choice-empty-state').style.display = 'none';
-                document.getElementById('choice-props').style.display = 'block';
-            }
-        } else if (tabName === 'group') {
-            document.body.classList.add('edit-mode-group');
-            if (this.selectedItem) {
-                const group = this.engine.findGroupForItem(this.selectedItem.id);
-                if (group) this.selectGroup(group);
-            }
-            if (this.selectedGroup) {
-                document.getElementById('group-empty-state').style.display = 'none';
-                document.getElementById('group-props').style.display = 'block';
-            }
-        } else if (tabName === 'settings') {
-            this.renderPagesList();
-        }
-    }
-
-    toggleAccordion(header) {
-        header.classList.toggle('collapsed');
-        const content = header.nextElementSibling;
-        content.classList.toggle('collapsed');
-    }
-
-    // ==================== LLM & SAM LOGIC (Same as before) ====================
-    // ... (Code omitted for brevity, identical to previous) ...
+    // ==================== LLM & SAM LOGIC ====================
     
     setupLlmListeners() {
         const providerSel = document.getElementById('llm-provider');
@@ -1273,7 +1273,6 @@ Return ONLY valid JSON, no explanations.`
     setupContextMenu() {
         const menu = document.getElementById('editor-context-menu');
         
-        // Listen for right clicks on document
         document.addEventListener('contextmenu', (e) => {
             if (!this.enabled) return;
             
@@ -1285,18 +1284,63 @@ Return ONLY valid JSON, no explanations.`
 
             e.preventDefault();
             
-            // Store context
-            const pageContainer = e.target.closest('.page-container');
-            let pageIndex = this.activePageIndex;
-            if (pageContainer) {
-                 pageIndex = parseInt(pageContainer.id.replace('page-', '')) || 0;
+            // Determine what was clicked
+            let targetType = 'bg';
+            let targetId = null;
+            let targetName = 'Page';
+
+            const itemEl = e.target.closest('.item-zone');
+            const groupEl = e.target.closest('.info-zone');
+
+            if (itemEl) {
+                targetType = 'item';
+                targetId = itemEl.dataset.itemId;
+                targetName = 'Item';
+                
+                // Auto-select on right click for better UX
+                const item = this.engine.findItem(targetId);
+                if(item) {
+                    this.switchTab('choice');
+                    this.selectChoice(item, itemEl);
+                }
+            } else if (groupEl) {
+                targetType = 'group';
+                targetId = groupEl.id.replace('group-', '');
+                targetName = 'Group';
+                
+                 // Auto-select group
+                const group = this.engine.findGroup(targetId);
+                if(group) {
+                    this.switchTab('group');
+                    this.selectGroup(group);
+                }
             }
-            
-            this.activePageIndex = pageIndex; // Switch to that page context
+
+            // Update active page context
+            const pageContainer = e.target.closest('.page-container');
+            const pageIndex = pageContainer ? parseInt(pageContainer.id.replace('page-', '')) || 0 : this.activePageIndex;
+            this.activePageIndex = pageIndex;
+
             this.contextMenuContext = {
                 x: e.clientX,
-                y: e.clientY
+                y: e.clientY,
+                pageIndex,
+                targetType,
+                targetId
             };
+
+            // Update UI
+            document.getElementById('ctx-label').textContent = targetType === 'bg' ? 'Page Actions' : `${targetName} Actions`;
+            
+            // Show/Hide based on context
+            document.querySelectorAll('.ctx-obj').forEach(el => el.style.display = (targetType !== 'bg') ? 'block' : 'none');
+            
+            // Paste is available if clipboard has data
+            const pasteBtn = document.getElementById('ctx-paste-btn');
+            pasteBtn.style.display = this.clipboard ? 'block' : 'none';
+            if (this.clipboard) {
+                pasteBtn.textContent = `📌 Paste ${this.clipboard.type === 'item' ? 'Item' : 'Group'}`;
+            }
 
             // Position Menu
             menu.style.left = `${e.clientX}px`;
@@ -1314,21 +1358,164 @@ Return ONLY valid JSON, no explanations.`
 
     handleContextAction(action) {
         if (!this.contextMenuContext) return;
-        
-        if (action === 'add-item') {
-            this.switchTab('choice');
-            this.addNewItem(this.contextMenuContext);
-        } else if (action === 'add-group') {
-            this.switchTab('group');
-            this.addNewGroup(this.contextMenuContext);
-        } else if (action === 'auto-detect') {
-            this.switchTab('settings');
-            const samHeader = document.querySelector("#tab-content-settings .accordion-header:nth-of-type(3)");
-            if (samHeader && samHeader.classList.contains('collapsed')) {
-                this.toggleAccordion(samHeader);
-            }
+        const { targetType, targetId } = this.contextMenuContext;
+
+        switch (action) {
+            case 'add-item':
+                this.switchTab('choice');
+                this.addNewItem(this.contextMenuContext);
+                break;
+            case 'add-group':
+                this.switchTab('group');
+                this.addNewGroup(this.contextMenuContext);
+                break;
+            case 'duplicate':
+                this.actionDuplicate(targetType, targetId);
+                break;
+            case 'copy':
+                this.actionCopy(targetType, targetId);
+                break;
+            case 'paste':
+                this.actionPaste();
+                break;
+            case 'delete':
+                if (targetType === 'item') this.deleteSelectedItem();
+                if (targetType === 'group') this.deleteSelectedGroup();
+                break;
+            case 'auto-detect':
+                this.switchTab('settings');
+                const samHeader = document.querySelector("#tab-content-settings .accordion-header:nth-of-type(3)");
+                if (samHeader && samHeader.classList.contains('collapsed')) {
+                    this.toggleAccordion(samHeader);
+                }
+                break;
         }
     }
+
+    actionCopy(type, id) {
+        let data = null;
+        if (type === 'item') data = this.engine.findItem(id);
+        else if (type === 'group') data = this.engine.findGroup(id);
+
+        if (data) {
+            // Deep copy to clipboard
+            this.clipboard = { type, data: JSON.parse(JSON.stringify(data)) };
+            console.log(`📋 Copied ${type} to clipboard`);
+        }
+    }
+
+    actionPaste() {
+        if (!this.clipboard) return;
+        
+        const { type, data } = this.clipboard;
+        const page = this.getCurrentPage();
+        if (!page) return;
+
+        // Clone data again so we can paste multiple times
+        const newData = JSON.parse(JSON.stringify(data));
+        
+        // Generate new ID
+        newData.id = `${type}_${Date.now()}`;
+        if (newData.title) newData.title += " (Copy)";
+
+        // Set position to mouse cursor
+        if (newData.coords) {
+            const newCoords = this.getSmartCoords(newData.coords.w, newData.coords.h, this.contextMenuContext);
+            newData.coords.x = newCoords.x;
+            newData.coords.y = newCoords.y;
+        }
+
+        // Logic for nested items inside a group (for pasting Groups)
+        if (type === 'group' && newData.items) {
+            newData.items.forEach(subItem => {
+                subItem.id = `item_${Math.floor(Math.random() * 1000000)}`;
+            });
+        }
+
+        // Add to layout
+        page.layout.push(newData);
+        
+        this.engine.buildMaps();
+        this.renderer.renderLayout();
+        
+        // Select pasted object
+        if (type === 'item') {
+            this.switchTab('choice');
+            setTimeout(() => {
+                const el = document.getElementById(`btn-${newData.id}`);
+                if (el) this.selectChoice(newData, el);
+            }, 50);
+        } else {
+            this.switchTab('group');
+            setTimeout(() => {
+                const el = document.getElementById(`group-${newData.id}`);
+                if (el) this.selectGroup(newData);
+            }, 50);
+        }
+        this.renderPagesList();
+    }
+
+    actionDuplicate(type, id) {
+        let original = null;
+        if (type === 'item') original = this.engine.findItem(id);
+        else if (type === 'group') original = this.engine.findGroup(id);
+
+        if (!original) return;
+
+        const clone = JSON.parse(JSON.stringify(original));
+        clone.id = `${type}_${Date.now()}`;
+        
+        // Shift slightly
+        if (clone.coords) {
+            clone.coords.x += 20;
+            clone.coords.y += 20;
+        }
+
+        // If Item, put in same parent
+        if (type === 'item') {
+            const parent = this.findItemParent(id);
+            if (parent) {
+                // Insert right after original
+                if (parent.group) {
+                    parent.group.items.splice(parent.index + 1, 0, clone);
+                } else {
+                    parent.page.layout.splice(parent.index + 1, 0, clone);
+                }
+            }
+        } 
+        // If Group, add to page
+        else if (type === 'group') {
+            const parent = this.findGroupParent(id);
+            if (parent) {
+                parent.page.layout.push(clone);
+                // Regenerate IDs for inner items to avoid conflicts
+                if (clone.items) {
+                    clone.items.forEach(it => it.id = `item_${Math.floor(Math.random()*10000000)}`);
+                }
+            }
+        }
+
+        this.engine.buildMaps();
+        this.renderer.renderLayout();
+        
+        // Select duplicate
+        if (type === 'item') {
+            this.switchTab('choice');
+            setTimeout(() => {
+                const el = document.getElementById(`btn-${clone.id}`);
+                if (el) this.selectChoice(clone, el);
+            }, 50);
+        } else {
+             this.switchTab('group');
+            setTimeout(() => {
+                const el = document.getElementById(`group-${clone.id}`);
+                if (el) this.selectGroup(clone);
+            }, 50);
+        }
+        this.renderPagesList();
+    }
+
+    // ==================== EVENT LISTENERS ====================
 
     attachEventListeners() {
         document.addEventListener('mousedown', this.handleMouseDown.bind(this));
@@ -1344,6 +1531,7 @@ Return ONLY valid JSON, no explanations.`
         if (e.target.closest('#editor-sidebar')) return;
         if (e.target.closest('.modal-content')) return;
         if (e.target.closest('#editor-context-menu')) return;
+        if (e.button === 2) return; // Ignore right click for dragging
 
         let target = null;
         let objectToEdit = null;
@@ -1411,7 +1599,7 @@ Return ONLY valid JSON, no explanations.`
                     isGroup: objectToEdit.type === 'group'
                 };
             }
-            e.preventDefault();
+            e.preventDefault(); // Prevent text selection while dragging
         }
     }
 

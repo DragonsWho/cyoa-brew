@@ -265,8 +265,18 @@ body.edit-mode-active #game-wrapper { margin-right: 340px; transition: margin-ri
     border-radius: 4px;
     box-shadow: 0 4px 15px rgba(0,0,0,0.8);
     z-index: 6000;
-    min-width: 150px;
+    min-width: 160px;
     padding: 5px 0;
+    overflow: hidden;
+}
+.custom-context-menu .menu-label {
+    padding: 5px 15px;
+    font-size: 0.7rem;
+    color: #666;
+    text-transform: uppercase;
+    font-weight: bold;
+    pointer-events: none;
+    letter-spacing: 0.5px;
 }
 .custom-context-menu .menu-item {
     padding: 8px 15px;
@@ -274,6 +284,8 @@ body.edit-mode-active #game-wrapper { margin-right: 340px; transition: margin-ri
     color: #eee;
     cursor: pointer;
     transition: background 0.15s;
+    display: flex;
+    align-items: center;
 }
 .custom-context-menu .menu-item:hover {
     background: #4CAF50;
@@ -282,7 +294,7 @@ body.edit-mode-active #game-wrapper { margin-right: 340px; transition: margin-ri
 .custom-context-menu .menu-divider {
     height: 1px;
     background: #333;
-    margin: 5px 0;
+    margin: 4px 0;
 }
 
 @media (max-width: 1200px) { .editor-sidebar { width: 100%; max-width: 340px; } body.edit-mode-active #game-wrapper { margin-right: 0; } }
