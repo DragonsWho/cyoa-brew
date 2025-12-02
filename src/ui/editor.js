@@ -712,9 +712,7 @@ Return ONLY valid JSON, no explanations.`
             
             <div class="menu-divider ctx-paste"></div>
             <div class="menu-item ctx-paste" id="ctx-paste-btn" onclick="CYOA.editor.handleContextAction('paste')">📌 Paste</div>
-            
-            <div class="menu-divider"></div>
-            <div class="menu-item" onclick="CYOA.editor.handleContextAction('auto-detect')">🚀 Auto-Detect (SAM)</div>
+             
         `;
         document.body.appendChild(contextMenu);
 
@@ -1381,14 +1379,7 @@ Return ONLY valid JSON, no explanations.`
             case 'delete':
                 if (targetType === 'item') this.deleteSelectedItem();
                 if (targetType === 'group') this.deleteSelectedGroup();
-                break;
-            case 'auto-detect':
-                this.switchTab('settings');
-                const samHeader = document.querySelector("#tab-content-settings .accordion-header:nth-of-type(3)");
-                if (samHeader && samHeader.classList.contains('collapsed')) {
-                    this.toggleAccordion(samHeader);
-                }
-                break;
+                break; 
         }
     }
 
