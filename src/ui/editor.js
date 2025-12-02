@@ -1,11 +1,14 @@
 /**
  * CYOA Editor - Visual editing mode
+ * 
+ * Architecture v2: Works with config.pages[].layout[]
+ * Features: Auto-grouping by coordinates, auto-sorting
  */
 
 import { CoordHelper } from '../utils/coords.js';
 import { RuleBuilder } from './rule-builder.js';
 import { AutoDetector } from '../utils/autodetect.js';
-import { ProjectStorage } from '../utils/storage.js'; // <--- Импортируем наше хранилище
+import { ProjectStorage } from '../utils/storage.js';
 
 export class CYOAEditor {
     constructor(engine, renderer) {
@@ -16,6 +19,7 @@ export class CYOAEditor {
         
         this.selectedItem = null;
         this.selectedGroup = null;
+        this.activePageIndex = 0;
         this.activeTab = 'choice'; 
         
         this.measureContext = document.createElement('canvas').getContext('2d');
@@ -40,8 +44,13 @@ export class CYOAEditor {
             baseUrl: 'https://generativelanguage.googleapis.com/v1beta/models/',
             apiKey: '',
             model: 'gemini-2.0-flash',
-            systemPrompt: `У меня есть JSON с координатами кнопок для веб-верстки. Они были распознаны автоматически и немного "пляшут".
-Твоя задача — "причесать" координаты (Smart Align) и сгруппировать элементы.`
+            systemPrompt: `You are a layout assistant. I have a JSON with page layouts containing items and groups with coordinates.
+Your task is to:
+1. "Smart Align" - fix coordinates so elements are properly aligned in rows/columns
+2. Group related items together
+3. Keep the structure: pages[] -> layout[] -> items and groups
+
+Return ONLY valid JSON, no explanations.`
         };
 
         console.log('✏️ Editor initialized');
@@ -68,6 +77,233 @@ export class CYOAEditor {
         console.log('✏️ Editor disabled');
     }
 
+    // ==================== HELPER: Get current page ====================
+    
+    getCurrentPage() {
+        const pages = this.engine.config.pages || [];
+        return pages[this.activePageIndex] || null;
+    }
+
+    getPageByIndex(index) {
+        const pages = this.engine.config.pages || [];
+        return pages[index] || null;
+    }
+
+    // ==================== HELPER: Find item's parent ====================
+    
+    findItemParent(itemId) {
+        const pages = this.engine.config.pages || [];
+        
+        for (const page of pages) {
+            const layout = page.layout || [];
+            
+            for (let i = 0; i < layout.length; i++) {
+                const element = layout[i];
+                if (element.type === 'item' && element.id === itemId) {
+                    return { array: layout, index: i, page, group: null };
+                }
+                if (element.type === 'group') {
+                    const items = element.items || [];
+                    for (let j = 0; j < items.length; j++) {
+                        if (items[j].id === itemId) {
+                            return { array: items, index: j, group: element, page };
+                        }
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
+    // ==================== HELPER: Find group's parent ====================
+    
+    findGroupParent(groupId) {
+        const pages = this.engine.config.pages || [];
+        
+        for (const page of pages) {
+            const layout = page.layout || [];
+            for (let i = 0; i < layout.length; i++) {
+                if (layout[i].type === 'group' && layout[i].id === groupId) {
+                    return { array: layout, index: i, page };
+                }
+            }
+        }
+        return null;
+    }
+
+    // ==================== HELPER: Check if point is inside rect ====================
+    
+    isInsideRect(point, rect) {
+        if (!rect) return false;
+        return (
+            point.x >= rect.x &&
+            point.x <= rect.x + rect.w &&
+            point.y >= rect.y &&
+            point.y <= rect.y + rect.h
+        );
+    }
+
+    // ==================== HELPER: Get item center ====================
+    
+    getItemCenter(item) {
+        if (!item.coords) return { x: 0, y: 0 };
+        return {
+            x: item.coords.x + (item.coords.w || 0) / 2,
+            y: item.coords.y + (item.coords.h || 0) / 2
+        };
+    }
+
+    // ==================== HELPER: Find group containing point ====================
+    
+    findGroupAtPoint(point, page) {
+        if (!page || !page.layout) return null;
+        
+        for (const element of page.layout) {
+            if (element.type === 'group' && element.coords) {
+                if (this.isInsideRect(point, element.coords)) {
+                    return element;
+                }
+            }
+        }
+        return null;
+    }
+
+    // ==================== HELPER: Move item to new parent ====================
+    
+    moveItemToGroup(item, targetGroup, page) {
+        const parent = this.findItemParent(item.id);
+        if (!parent) return false;
+
+        // Remove from current location
+        parent.array.splice(parent.index, 1);
+
+        if (targetGroup) {
+            // Add to group's items
+            if (!targetGroup.items) targetGroup.items = [];
+            targetGroup.items.push(item);
+            console.log(`📦 Moved "${item.id}" into group "${targetGroup.id}"`);
+        } else {
+            // Add to page layout root
+            page.layout.push(item);
+            console.log(`📦 Moved "${item.id}" to page root`);
+        }
+
+        return true;
+    }
+
+    // ==================== HELPER: Update item grouping based on coords ====================
+    
+    updateItemGrouping(item, pageIndex) {
+        const page = this.getPageByIndex(pageIndex);
+        if (!page) return;
+
+        const center = this.getItemCenter(item);
+        const currentParent = this.findItemParent(item.id);
+        const currentGroup = currentParent?.group || null;
+        
+        // Find which group (if any) the item center is now inside
+        const targetGroup = this.findGroupAtPoint(center, page);
+
+        // If group changed, move the item
+        if (targetGroup !== currentGroup) {
+            // Don't move item into itself (if it's somehow a group)
+            if (targetGroup && targetGroup.id === item.id) return;
+            
+            this.moveItemToGroup(item, targetGroup, page);
+            this.engine.buildMaps();
+        }
+    }
+
+    // ==================== HELPER: Update all items after group resize ====================
+    
+    updateGroupMemberships(group, pageIndex) {
+        const page = this.getPageByIndex(pageIndex);
+        if (!page) return;
+
+        // Check all standalone items in layout - should they move into this group?
+        const itemsToMove = [];
+        for (const element of page.layout) {
+            if (element.type === 'item') {
+                const center = this.getItemCenter(element);
+                if (this.isInsideRect(center, group.coords)) {
+                    itemsToMove.push(element);
+                }
+            }
+        }
+
+        // Check items inside this group - should they move out?
+        const itemsToRemove = [];
+        if (group.items) {
+            for (const item of group.items) {
+                const center = this.getItemCenter(item);
+                if (!this.isInsideRect(center, group.coords)) {
+                    itemsToRemove.push(item);
+                }
+            }
+        }
+
+        // Move items into group
+        for (const item of itemsToMove) {
+            this.moveItemToGroup(item, group, page);
+        }
+
+        // Move items out of group
+        for (const item of itemsToRemove) {
+            this.moveItemToGroup(item, null, page);
+        }
+
+        if (itemsToMove.length > 0 || itemsToRemove.length > 0) {
+            this.engine.buildMaps();
+        }
+    }
+
+    // ==================== HELPER: Sort layout by coordinates ====================
+    
+    sortLayoutByCoords(layout) {
+        if (!layout || !Array.isArray(layout)) return;
+        
+        const ROW_THRESHOLD = 50;
+        
+        layout.sort((a, b) => {
+            const aY = a.coords?.y || 0;
+            const bY = b.coords?.y || 0;
+            const aX = a.coords?.x || 0;
+            const bX = b.coords?.x || 0;
+            
+            if (Math.abs(aY - bY) < ROW_THRESHOLD) {
+                return aX - bX;
+            }
+            return aY - bY;
+        });
+
+        for (const element of layout) {
+            if (element.type === 'group' && element.items) {
+                this.sortLayoutByCoords(element.items);
+            }
+        }
+    }
+
+    // ==================== HELPER: Sort current page ====================
+    
+    sortCurrentPageLayout() {
+        const page = this.getCurrentPage();
+        if (page) {
+            this.sortLayoutByCoords(page.layout);
+        }
+    }
+
+    // ==================== HELPER: Sort all pages ====================
+    
+    sortAllLayouts() {
+        const pages = this.engine.config.pages || [];
+        for (const page of pages) {
+            this.sortLayoutByCoords(page.layout);
+        }
+        console.log('📐 Layouts sorted by coordinates');
+    }
+
+    // ==================== CREATE UI ====================
+
     createEditorUI() {
         if (document.getElementById('editor-sidebar')) return;
         
@@ -75,7 +311,6 @@ export class CYOAEditor {
         sidebar.id = 'editor-sidebar';
         sidebar.className = 'editor-sidebar';
         
-        // Add hidden file input
         const fileInput = document.createElement('input');
         fileInput.type = 'file';
         fileInput.id = 'load-config-input';
@@ -84,7 +319,15 @@ export class CYOAEditor {
         
         sidebar.appendChild(fileInput);
 
-        // Внимание: ниже в кнопках "Load Project" и "Save JSON" вызываются методы editor'а
+        // File input for adding pages
+        const pageImageInput = document.createElement('input');
+        pageImageInput.type = 'file';
+        pageImageInput.id = 'add-page-image-input';
+        pageImageInput.accept = 'image/*';
+        pageImageInput.style.display = 'none';
+        
+        sidebar.appendChild(pageImageInput);
+
         sidebar.innerHTML += `
             <div class="editor-tabs">
                 <button class="tab-btn" data-tab="choice" onclick="CYOA.editor.switchTab('choice')">Choice</button>
@@ -226,6 +469,17 @@ export class CYOAEditor {
                 <!-- TAB 3: SETTINGS -->
                 <div id="tab-content-settings" class="tab-content" style="display:none;">
                     
+                    <!-- Page Management -->
+                    <div class="editor-section">
+                        <div class="accordion-header">📄 Pages</div>
+                        <div class="accordion-content" style="display:block">
+                            <div id="pages-list" style="margin-bottom:10px; max-height:150px; overflow-y:auto;"></div>
+                            <button class="full-width-btn" style="background:#2e7d32;" onclick="document.getElementById('add-page-image-input').click()">
+                                ➕ Add New Page
+                            </button>
+                        </div>
+                    </div>
+                    
                     <!-- File Operations -->
                     <div class="editor-section">
                         <div class="accordion-header">File Operations</div>
@@ -319,10 +573,6 @@ export class CYOAEditor {
                                 <input type="password" id="sam-token" placeholder="hf_...">
                                 <span class="input-label">Hugging Face Token</span>
                             </div>
-                            <div class="editor-section" style="border:none; padding:0;">
-                                <label style="font-size:0.8rem; color:#888;">Working Image (Resets items!)</label>
-                                <input type="file" id="sam-image-upload" accept="image/*" style="width:100%; margin-top:5px; font-size:0.8rem;">
-                            </div>
                             <div class="input-group" style="margin-top:10px;">
                                 <input type="text" id="sam-prompt" value="content block, game card, description panel">
                                 <span class="input-label">Search Prompt</span>
@@ -340,7 +590,7 @@ export class CYOAEditor {
                                 <span class="input-label">Debug Item Index (Optional)</span>
                             </div>
                             <button id="btn-run-sam" class="full-width-btn primary-btn" style="margin-top:15px; background: linear-gradient(45deg, #4b6cb7, #182848);">
-                                🚀 Run Auto-Detect
+                                🚀 Run Auto-Detect on Current Page
                             </button>
                             <div id="sam-status" style="margin-top:10px; font-size:0.75rem; color:#ffd700; min-height:1.2em;"></div>
                              <div class="editor-section" style="margin-top:15px; border:1px solid #333; padding:0;">
@@ -382,9 +632,109 @@ export class CYOAEditor {
         this.setupLabelAutoHiding();
         this.setupSamListeners();
         this.setupLlmListeners(); 
-        
-        // NEW: Load Project Listener
         this.setupLoadListener();
+        this.setupAddPageListener();
+        
+        this.renderPagesList();
+    }
+
+    // ==================== PAGE MANAGEMENT ====================
+
+    renderPagesList() {
+        const container = document.getElementById('pages-list');
+        if (!container) return;
+        
+        const pages = this.engine.config.pages || [];
+        
+        if (pages.length === 0) {
+            container.innerHTML = '<div style="color:#666; font-size:0.8rem; padding:10px;">No pages yet. Add an image to create a page.</div>';
+            return;
+        }
+        
+        container.innerHTML = pages.map((page, idx) => `
+            <div class="page-list-item ${idx === this.activePageIndex ? 'active' : ''}" 
+                 onclick="CYOA.editor.selectPage(${idx})"
+                 style="display:flex; align-items:center; justify-content:space-between; padding:8px; margin-bottom:4px; background:${idx === this.activePageIndex ? '#2e7d32' : '#333'}; border-radius:4px; cursor:pointer;">
+                <span style="font-size:0.85rem;">📄 Page ${idx + 1} (${page.layout?.length || 0} items)</span>
+                <button onclick="event.stopPropagation(); CYOA.editor.deletePage(${idx})" 
+                        style="background:#d32f2f; border:none; color:white; padding:2px 6px; border-radius:3px; cursor:pointer; font-size:0.7rem;">✕</button>
+            </div>
+        `).join('');
+    }
+
+    selectPage(index) {
+        this.activePageIndex = index;
+        this.renderPagesList();
+        this.deselectChoice();
+        this.selectedGroup = null;
+        console.log(`📄 Switched to page ${index + 1}`);
+    }
+
+    deletePage(index) {
+        const pages = this.engine.config.pages || [];
+        if (pages.length <= 1) {
+            alert('Cannot delete the last page.');
+            return;
+        }
+        
+        if (!confirm(`Delete page ${index + 1}? This will remove all items on this page.`)) return;
+        
+        pages.splice(index, 1);
+        
+        if (this.activePageIndex >= pages.length) {
+            this.activePageIndex = pages.length - 1;
+        }
+        
+        this.engine.buildMaps();
+        this.renderer.renderAll();
+        this.renderPagesList();
+    }
+
+    setupAddPageListener() {
+        const input = document.getElementById('add-page-image-input');
+        if (!input) return;
+
+        input.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (evt) => {
+                const dataUrl = evt.target.result;
+                
+                // Initialize pages array if needed
+                if (!this.engine.config.pages) {
+                    this.engine.config.pages = [];
+                }
+                
+                // Create new page
+                const newPageIndex = this.engine.config.pages.length;
+                const newPage = {
+                    id: `page_${newPageIndex}`,
+                    image: dataUrl,
+                    layout: []
+                };
+                
+                this.engine.config.pages.push(newPage);
+                this.activePageIndex = newPageIndex;
+                
+                // Ensure points exist
+                if (!this.engine.config.points || this.engine.config.points.length === 0) {
+                    this.engine.config.points = [{ id: "points", name: "Points", start: 0 }];
+                }
+                
+                this.engine.buildMaps();
+                this.engine.state.resetCurrencies();
+                this.renderer.renderAll().then(() => {
+                    this.renderPagesList();
+                });
+                
+                console.log(`📄 Added new page ${newPageIndex + 1}`);
+            };
+            reader.readAsDataURL(file);
+            
+            input.value = ''; // Reset for next upload
+        });
     }
 
     setupLoadListener() {
@@ -396,10 +746,9 @@ export class CYOAEditor {
             const file = e.target.files[0];
 
             try {
-                // If not test config, confirm overwrite
                 if (!this.engine.isTestConfig) {
                     if (!confirm("Are you sure? Loading a new project will discard current changes.")) {
-                        input.value = ''; // Reset
+                        input.value = '';
                         return;
                     }
                 }
@@ -410,18 +759,18 @@ export class CYOAEditor {
                     alert(warning);
                 }
 
-                // Load config into engine
                 this.engine.loadConfig(config);
                 
-                // Clear selection
                 this.deselectChoice();
                 this.selectedGroup = null;
+                this.activePageIndex = 0;
+                this.renderPagesList();
 
             } catch (err) {
                 alert(`Error loading project: ${err.message}`);
                 console.error(err);
             } finally {
-                input.value = ''; // Reset input to allow reloading same file
+                input.value = '';
             }
         });
     }
@@ -455,6 +804,8 @@ export class CYOAEditor {
                 document.getElementById('group-empty-state').style.display = 'none';
                 document.getElementById('group-props').style.display = 'block';
             }
+        } else if (tabName === 'settings') {
+            this.renderPagesList();
         }
     }
 
@@ -482,7 +833,6 @@ export class CYOAEditor {
                 const val = e.target.value;
                 this.llmConfig.provider = val;
                 
-                // Defaults
                 if (val === 'google') {
                     baseUrlInput.value = 'https://generativelanguage.googleapis.com/v1beta/models/';
                     document.getElementById('llm-model').value = 'gemini-2.0-flash';
@@ -491,7 +841,7 @@ export class CYOAEditor {
                     baseUrlGroup.style.display = 'block';
                     runBtn.textContent = '✨ Refine Coordinates';
                 } else if (val === 'openai') {
-                    baseUrlInput.value = 'https://api.openai.com/v1'; // Or openrouter
+                    baseUrlInput.value = 'https://api.openai.com/v1';
                     document.getElementById('llm-model').value = 'gpt-4o';
                     manualUi.style.display = 'none';
                     apiFields.style.display = 'block';
@@ -507,19 +857,21 @@ export class CYOAEditor {
 
         if (runBtn) {
             runBtn.addEventListener('click', async () => {
-                // Update config from UI
                 this.llmConfig.apiKey = document.getElementById('llm-key').value;
                 this.llmConfig.model = document.getElementById('llm-model').value;
                 this.llmConfig.baseUrl = document.getElementById('llm-base-url').value;
                 this.llmConfig.systemPrompt = document.getElementById('llm-prompt').value;
 
-                // Prepare Data (Strip images to save tokens)
                 const cleanConfig = JSON.parse(JSON.stringify(this.engine.config));
-                if (cleanConfig.meta) cleanConfig.meta.pages = ["<IMAGE_PLACEHOLDER>"];
                 
-                // Keep only relevant data
+                if (cleanConfig.pages) {
+                    cleanConfig.pages.forEach(p => {
+                        p.image = "<IMAGE_PLACEHOLDER>";
+                    });
+                }
+
                 const contextData = {
-                    groups: cleanConfig.groups,
+                    pages: cleanConfig.pages,
                     points: cleanConfig.points
                 };
 
@@ -558,14 +910,12 @@ export class CYOAEditor {
         let url, body, headers;
 
         if (provider === 'google') {
-            // Google AI Studio logic
             url = `${baseUrl}${model}:generateContent?key=${apiKey}`;
             headers = { 'Content-Type': 'application/json' };
             body = JSON.stringify({
                 contents: [{ parts: [{ text: prompt }] }]
             });
         } else {
-            // OpenAI Compatible logic
             url = `${baseUrl.replace(/\/+$/, '')}/chat/completions`;
             headers = {
                 'Content-Type': 'application/json',
@@ -591,7 +941,6 @@ export class CYOAEditor {
             throw new Error(data.error?.message || JSON.stringify(data));
         }
 
-        // Parse Response
         let text = '';
         if (provider === 'google') {
             text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
@@ -603,7 +952,6 @@ export class CYOAEditor {
     }
 
     processLlmResponse(text) {
-        // 1. Extract JSON from markdown fences if present
         let jsonStr = text;
         if (text.includes('```json')) {
             jsonStr = text.split('```json')[1].split('```')[0];
@@ -612,11 +960,9 @@ export class CYOAEditor {
         }
 
         try {
-            // 2. Format and show in modal
             const jsonObj = JSON.parse(jsonStr);
             
-            // Validate basic structure
-            if (!jsonObj.groups) throw new Error("Missing 'groups' array in response");
+            if (!jsonObj.pages) throw new Error("Missing 'pages' array in response");
 
             document.getElementById('llm-result-json').value = JSON.stringify(jsonObj, null, 2);
             document.getElementById('llm-preview-modal').style.display = 'flex';
@@ -631,23 +977,27 @@ export class CYOAEditor {
             const raw = document.getElementById('llm-result-json').value;
             const newConfig = JSON.parse(raw);
             
-            // Merge logic: Keep the original image, update groups/items
-            const currentImage = this.engine.config.meta.pages[0];
-            
-            // Preserve meta if not returned
-            if (!newConfig.meta) newConfig.meta = this.engine.config.meta;
-            newConfig.meta.pages[0] = currentImage; // Restore image
+            const currentPages = this.engine.config.pages || [];
+            if (newConfig.pages) {
+                newConfig.pages.forEach((page, idx) => {
+                    if (currentPages[idx]) {
+                        page.image = currentPages[idx].image;
+                    }
+                });
+            }
 
-            // Apply
-            this.engine.config.groups = newConfig.groups;
+            if (!newConfig.meta) newConfig.meta = this.engine.config.meta;
+
+            this.engine.config.pages = newConfig.pages;
             if (newConfig.points) this.engine.config.points = newConfig.points;
 
-            this.engine.reset(); // Reset selections
-            this.engine.recalculate(); // Recalc state
-            this.renderer.renderAll(); // Re-render DOM
+            this.engine.buildMaps();
+            this.engine.reset();
+            this.engine.recalculate();
+            this.renderer.renderAll();
             
-            // Reset editor selection
             this.deselectChoice();
+            this.renderPagesList();
             
             document.getElementById('llm-preview-modal').style.display = 'none';
             alert("Changes applied successfully!");
@@ -663,7 +1013,7 @@ export class CYOAEditor {
         document.execCommand('copy');
     }
 
-    // ==================== END LLM LOGIC ====================
+    // ==================== SAM DETECTION ====================
 
     setupLabelAutoHiding() {
         const checkCollision = (input) => {
@@ -707,31 +1057,7 @@ export class CYOAEditor {
     }
 
     setupSamListeners() {
-        const fileInput = document.getElementById('sam-image-upload');
         const runBtn = document.getElementById('btn-run-sam');
-
-        if (fileInput) {
-            fileInput.addEventListener('change', (e) => {
-                const file = e.target.files[0];
-                if (file) {
-                    const reader = new FileReader();
-                    reader.onload = (evt) => {
-                        const dataUrl = evt.target.result;
-                        this.engine.config.meta.pages[0] = dataUrl;
-                        this.engine.config.groups = [];
-                        this.engine.config.points = [{id:"points", name:"Points", start:0}];
-                        this.engine.reset();
-                        this.renderer.renderAll().then(() => {
-                             const img = document.querySelector('#page-0 .page-image');
-                             if(img) {
-                                 this.renderer.pageDimensions[0] = { w: img.naturalWidth, h: img.naturalHeight };
-                             }
-                        });
-                    };
-                    reader.readAsDataURL(file);
-                }
-            });
-        }
 
         if (runBtn) {
             runBtn.addEventListener('click', () => this.runSamDetection());
@@ -739,7 +1065,6 @@ export class CYOAEditor {
     }
 
     async runSamDetection() {
-        const fileInput = document.getElementById('sam-image-upload');
         const tokenInput = document.getElementById('sam-token');
         const promptInput = document.getElementById('sam-prompt');
         const shaveInput = document.getElementById('sam-shave');
@@ -747,8 +1072,15 @@ export class CYOAEditor {
         const statusEl = document.getElementById('sam-status');
         const galleryEl = document.getElementById('sam-debug-gallery');
 
-        if (!fileInput.files[0]) { alert("Please upload an image first!"); return; }
-        if (!tokenInput.value) { alert("Please enter your Hugging Face Token!"); return; }
+        const page = this.getCurrentPage();
+        if (!page || !page.image) { 
+            alert("Please add a page with an image first!"); 
+            return; 
+        }
+        if (!tokenInput.value) { 
+            alert("Please enter your Hugging Face Token!"); 
+            return; 
+        }
 
         const btn = document.getElementById('btn-run-sam');
         btn.disabled = true;
@@ -787,8 +1119,13 @@ export class CYOAEditor {
             if (accHeader && accHeader.classList.contains('collapsed')) CYOA.editor.toggleAccordion(accHeader);
         };
 
+        // Convert data URL to File for SAM
+        const response = await fetch(page.image);
+        const blob = await response.blob();
+        const file = new File([blob], "page.png", { type: blob.type });
+
         const detectedItems = await this.autoDetector.processImage(
-            fileInput.files[0],
+            file,
             promptInput.value,
             parseFloat(shaveInput.value),
             tokenInput.value,
@@ -796,32 +1133,28 @@ export class CYOAEditor {
         );
 
         if (detectedItems.length > 0) {
-            let group = this.engine.config.groups[0];
-            if (!group) {
-                group = {
-                    id: "generated_group",
-                    title: "Detected Items",
-                    page: 0,
-                    coords: { x: 50, y: 50, w: 500, h: 200 },
-                    items: []
-                };
-                this.engine.config.groups.push(group);
+            for (const item of detectedItems) {
+                item.type = 'item';
+                page.layout.push(item);
             }
-
-            group.items = [...group.items, ...detectedItems];
             
+            this.sortLayoutByCoords(page.layout);
+            
+            this.engine.buildMaps();
             this.engine.recalculate();
-            this.renderer.renderButtons();
+            this.renderer.renderLayout();
             
             statusEl.textContent = `Done! Added ${detectedItems.length} items.`;
             this.switchTab('choice');
         } else {
-             statusEl.textContent = "No items found.";
+            statusEl.textContent = "No items found.";
         }
 
         btn.disabled = false;
         btn.style.opacity = 1;
     }
+
+    // ==================== EVENT LISTENERS ====================
 
     attachEventListeners() {
         document.addEventListener('mousedown', this.handleMouseDown.bind(this));
@@ -829,45 +1162,74 @@ export class CYOAEditor {
         document.addEventListener('mouseup', this.handleMouseUp.bind(this));
         document.addEventListener('keydown', this.handleKeyDown.bind(this));
     }
+    
     removeEventListeners() {}
 
     handleMouseDown(e) {
         if (!this.enabled) return;
         if (e.target.closest('#editor-sidebar')) return;
-        if (e.target.closest('.modal-content')) return; // Ignore clicks in modal
+        if (e.target.closest('.modal-content')) return;
 
         let target = null;
         let objectToEdit = null;
+        let pageIndex = 0;
+        
+        const pageContainer = e.target.closest('.page-container');
+        if (pageContainer) {
+            pageIndex = parseInt(pageContainer.id.replace('page-', '')) || 0;
+            this.activePageIndex = pageIndex;
+            this.renderPagesList();
+        }
+
         if (this.activeTab === 'group') {
             target = e.target.closest('.info-zone');
             if (target) {
                 const gid = target.id.replace('group-', '');
-                const group = this.engine.config.groups.find(g => g.id === gid);
-                if (group) { this.selectGroup(group); objectToEdit = group; }
+                const group = this.engine.findGroup(gid);
+                if (group) { 
+                    this.selectGroup(group); 
+                    objectToEdit = group; 
+                }
             }
         } else {
             target = e.target.closest('.item-zone');
             if (target) {
                 const itemId = target.dataset.itemId;
                 const item = this.engine.findItem(itemId);
-                if (item) { this.selectChoice(item, target); objectToEdit = item; this.selectedGroup = this.engine.findGroupForItem(item.id); }
-            } else if(this.activeTab === 'choice') { this.deselectChoice(); }
+                if (item) { 
+                    this.selectChoice(item, target); 
+                    objectToEdit = item; 
+                    this.selectedGroup = this.engine.findGroupForItem(item.id); 
+                }
+            } else if(this.activeTab === 'choice') { 
+                this.deselectChoice(); 
+            }
         }
+        
         if (objectToEdit && target) {
             target.classList.add('dragging');
             const rect = target.getBoundingClientRect();
-            if (e.clientX >= rect.right - this.handleSize && e.clientY >= rect.bottom - this.handleSize) { this.isResizing = true; } 
-            else { this.isDragging = true; }
+            if (e.clientX >= rect.right - this.handleSize && e.clientY >= rect.bottom - this.handleSize) { 
+                this.isResizing = true; 
+            } else { 
+                this.isDragging = true; 
+            }
             this.dragStart = { x: e.clientX, y: e.clientY };
             if (!objectToEdit.coords) objectToEdit.coords = {x:0,y:0,w:100,h:100};
             this.initialRect = { ...objectToEdit.coords };
-            const group = (objectToEdit.items) ? objectToEdit : this.engine.findGroupForItem(objectToEdit.id);
-            const pageIndex = group?.page || 0;
+            
             const dim = this.renderer.pageDimensions[pageIndex];
             const container = document.querySelector(`#page-${pageIndex}`);
             if (dim && container) {
                 const containerRect = container.getBoundingClientRect();
-                this.dragContext = { scaleX: dim.w / containerRect.width, scaleY: dim.h / containerRect.height, dim: dim, targetObj: objectToEdit };
+                this.dragContext = { 
+                    scaleX: dim.w / containerRect.width, 
+                    scaleY: dim.h / containerRect.height, 
+                    dim: dim, 
+                    targetObj: objectToEdit,
+                    pageIndex: pageIndex,
+                    isGroup: objectToEdit.type === 'group'
+                };
             }
             e.preventDefault();
         }
@@ -876,9 +1238,11 @@ export class CYOAEditor {
     handleMouseMove(e) {
         if (!this.enabled || !this.dragContext) return;
         if (!this.isDragging && !this.isResizing) return;
+        
         const dx = e.clientX - this.dragStart.x;
         const dy = e.clientY - this.dragStart.y;
-        const { scaleX, scaleY, dim, targetObj } = this.dragContext;
+        const { scaleX, scaleY, dim, targetObj, pageIndex } = this.dragContext;
+        
         if (this.isDragging) {
             targetObj.coords.x = Math.round(this.initialRect.x + dx * scaleX);
             targetObj.coords.y = Math.round(this.initialRect.y + dy * scaleY);
@@ -886,15 +1250,49 @@ export class CYOAEditor {
             targetObj.coords.w = Math.max(20, Math.round(this.initialRect.w + dx * scaleX));
             targetObj.coords.h = Math.max(20, Math.round(this.initialRect.h + dy * scaleY));
         }
-        let domId = targetObj.items ? `group-${targetObj.id}` : `btn-${targetObj.id}`;
+        
+        let domId = targetObj.type === 'group' ? `group-${targetObj.id}` : `btn-${targetObj.id}`;
         const element = document.getElementById(domId);
-        if (element) { const style = CoordHelper.toPercent(targetObj.coords, dim); Object.assign(element.style, style); }
-        if (this.activeTab === 'group') this.updateGroupInputs(); else this.updateChoiceInputs();
+        if (element) { 
+            const style = CoordHelper.toPercent(targetObj.coords, dim); 
+            Object.assign(element.style, style); 
+        }
+        
+        if (this.activeTab === 'group') this.updateGroupInputs(); 
+        else this.updateChoiceInputs();
     }
 
     handleMouseUp() {
+        if (this.dragContext) {
+            const { targetObj, pageIndex, isGroup } = this.dragContext;
+            
+            if (isGroup) {
+                // Group was moved/resized - check if items should move in/out
+                this.updateGroupMemberships(targetObj, pageIndex);
+            } else {
+                // Item was moved - check if it should change groups
+                this.updateItemGrouping(targetObj, pageIndex);
+            }
+            
+            // Sort layout after any drag operation
+            const page = this.getPageByIndex(pageIndex);
+            if (page) {
+                this.sortLayoutByCoords(page.layout);
+            }
+            
+            // Re-render to reflect changes
+            this.renderer.renderLayout();
+            
+            // Update UI to show new group assignment
+            if (!isGroup && this.selectedItem) {
+                this.updateChoiceInputs();
+            }
+        }
+        
         document.querySelectorAll('.dragging').forEach(el => el.classList.remove('dragging'));
-        this.isDragging = false; this.isResizing = false; this.dragContext = null;
+        this.isDragging = false; 
+        this.isResizing = false; 
+        this.dragContext = null;
     }
 
     handleKeyDown(e) {
@@ -902,9 +1300,11 @@ export class CYOAEditor {
         if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
         
         if (e.key === 'Delete') {
-             if (this.activeTab === 'choice') this.deleteSelectedItem();
+            if (this.activeTab === 'choice') this.deleteSelectedItem();
         }
     }
+
+    // ==================== SELECTION ====================
 
     selectChoice(item, element) {
         this.selectedItem = item;
@@ -933,17 +1333,21 @@ export class CYOAEditor {
         this.updateGroupInputs();
     }
 
+    // ==================== UPDATE INPUTS ====================
+
     updateChoiceInputs() {
         if (!this.selectedItem) return;
         const item = this.selectedItem;
         const group = this.engine.findGroupForItem(item.id);
         document.getElementById('edit-id').value = item.id || '';
-        document.getElementById('edit-parent-group').value = group ? group.id : '?';
+        document.getElementById('edit-parent-group').value = group ? group.id : '(none)';
         document.getElementById('edit-max_quantity').value = item.max_quantity || 1;
         document.getElementById('edit-title').value = item.title || '';
         document.getElementById('edit-description').value = item.description || '';
         document.getElementById('edit-tags').value = (item.tags || []).join(', ');
-        ['x','y','w','h'].forEach(k => { document.getElementById(`edit-${k}`).value = Math.round(item.coords?.[k] || 0); });
+        ['x','y','w','h'].forEach(k => { 
+            document.getElementById(`edit-${k}`).value = Math.round(item.coords?.[k] || 0); 
+        });
         this.updateCodePreview();
         if (this.triggerLabelCheck) this.triggerLabelCheck();
     }
@@ -954,7 +1358,9 @@ export class CYOAEditor {
         document.getElementById('group-id').value = g.id || '';
         document.getElementById('group-title').value = g.title || '';
         document.getElementById('group-description').value = g.description || '';
-        ['x','y','w','h'].forEach(k => { document.getElementById(`group-${k}`).value = Math.round(g.coords?.[k] || 0); });
+        ['x','y','w','h'].forEach(k => { 
+            document.getElementById(`group-${k}`).value = Math.round(g.coords?.[k] || 0); 
+        });
         this.updateCodePreview();
         if (this.triggerLabelCheck) this.triggerLabelCheck();
     }
@@ -970,24 +1376,39 @@ export class CYOAEditor {
         }
     }
 
+    // ==================== INPUT LISTENERS ====================
+
     setupChoiceListeners() {
         const update = (key, val, isNum) => {
             if (!this.selectedItem) return;
             if (isNum) val = parseInt(val) || 0;
-            if (['x','y','w','h'].includes(key)) { if (!this.selectedItem.coords) this.selectedItem.coords = {}; this.selectedItem.coords[key] = val; } 
-            else if (key === 'tags') { this.selectedItem.tags = val.split(',').map(t => t.trim()).filter(t => t); } 
-            else { this.selectedItem[key] = val; }
+            if (['x','y','w','h'].includes(key)) { 
+                if (!this.selectedItem.coords) this.selectedItem.coords = {}; 
+                this.selectedItem.coords[key] = val; 
+            } else if (key === 'tags') { 
+                this.selectedItem.tags = val.split(',').map(t => t.trim()).filter(t => t); 
+            } else { 
+                this.selectedItem[key] = val; 
+            }
             if (key === 'max_quantity') {
-                 if (val <= 1) delete this.selectedItem.max_quantity;
-                 this.renderer.renderButtons();
-                 setTimeout(() => { const el = document.getElementById(`btn-${this.selectedItem.id}`); if (el) el.classList.add('editor-selected'); }, 0);
-            } else { this.renderer.renderButtons(); }
+                if (val <= 1) delete this.selectedItem.max_quantity;
+                this.renderer.renderLayout();
+                setTimeout(() => { 
+                    const el = document.getElementById(`btn-${this.selectedItem.id}`); 
+                    if (el) el.classList.add('editor-selected'); 
+                }, 0);
+            } else { 
+                this.renderer.renderLayout(); 
+            }
             this.updateCodePreview();
         };
         const inputs = ['edit-id', 'edit-title', 'edit-description', 'edit-tags', 'edit-x', 'edit-y', 'edit-w', 'edit-h', 'edit-max_quantity'];
         inputs.forEach(id => {
-            const el = document.getElementById(id); if (!el) return;
-            const key = id.split('-').pop(); const realKey = (id === 'edit-description') ? 'description' : key; const isNum = ['x','y','w','h', 'max_quantity'].includes(key); 
+            const el = document.getElementById(id); 
+            if (!el) return;
+            const key = id.split('-').pop(); 
+            const realKey = (id === 'edit-description') ? 'description' : key; 
+            const isNum = ['x','y','w','h', 'max_quantity'].includes(key); 
             el.addEventListener('input', (e) => update(realKey, e.target.value, isNum));
         });
     }
@@ -996,15 +1417,22 @@ export class CYOAEditor {
         const update = (key, val, isNum) => {
             if (!this.selectedGroup) return;
             if (isNum) val = parseInt(val) || 0;
-            if (['x','y','w','h'].includes(key)) { if (!this.selectedGroup.coords) this.selectedGroup.coords = {}; this.selectedGroup.coords[key] = val; } 
-            else { this.selectedGroup[key] = val; }
-            this.renderer.renderButtons();
+            if (['x','y','w','h'].includes(key)) { 
+                if (!this.selectedGroup.coords) this.selectedGroup.coords = {}; 
+                this.selectedGroup.coords[key] = val; 
+            } else { 
+                this.selectedGroup[key] = val; 
+            }
+            this.renderer.renderLayout();
             this.updateCodePreview();
         };
         const inputs = ['group-id', 'group-title', 'group-description', 'group-x', 'group-y', 'group-w', 'group-h'];
         inputs.forEach(id => {
-            const el = document.getElementById(id); if (!el) return;
-            const key = id.split('-').pop(); const realKey = (id === 'group-description') ? 'description' : key; const isNum = ['x','y','w','h'].includes(key);
+            const el = document.getElementById(id); 
+            if (!el) return;
+            const key = id.split('-').pop(); 
+            const realKey = (id === 'group-description') ? 'description' : key; 
+            const isNum = ['x','y','w','h'].includes(key);
             el.addEventListener('input', (e) => update(realKey, e.target.value, isNum));
         });
     }
@@ -1013,51 +1441,145 @@ export class CYOAEditor {
         const choiceJson = document.getElementById('edit-raw-json');
         if (choiceJson) {
             choiceJson.addEventListener('change', (e) => {
-                try { const data = JSON.parse(e.target.value); if (this.selectedItem) { Object.assign(this.selectedItem, data); this.renderer.renderButtons(); this.updateChoiceInputs(); this.ruleBuilder.loadItem(this.selectedItem, this.selectedGroup); } } catch(err) { console.error("JSON Error", err); }
+                try { 
+                    const data = JSON.parse(e.target.value); 
+                    if (this.selectedItem) { 
+                        Object.assign(this.selectedItem, data); 
+                        this.engine.buildMaps();
+                        this.renderer.renderLayout(); 
+                        this.updateChoiceInputs(); 
+                        this.ruleBuilder.loadItem(this.selectedItem, this.selectedGroup); 
+                    } 
+                } catch(err) { 
+                    console.error("JSON Error", err); 
+                }
             });
         }
         const rulesJson = document.getElementById('group-rules-json');
         if (rulesJson) {
             rulesJson.addEventListener('change', (e) => {
-                try { const data = JSON.parse(e.target.value); if (this.selectedGroup) { this.selectedGroup.rules = data; this.renderer.renderButtons(); this.engine.recalculate(); } } catch(err) { console.error("Rules JSON Error", err); }
+                try { 
+                    const data = JSON.parse(e.target.value); 
+                    if (this.selectedGroup) { 
+                        this.selectedGroup.rules = data; 
+                        this.renderer.renderLayout(); 
+                        this.engine.recalculate(); 
+                    } 
+                } catch(err) { 
+                    console.error("Rules JSON Error", err); 
+                }
             });
         }
     }
 
+    // ==================== ADD / DELETE ====================
+
     deleteSelectedItem() {
-        if (!this.selectedItem) return; if (!confirm('Delete item?')) return;
-        const group = this.engine.findGroupForItem(this.selectedItem.id);
-        if (group) { const idx = group.items.indexOf(this.selectedItem); if (idx > -1) group.items.splice(idx, 1); }
-        this.deselectChoice(); this.renderer.renderButtons();
+        if (!this.selectedItem) return; 
+        if (!confirm('Delete item?')) return;
+        
+        const parent = this.findItemParent(this.selectedItem.id);
+        if (parent) {
+            parent.array.splice(parent.index, 1);
+            this.engine.buildMaps();
+        }
+        
+        this.deselectChoice(); 
+        this.renderer.renderLayout();
     }
+    
     addNewItem() {
-        let group = this.selectedGroup || this.engine.config.groups[0]; if (!group) return;
-        const newItem = { id: `item_${Date.now()}`, title: 'New Item', description: '', coords: { x: 50, y: 50, w: 200, h: 100 }, cost: [] };
-        group.items.push(newItem); this.renderer.renderButtons();
-        setTimeout(() => { const el = document.getElementById(`btn-${newItem.id}`); if (el) this.selectChoice(newItem, el); }, 50);
+        const page = this.getCurrentPage();
+        if (!page) {
+            alert('No page available. Please add an image first.');
+            return;
+        }
+        
+        const newItem = { 
+            type: 'item',
+            id: `item_${Date.now()}`, 
+            title: 'New Item', 
+            description: '', 
+            coords: { x: 50, y: 50, w: 200, h: 100 }, 
+            cost: [] 
+        };
+        
+        if (this.selectedGroup) {
+            if (!this.selectedGroup.items) this.selectedGroup.items = [];
+            this.selectedGroup.items.push(newItem);
+        } else {
+            page.layout.push(newItem);
+        }
+        
+        this.engine.buildMaps();
+        this.renderer.renderLayout();
+        
+        setTimeout(() => { 
+            const el = document.getElementById(`btn-${newItem.id}`); 
+            if (el) this.selectChoice(newItem, el); 
+        }, 50);
     }
+    
     addNewGroup() {
-        const newGroup = { id: `group_${Date.now()}`, title: 'New Group', description: '', page: 0, coords: { x: 50, y: 50, w: 300, h: 200 }, items: [] };
-        this.engine.config.groups.push(newGroup); this.renderer.renderButtons();
-        setTimeout(() => { const el = document.getElementById(`group-${newGroup.id}`); if (el) this.selectGroup(newGroup); }, 50);
+        const page = this.getCurrentPage();
+        if (!page) {
+            alert('No page available. Please add an image first.');
+            return;
+        }
+        
+        const newGroup = { 
+            type: 'group',
+            id: `group_${Date.now()}`, 
+            title: 'New Group', 
+            description: '', 
+            coords: { x: 50, y: 50, w: 300, h: 200 }, 
+            items: [] 
+        };
+        
+        page.layout.push(newGroup);
+        
+        this.engine.buildMaps();
+        this.renderer.renderLayout();
+        
+        setTimeout(() => { 
+            const el = document.getElementById(`group-${newGroup.id}`); 
+            if (el) this.selectGroup(newGroup); 
+        }, 50);
     }
+    
     deleteSelectedGroup() {
         if (!this.selectedGroup) return;
-        if (this.selectedGroup.items && this.selectedGroup.items.length > 0) { if (!confirm(`Group has ${this.selectedGroup.items.length} items. Delete group and ALL items?`)) return; } 
-        else { if (!confirm('Delete this group?')) return; }
-        const idx = this.engine.config.groups.indexOf(this.selectedGroup); if (idx > -1) { this.engine.config.groups.splice(idx, 1); }
-        this.selectedGroup = null; document.querySelectorAll('.info-zone.editor-selected').forEach(el => el.classList.remove('editor-selected'));
-        document.getElementById('group-props').style.display = 'none'; document.getElementById('group-empty-state').style.display = 'block';
-        this.renderer.renderButtons();
+        
+        const itemCount = this.selectedGroup.items?.length || 0;
+        if (itemCount > 0) { 
+            if (!confirm(`Group has ${itemCount} items. Delete group and ALL items?`)) return; 
+        } else { 
+            if (!confirm('Delete this group?')) return; 
+        }
+        
+        const parent = this.findGroupParent(this.selectedGroup.id);
+        if (parent) {
+            parent.array.splice(parent.index, 1);
+            this.engine.buildMaps();
+        }
+        
+        this.selectedGroup = null; 
+        document.querySelectorAll('.info-zone.editor-selected').forEach(el => el.classList.remove('editor-selected'));
+        document.getElementById('group-props').style.display = 'none'; 
+        document.getElementById('group-empty-state').style.display = 'block';
+        this.renderer.renderLayout();
     }
 
+    // ==================== EXPORT ====================
+
     exportConfig() {
+        this.sortAllLayouts();
         ProjectStorage.save(this.engine.config);
     }
 
-    // UPDATED EXPORT ZIP FUNCTION
     async exportZip() {
         try {
+            this.sortAllLayouts();
             await ProjectStorage.saveZip(this.engine.config);
         } catch (e) {
             alert(e.message);

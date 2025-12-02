@@ -56,7 +56,7 @@ export class TooltipManager {
 
     updateContent(item, group) {
         const isDebug = document.body.classList.contains('debug-mode') || document.body.classList.contains('edit-mode-active');
-        let html = `<h4>${item.title}</h4>`;
+        let html = `<h4>${item.title || item.id}</h4>`;
 
         // 1. Tags
         if (item.tags && item.tags.length > 0) {
@@ -85,7 +85,7 @@ export class TooltipManager {
         if (isDebug) {
             html += `<div class="debug-info">
                 ID: ${item.id}<br>
-                Group: ${group.id}<br>
+                Group: ${group ? group.id : '(standalone)'}<br>
                 Coords: [${item.coords?.x}, ${item.coords?.y}, ${item.coords?.w}, ${item.coords?.h}]
             </div>`;
         }
@@ -111,7 +111,8 @@ export class TooltipManager {
 
             switch (eff.type) {
                 case 'modify_group_limit':
-                    const group = this.engine.config.groups.find(g => g.id === eff.group_id);
+                    // Changed: use findGroup() instead of config.groups.find()
+                    const group = this.engine.findGroup(eff.group_id);
                     const gName = group ? (group.title || eff.group_id) : eff.group_id;
                     const val = eff.value > 0 ? `+${eff.value}` : eff.value;
                     text = `Allows <b>${val}</b> more choices in <i>${gName}</i>`;
@@ -141,7 +142,6 @@ export class TooltipManager {
                     break;
 
                 case 'roll_dice':
-                    // Check if already rolled
                     const current = this.engine.state.rollResults.get(item.id);
                     const range = `${eff.min || 1}-${eff.max || 6}`;
                     if (current !== undefined) {
@@ -198,8 +198,9 @@ export class TooltipManager {
             });
         }
 
+        // Changed: add null check for group
         const isSelected = this.engine.state.selected.has(item.id);
-        if (!isSelected && group.rules?.max_choices) {
+        if (!isSelected && group && group.rules?.max_choices) {
             const currentCount = this.engine.getSelectedInGroup(group).length;
             if (currentCount >= group.rules.max_choices) {
                 reqsHtml += `<span class="req-item fail">⛔ Max choices reached (${group.rules.max_choices})</span>`;

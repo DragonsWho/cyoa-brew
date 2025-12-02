@@ -13,7 +13,6 @@ export class EffectProcessor {
     applyAll() {
         this.engine.restoreDefaults();
 
-        // Iterate over selected items and apply their effects
         for (const [itemId, qty] of this.engine.state.selected) {
             const item = this.engine.findItem(itemId);
             if (!item || !item.effects) continue;
@@ -43,7 +42,6 @@ export class EffectProcessor {
                 this.applyModifyCost(effect, qty);
                 break;
             
-            // NEW: Roll Dice Logic (Applying the result)
             case 'roll_dice':
                 this.applyRollDice(effect, sourceItem, qty);
                 break;
@@ -56,7 +54,8 @@ export class EffectProcessor {
     // ==================== HANDLERS ====================
 
     applyGroupLimitMod(effect, qty) {
-        const group = this.engine.config.groups.find(g => g.id === effect.group_id);
+        // Changed: use findGroup() instead of config.groups.find()
+        const group = this.engine.findGroup(effect.group_id);
         if (!group || !group.rules) return;
 
         let value = effect.value || 0;
@@ -98,21 +97,13 @@ export class EffectProcessor {
         }
     }
 
-    // NEW: Apply the pre-rolled value to the currency
     applyRollDice(effect, sourceItem, qty) {
         if (!effect.currency) return;
         
-        // Retrieve the frozen result from state
         const rolledValue = this.engine.state.rollResults.get(sourceItem.id);
         
-        // If (for some reason) it wasn't rolled yet, we skip adding (should have happened in engine.select)
         if (rolledValue !== undefined) {
             if (this.engine.state.currencies[effect.currency] !== undefined) {
-                // If quantity > 1, do we multiply the result?
-                // Usually random rolls are "Unique", but if allowed multiple, 
-                // currently logic uses ONE roll for all copies. 
-                // To support multiple separate rolls, state structure would need to change.
-                // Assuming multiply for now.
                 this.engine.state.currencies[effect.currency] += (rolledValue * qty);
             }
         }

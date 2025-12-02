@@ -1,5 +1,7 @@
 /**
  * UI Renderer - Handles all visual rendering
+ * 
+ * Architecture v2: Renders from config.pages[].layout[]
  */
 
 import { CoordHelper } from '../utils/coords.js';
@@ -11,15 +13,13 @@ export class UIRenderer {
         this.pageDimensions = [];
         this.tooltip = new TooltipManager(engine);
 
-        // Listen to engine events
         this.engine.on('selection', () => this.updateUI());
         this.engine.on('recalculate', () => this.updateUI());
         this.engine.on('reset', () => this.updateUI());
         
-        // Listen for Full Reload (Load Project)
         this.engine.on('config_loaded', () => {
-             console.log('🔄 Renderer: Config loaded, rebuilding UI...');
-             this.renderAll();
+            console.log('🔄 Renderer: Config loaded, rebuilding UI...');
+            this.renderAll();
         });
 
         console.log('🎨 Renderer initialized');
@@ -29,7 +29,7 @@ export class UIRenderer {
 
     async renderAll() {
         await this.renderPages();
-        this.renderButtons();
+        this.renderLayout();
         this.renderPointsBar();
         console.log('✅ All elements rendered');
     }
@@ -41,22 +41,23 @@ export class UIRenderer {
         wrapper.innerHTML = '';
         this.pageDimensions = [];
 
-        const pages = this.engine.config.meta?.pages || [];
+        const pages = this.engine.config.pages || [];
         
         if (pages.length === 0) {
             console.warn('No pages defined in config');
             return;
         }
 
-        const loadPromises = pages.map((src, index) => {
+        const loadPromises = pages.map((page, index) => {
             return new Promise((resolve) => {
                 const container = document.createElement('div');
                 container.className = 'page-container';
                 container.id = `page-${index}`;
+                container.dataset.pageId = page.id;
 
                 const img = document.createElement('img');
                 img.className = 'page-image';
-                img.src = src;
+                img.src = page.image;
                 img.alt = `Page ${index + 1}`;
 
                 const layer = document.createElement('div');
@@ -76,6 +77,7 @@ export class UIRenderer {
                 };
 
                 img.onerror = () => {
+                    console.warn(`Failed to load image for page ${index}`);
                     this.pageDimensions[index] = { w: 1920, h: 1080 };
                     resolve();
                 };
@@ -85,86 +87,79 @@ export class UIRenderer {
         await Promise.all(loadPromises);
     }
 
-    // ==================== BUTTONS ====================
+    // ==================== LAYOUT RENDERING ====================
 
-    renderButtons() { 
-        const pages = this.engine.config.meta?.pages || [];
+    renderLayout() {
+        const pages = this.engine.config.pages || [];
+        
+        // Clear all layers first
         pages.forEach((_, index) => {
             const layer = document.getElementById(`layer-${index}`);
-            if (layer) layer.innerHTML = '';  
+            if (layer) layer.innerHTML = '';
         });
 
-        const groups = this.engine.config.groups || [];
-
-        groups.forEach(group => {
-            const pageIndex = group.page !== undefined ? group.page : 0;
+        // Render each page's layout
+        pages.forEach((page, pageIndex) => {
             const layer = document.getElementById(`layer-${pageIndex}`);
+            const dim = this.pageDimensions[pageIndex];
             
-            if (!layer || !this.pageDimensions[pageIndex]) return;
+            if (!layer || !dim) return;
 
-            // Budget badge
-            if (group.rules?.budget && group.coords) {
-                this.renderBudgetBadge(group, layer, this.pageDimensions[pageIndex]);
-            }
-
-            // Group info zone
-            if (group.coords) {
-                this.renderGroupZone(group, layer, this.pageDimensions[pageIndex]);
-            }
-
-            // Items
-            if (group.items) {
-                group.items.forEach(item => {
-                    if (item.coords) {
-                        this.renderItemButton(item, group, layer, this.pageDimensions[pageIndex]);
-                    }
-                });
+            const layout = page.layout || [];
+            
+            for (const element of layout) {
+                if (element.type === 'group') {
+                    this.renderGroup(element, layer, dim);
+                } else if (element.type === 'item') {
+                    // Standalone item (not in a group)
+                    this.renderItem(element, null, layer, dim);
+                }
             }
         });
         
-        this.updateButtons();
+        this.updateUI();
     }
 
-    renderBudgetBadge(group, layer, dim) {
-        const badge = document.createElement('div');
-        badge.className = 'group-budget-badge';
-        badge.id = `budget-${group.id}`;
+    renderGroup(group, layer, dim) {
+        // Render group zone (info box)
+        if (group.coords) {
+            const zone = document.createElement('div');
+            zone.className = 'click-zone info-zone';
+            zone.id = `group-${group.id}`;
+            zone.dataset.groupId = group.id;
 
-        const style = CoordHelper.toPercent(group.coords, dim);
-        const leftVal = parseFloat(style.left);
-        const widthVal = parseFloat(style.width);
-        const topVal = parseFloat(style.top);
+            Object.assign(zone.style, CoordHelper.toPercent(group.coords, dim));
 
-        badge.style.left = (leftVal + widthVal / 2) + '%';
-        badge.style.top = topVal + '%';
+            if (group.title || group.description) {
+                zone.appendChild(this.createTextLayer(
+                    group.title || '',
+                    group.description || ''
+                ));
+            }
 
-        layer.appendChild(badge);
-        this.updateBudgetBadge(group);
-    }
+            layer.appendChild(zone);
 
-    renderGroupZone(group, layer, dim) {
-        const zone = document.createElement('div');
-        zone.className = 'click-zone info-zone';
-        zone.id = `group-${group.id}`;
-
-        Object.assign(zone.style, CoordHelper.toPercent(group.coords, dim));
-
-        if (group.title || group.description) {
-            zone.appendChild(this.createTextLayer(
-                group.title || '',
-                group.description || ''
-            ));
+            // Budget badge
+            if (group.rules?.budget) {
+                this.renderBudgetBadge(group, layer, dim);
+            }
         }
 
-        layer.appendChild(zone);
+        // Render items inside group
+        const items = group.items || [];
+        for (const item of items) {
+            this.renderItem(item, group, layer, dim);
+        }
     }
 
-    renderItemButton(item, group, layer, dim) {
+    renderItem(item, group, layer, dim) {
+        if (!item.coords) return;
+
         const button = document.createElement('div');
         button.className = 'click-zone item-zone';
         button.id = `btn-${item.id}`;
         button.dataset.itemId = item.id;
-        button.dataset.groupId = group.id;
+        button.dataset.groupId = group ? group.id : '';
 
         Object.assign(button.style, CoordHelper.toPercent(item.coords, dim));
 
@@ -217,6 +212,23 @@ export class UIRenderer {
         layer.appendChild(button);
     }
 
+    renderBudgetBadge(group, layer, dim) {
+        const badge = document.createElement('div');
+        badge.className = 'group-budget-badge';
+        badge.id = `budget-${group.id}`;
+
+        const style = CoordHelper.toPercent(group.coords, dim);
+        const leftVal = parseFloat(style.left);
+        const widthVal = parseFloat(style.width);
+        const topVal = parseFloat(style.top);
+
+        badge.style.left = (leftVal + widthVal / 2) + '%';
+        badge.style.top = topVal + '%';
+
+        layer.appendChild(badge);
+        this.updateBudgetBadge(group);
+    }
+
     createTextLayer(title, description) {
         const div = document.createElement('div');
         div.className = 'text-content';
@@ -256,12 +268,11 @@ export class UIRenderer {
     updateButtons() {
         document.querySelectorAll('.item-zone').forEach(el => {
             const itemId = el.dataset.itemId;
-            const groupId = el.dataset.groupId;
 
             const item = this.engine.findItem(itemId);
             const group = this.engine.findGroupForItem(itemId);
 
-            if (!item || !group) return;
+            if (!item) return;
 
             const qty = this.engine.state.selected.get(itemId) || 0;
             const isSelected = qty > 0;
@@ -281,7 +292,7 @@ export class UIRenderer {
                 el.classList.toggle('disabled', !canSelect && !isSelected);
             }
 
-            // === ROULETTE LOGIC ===
+            // Roulette logic
             const hasDiceEffect = item.effects && item.effects.some(e => e.type === 'roll_dice');
             
             if (hasDiceEffect) {
@@ -290,15 +301,12 @@ export class UIRenderer {
                 const isSpinning = el.classList.contains('spinning-active');
 
                 if (isSelected && rolledValue !== undefined) {
-                    // Only animate if it's the FIRST time (no badge, no spin flag, and we haven't marked it done)
                     if (!el.dataset.hasAnimated && !isSpinning && !currentBadge) {
                         this.playRouletteAnimation(el, rolledValue, item);
                     } else if (el.dataset.hasAnimated && !currentBadge && !isSpinning) {
-                        // Restore badge instantly if animation already happened in history
-                        this.showPermanentBadge(el, rolledValue, true); // true = instant
+                        this.showPermanentBadge(el, rolledValue, true);
                     }
                 } else {
-                    // Deselected: cleanup
                     const mask = el.querySelector('.roulette-mask');
                     if (mask) mask.remove();
                     if (currentBadge) currentBadge.remove();
@@ -313,32 +321,26 @@ export class UIRenderer {
         if (container.classList.contains('spinning-active')) return;
         container.classList.add('spinning-active');
 
-        // 1. Создание DOM
         const mask = document.createElement('div');
         mask.className = 'roulette-mask';
         const strip = document.createElement('div');
         strip.className = 'roulette-strip';
         
-        // 2. Расчет размеров
         const containerHeight = container.offsetHeight;
-        // Высота цифры = 65% от карточки. Это позволяет видеть кусочки соседей.
         const itemHeight = Math.floor(containerHeight * 0.65); 
-        // Смещение, чтобы цифра встала ровно по центру маски
         const maskOffset = (containerHeight - itemHeight) / 2;
 
-        // 3. Генерация чисел
         const diceEffect = item.effects.find(e => e.type === 'roll_dice');
         const min = parseInt(diceEffect?.min) || 1;
         const max = parseInt(diceEffect?.max) || 20;
 
-        const totalItems = 30 + Math.floor(Math.random() * 15); // Не слишком длинная лента
+        const totalItems = 30 + Math.floor(Math.random() * 15);
         const numbers = [];
         for (let i = 0; i < totalItems; i++) {
             numbers.push(Math.floor(Math.random() * (max - min + 1)) + min);
         }
         
-        // Целевая цифра в конце
-        const targetIndex = totalItems - 3; // Оставляем 2 цифры "запаса" снизу
+        const targetIndex = totalItems - 3;
         numbers[targetIndex] = targetNumber;
 
         strip.innerHTML = numbers.map(n => 
@@ -348,7 +350,6 @@ export class UIRenderer {
         mask.appendChild(strip);
         container.appendChild(mask);
 
-        // 4. БИБЛИОТЕКА ПРОФИЛЕЙ (БЕЗ ОТСКОКОВ НАЗАД)
         const spinProfiles = [
             { name: 'standard', duration: 2000, bezier: 'cubic-bezier(0.1, 0.7, 0.1, 1)', type: 'direct' },
             { name: 'slam', duration: 1500, bezier: 'cubic-bezier(0.5, 0.0, 0.1, 1)', type: 'direct' },
@@ -359,9 +360,7 @@ export class UIRenderer {
         ];
 
         const profile = spinProfiles[Math.floor(Math.random() * spinProfiles.length)];
-        // console.log(`🎰 Spin: ${profile.name}`);
 
-        // 5. Логика координат
         const baseTargetY = -1 * (targetIndex * itemHeight) + maskOffset;
         let initialY = baseTargetY;
         
@@ -369,12 +368,10 @@ export class UIRenderer {
             initialY = baseTargetY + (itemHeight * profile.offsetPercent);
         }
 
-        // 6. Запуск
-        strip.offsetHeight; // Reflow
+        strip.offsetHeight;
         strip.style.transition = `transform ${profile.duration}ms ${profile.bezier}`;
         strip.style.transform = `translateY(${initialY}px)`;
 
-        // Функция финала
         const finalize = () => {
             const winnerEl = strip.querySelectorAll('.roulette-item')[targetIndex];
             if(winnerEl) winnerEl.classList.add('winner');
@@ -413,7 +410,7 @@ export class UIRenderer {
             badge.classList.add('spawn-anim');
             container.appendChild(badge);
             requestAnimationFrame(() => {
-                 badge.classList.remove('spawn-anim');
+                badge.classList.remove('spawn-anim');
             });
         } else {
             container.appendChild(badge);
@@ -433,7 +430,7 @@ export class UIRenderer {
 
     updateBudgets() {
         for (const groupId in this.engine.state.budgets) {
-            const group = this.engine.config.groups.find(g => g.id === groupId);
+            const group = this.engine.findGroup(groupId);
             if (group) {
                 this.updateBudgetBadge(group);
             }
@@ -455,5 +452,12 @@ export class UIRenderer {
         const budget = group.rules.budget;
         badge.textContent = `${budget.name || budget.currency}: ${remaining}/${total}`;
         badge.classList.toggle('empty', remaining === 0);
+    }
+
+    // ==================== LEGACY COMPATIBILITY ====================
+    // These methods are called by editor.js - keeping them for now
+
+    renderButtons() {
+        this.renderLayout();
     }
 }
