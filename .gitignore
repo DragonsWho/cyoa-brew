@@ -5,3 +5,6 @@ pack_code.py
 full_project_code.txt
 .env
 /node_modules
+dist
+
+Readme1.md

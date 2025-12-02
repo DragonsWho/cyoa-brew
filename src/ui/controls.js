@@ -2,13 +2,14 @@
  * Control Panel - Handles UI controls (buttons, settings)
  */
 
-import { CYOAEditor } from './editor.js';
+// УДАЛИЛИ импорт редактора отсюда:
+// import { CYOAEditor } from './editor.js'; 
 
 export class ControlPanel {
     constructor(engine, renderer) {
         this.engine = engine;
         this.renderer = renderer;
-        this.editor = new CYOAEditor(engine, renderer);
+        this.editor = null; // Редактор пока не создан
 
         this.setupControls();
         console.log('🎮 Controls initialized');
@@ -23,9 +24,10 @@ export class ControlPanel {
             textBtn.addEventListener('click', () => this.toggleText());
         }
 
-        // Edit/Debug toggle (Renamed)
+        // Edit/Debug toggle
         const editBtn = document.getElementById('edit-toggle');
         if (editBtn) {
+            // Теперь функция асинхронная (async)
             editBtn.addEventListener('click', () => this.toggleEditMode());
         }
 
@@ -46,21 +48,53 @@ export class ControlPanel {
         }
     }
 
-    toggleEditMode() {
-        // Toggle the main edit class
+    async toggleEditMode() {
+        const btn = document.getElementById('edit-toggle');
+        
+        // 1. ЛЕНИВАЯ ЗАГРУЗКА (Lazy Load)
+        if (!this.editor) {
+            if (btn) {
+                btn.textContent = "⏳ Loading...";
+                btn.disabled = true;
+            }
+
+            try {
+                console.log('📦 Downloading Editor module...');
+                // ВОТ ОНА, МАГИЯ: Браузер скачает editor.js и все его тяжелые библиотеки 
+                // (Gradio, JSZip) только в этот момент!
+                const module = await import('./editor.js');
+                
+                const CYOAEditor = module.CYOAEditor;
+                this.editor = new CYOAEditor(this.engine, this.renderer);
+                
+                console.log('📦 Editor module loaded!');
+            } catch (e) {
+                console.error("Failed to load editor:", e);
+                alert("Could not load editor module.");
+                if (btn) {
+                    btn.textContent = "✏️ Edit";
+                    btn.disabled = false;
+                }
+                return;
+            } finally {
+                if (btn) {
+                    btn.textContent = "✏️ Edit";
+                    btn.disabled = false;
+                }
+            }
+        }
+
+        // 2. Обычная логика переключения
         document.body.classList.toggle('edit-mode-active');
         
-        const btn = document.getElementById('edit-toggle');
         if (btn) {
             btn.classList.toggle('active');
         }
 
         const isActive = document.body.classList.contains('edit-mode-active');
         
-        // Enable/disable editor logic
         if (isActive) {
             this.editor.enable();
-            // Also enable visual debug borders for items by default
             document.body.classList.add('show-zones'); 
         } else {
             this.editor.disable();

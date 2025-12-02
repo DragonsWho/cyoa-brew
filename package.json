@@ -25,6 +25,7 @@
   },
   "homepage": "https://github.com/DragonsWho/cyoabrew#readme",
   "devDependencies": {
+    "terser": "^5.44.1",
     "vite": "^7.2.6"
   },
   "dependencies": {
