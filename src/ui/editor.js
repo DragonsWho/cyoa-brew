@@ -2,7 +2,7 @@
  * CYOA Editor - Visual editing mode
  * 
  * Architecture v2: Works with config.pages[].layout[]
- * Features: Auto-grouping by coordinates, auto-sorting
+ * Features: Auto-grouping by coordinates, auto-sorting, Center-screen spawn, Context Menu
  */
 
 import { CoordHelper } from '../utils/coords.js';
@@ -35,6 +35,9 @@ export class CYOAEditor {
         this.initialRect = {};
         this.handleSize = 15; // Increased slightly for easier grabbing
         this.dragContext = null;
+        
+        // Context Menu State
+        this.contextMenuContext = null; // Stores { x, y, pageIndex } of right click
         
         this.enabled = false;
         this.triggerLabelCheck = null;
@@ -71,6 +74,10 @@ Return ONLY valid JSON, no explanations.`
         this.enabled = false;
         const sidebar = document.getElementById('editor-sidebar');
         if (sidebar) sidebar.remove();
+        
+        const ctxMenu = document.getElementById('editor-context-menu');
+        if (ctxMenu) ctxMenu.remove();
+
         this.removeEventListeners();
         document.querySelectorAll('.item-zone, .info-zone').forEach(el => {
             el.classList.remove('editable', 'editor-selected');
@@ -330,11 +337,62 @@ Return ONLY valid JSON, no explanations.`
         return null;
     }
 
+    // ==================== HELPER: Smart Coordinates (Center or Mouse) ====================
+
+    /**
+     * Calculates the best coordinates for a new item/group.
+     * If mouseEvent is provided (Context Menu), uses mouse position.
+     * If not (Button click), uses the center of the current viewport projected onto the page.
+     */
+    getSmartCoords(objWidth, objHeight, mouseEvent = null) {
+        const pageIndex = this.activePageIndex;
+        const pageEl = document.getElementById(`page-${pageIndex}`);
+        
+        if (!pageEl) return { x: 0, y: 0 }; // Fallback
+        
+        const rect = pageEl.getBoundingClientRect(); // Position relative to viewport
+        const imgDim = this.renderer.pageDimensions[pageIndex];
+        
+        if (!imgDim) return { x: 50, y: 50 }; // Fallback if image not loaded yet
+
+        let clientX, clientY;
+
+        if (mouseEvent) {
+            // Use specific mouse coordinates
+            clientX = mouseEvent.x;
+            clientY = mouseEvent.y;
+        } else {
+            // Use center of the visible window
+            clientX = window.innerWidth / 2;
+            clientY = window.innerHeight / 2;
+        }
+
+        // Calculate position relative to the top-left of the page image
+        const relX = clientX - rect.left;
+        const relY = clientY - rect.top;
+
+        // Calculate scaling factor (Internal Image Pixels / CSS Pixels)
+        const scaleX = imgDim.w / rect.width;
+        const scaleY = imgDim.h / rect.height;
+
+        // Convert to internal coordinate system
+        // Center the object on the point
+        let finalX = (relX * scaleX) - (objWidth / 2);
+        let finalY = (relY * scaleY) - (objHeight / 2);
+
+        // Constrain to page boundaries
+        finalX = Math.max(0, Math.min(finalX, imgDim.w - objWidth));
+        finalY = Math.max(0, Math.min(finalY, imgDim.h - objHeight));
+
+        return { x: Math.round(finalX), y: Math.round(finalY) };
+    }
+
     // ==================== CREATE UI ====================
 
     createEditorUI() {
         if (document.getElementById('editor-sidebar')) return;
         
+        // 1. Sidebar
         const sidebar = document.createElement('div');
         sidebar.id = 'editor-sidebar';
         sidebar.className = 'editor-sidebar';
@@ -344,7 +402,6 @@ Return ONLY valid JSON, no explanations.`
         fileInput.id = 'load-config-input';
         fileInput.accept = '.json';
         fileInput.style.display = 'none';
-        
         sidebar.appendChild(fileInput);
 
         const pageImageInput = document.createElement('input');
@@ -352,7 +409,6 @@ Return ONLY valid JSON, no explanations.`
         pageImageInput.id = 'add-page-image-input';
         pageImageInput.accept = 'image/*';
         pageImageInput.style.display = 'none';
-        
         sidebar.appendChild(pageImageInput);
 
         sidebar.innerHTML += `
@@ -368,6 +424,7 @@ Return ONLY valid JSON, no explanations.`
                 <div id="tab-content-choice" class="tab-content" style="display:none;">
                     <div id="choice-empty-state" class="info-text">
                         <p>Select an item on the page to edit, or add a new one.</p>
+                        <p style="font-size:0.8rem; color:#666;">Tip: Right-click on the page to add items quickly.</p>
                     </div>
 
                     <div id="choice-props" style="display:none;">
@@ -435,7 +492,7 @@ Return ONLY valid JSON, no explanations.`
                     </div>
                     
                     <div class="editor-section editor-actions-fixed">
-                        <button class="action-btn btn-add full-width-btn" onclick="CYOA.editor.addNewItem()">➕ Add New Item</button>
+                        <button class="action-btn btn-add full-width-btn" onclick="CYOA.editor.addNewItem()">➕ Add New Item (Center)</button>
                     </div>
                 </div>
 
@@ -489,10 +546,11 @@ Return ONLY valid JSON, no explanations.`
                     </div>
                     
                     <div class="editor-section editor-actions-fixed">
-                        <button class="action-btn btn-add full-width-btn" onclick="CYOA.editor.addNewGroup()">➕ Add New Group</button>
+                        <button class="action-btn btn-add full-width-btn" onclick="CYOA.editor.addNewGroup()">➕ Add New Group (Center)</button>
                     </div>
                 </div>
 
+                <!-- Settings Tab (omitted internal content for brevity, same as before) -->
                 <div id="tab-content-settings" class="tab-content" style="display:none;">
                     <div class="editor-section">
                         <div class="accordion-header" onclick="CYOA.editor.toggleAccordion(this)">
@@ -583,6 +641,7 @@ Return ONLY valid JSON, no explanations.`
                             🤖 Auto-Detect (SAM3)
                         </div>
                         <div class="accordion-content collapsed">
+                            <!-- SAM UI Content -->
                             <div style="margin-bottom:10px; border:1px solid #333; border-radius:4px;">
                                 <div style="padding:5px 10px; background:#222; font-size:0.8rem; cursor:pointer;" onclick="this.nextElementSibling.style.display = this.nextElementSibling.style.display==='none'?'block':'none'">
                                     ❓ How to get HF Token (Free)
@@ -628,9 +687,9 @@ Return ONLY valid JSON, no explanations.`
                         </div>
                     </div>
                 </div>
-
             </div>
 
+            <!-- LLM Preview Modal (Same) -->
             <div id="llm-preview-modal" class="modal-overlay" style="display:none;">
                 <div class="modal-content">
                     <h3>🔍 Review Changes</h3>
@@ -646,6 +705,19 @@ Return ONLY valid JSON, no explanations.`
             </div>
         `;
         
+        // 2. Context Menu (Hidden by default)
+        const contextMenu = document.createElement('div');
+        contextMenu.id = 'editor-context-menu';
+        contextMenu.className = 'custom-context-menu';
+        contextMenu.style.display = 'none';
+        contextMenu.innerHTML = `
+            <div class="menu-item" onclick="CYOA.editor.handleContextAction('add-item')">➕ Add Item Here</div>
+            <div class="menu-item" onclick="CYOA.editor.handleContextAction('add-group')">📂 Add Group Here</div>
+            <div class="menu-divider"></div>
+            <div class="menu-item" onclick="CYOA.editor.handleContextAction('auto-detect')">🚀 Auto-Detect (SAM)</div>
+        `;
+        document.body.appendChild(contextMenu);
+
         document.body.appendChild(sidebar);
         this.ruleBuilder.renderUI(document.getElementById('rule-builder-container'));
         
@@ -657,6 +729,7 @@ Return ONLY valid JSON, no explanations.`
         this.setupLlmListeners(); 
         this.setupLoadListener();
         this.setupAddPageListener();
+        this.setupContextMenu(); // Attach context menu logic
         
         this.renderPagesList();
     }
@@ -1195,7 +1268,67 @@ Return ONLY valid JSON, no explanations.`
         btn.style.opacity = 1;
     }
 
-    // ==================== EVENT LISTENERS ====================
+    // ==================== CONTEXT MENU & EVENTS ====================
+
+    setupContextMenu() {
+        const menu = document.getElementById('editor-context-menu');
+        
+        // Listen for right clicks on document
+        document.addEventListener('contextmenu', (e) => {
+            if (!this.enabled) return;
+            
+            // Allow default context menu on text inputs (copy/paste)
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+            
+            // Only show context menu if clicked on a page or item/group
+            if (!e.target.closest('.page-container')) return;
+
+            e.preventDefault();
+            
+            // Store context
+            const pageContainer = e.target.closest('.page-container');
+            let pageIndex = this.activePageIndex;
+            if (pageContainer) {
+                 pageIndex = parseInt(pageContainer.id.replace('page-', '')) || 0;
+            }
+            
+            this.activePageIndex = pageIndex; // Switch to that page context
+            this.contextMenuContext = {
+                x: e.clientX,
+                y: e.clientY
+            };
+
+            // Position Menu
+            menu.style.left = `${e.clientX}px`;
+            menu.style.top = `${e.clientY}px`;
+            menu.style.display = 'block';
+        });
+
+        // Close menu on normal click
+        document.addEventListener('click', (e) => {
+            if (menu.style.display === 'block') {
+                menu.style.display = 'none';
+            }
+        });
+    }
+
+    handleContextAction(action) {
+        if (!this.contextMenuContext) return;
+        
+        if (action === 'add-item') {
+            this.switchTab('choice');
+            this.addNewItem(this.contextMenuContext);
+        } else if (action === 'add-group') {
+            this.switchTab('group');
+            this.addNewGroup(this.contextMenuContext);
+        } else if (action === 'auto-detect') {
+            this.switchTab('settings');
+            const samHeader = document.querySelector("#tab-content-settings .accordion-header:nth-of-type(3)");
+            if (samHeader && samHeader.classList.contains('collapsed')) {
+                this.toggleAccordion(samHeader);
+            }
+        }
+    }
 
     attachEventListeners() {
         document.addEventListener('mousedown', this.handleMouseDown.bind(this));
@@ -1210,6 +1343,7 @@ Return ONLY valid JSON, no explanations.`
         if (!this.enabled) return;
         if (e.target.closest('#editor-sidebar')) return;
         if (e.target.closest('.modal-content')) return;
+        if (e.target.closest('#editor-context-menu')) return;
 
         let target = null;
         let objectToEdit = null;
@@ -1640,23 +1774,31 @@ Return ONLY valid JSON, no explanations.`
         this.renderPagesList(); // Update counts
     }
     
-    addNewItem() {
+    // Accepts optional coords (e.g. from context menu)
+    addNewItem(coordsFromContext = null) {
         const page = this.getCurrentPage();
         if (!page) {
             alert('No page available. Please add a page image first via Settings tab.');
             return;
         }
         
+        const defaultW = 200;
+        const defaultH = 100;
+        
+        // Use smart coordinates logic
+        const smartCoords = this.getSmartCoords(defaultW, defaultH, coordsFromContext);
+
         const newItem = { 
             type: 'item',
             id: `item_${Date.now()}`, 
             title: 'New Item', 
             description: '', 
-            coords: { x: 50, y: 50, w: 200, h: 100 }, 
+            coords: { x: smartCoords.x, y: smartCoords.y, w: defaultW, h: defaultH }, 
             cost: [] 
         };
         
-        if (this.selectedGroup && this.activeTab === 'group') {
+        // If adding via button (coordsFromContext is null), check if selectedGroup is active
+        if (!coordsFromContext && this.selectedGroup && this.activeTab === 'group') {
             if (!this.selectedGroup.items) this.selectedGroup.items = [];
             this.selectedGroup.items.push(newItem);
         } else {
@@ -1674,19 +1816,26 @@ Return ONLY valid JSON, no explanations.`
         }, 50);
     }
     
-    addNewGroup() {
+    // Accepts optional coords (e.g. from context menu)
+    addNewGroup(coordsFromContext = null) {
         const page = this.getCurrentPage();
         if (!page) {
             alert('No page available. Please add a page image first via Settings tab.');
             return;
         }
         
+        const defaultW = 300;
+        const defaultH = 200;
+
+        // Use smart coordinates logic
+        const smartCoords = this.getSmartCoords(defaultW, defaultH, coordsFromContext);
+
         const newGroup = { 
             type: 'group',
             id: `group_${Date.now()}`, 
             title: 'New Group', 
             description: '', 
-            coords: { x: 50, y: 50, w: 300, h: 200 }, 
+            coords: { x: smartCoords.x, y: smartCoords.y, w: defaultW, h: defaultH }, 
             items: [] 
         };
         
