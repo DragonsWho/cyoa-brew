@@ -2,9 +2,6 @@
  * Control Panel - Handles UI controls (buttons, settings)
  */
 
-// УДАЛИЛИ импорт редактора отсюда:
-// import { CYOAEditor } from './editor.js'; 
-
 export class ControlPanel {
     constructor(engine, renderer) {
         this.engine = engine;
@@ -31,11 +28,7 @@ export class ControlPanel {
             editBtn.addEventListener('click', () => this.toggleEditMode());
         }
 
-        // Reset
-        const resetBtn = document.getElementById('reset-btn');
-        if (resetBtn) {
-            resetBtn.addEventListener('click', () => this.reset());
-        }
+        // Reset button removed
     }
 
     // ==================== ACTIONS ====================
@@ -54,8 +47,10 @@ export class ControlPanel {
         // 1. ЛЕНИВАЯ ЗАГРУЗКА (Lazy Load)
         if (!this.editor) {
             if (btn) {
-                btn.textContent = "⏳ Loading...";
+                // Не меняем textContent, чтобы не затереть SVG иконку
+                btn.style.cursor = "wait"; 
                 btn.disabled = true;
+                btn.style.opacity = "0.5";
             }
 
             try {
@@ -72,14 +67,16 @@ export class ControlPanel {
                 console.error("Failed to load editor:", e);
                 alert("Could not load editor module.");
                 if (btn) {
-                    btn.textContent = "✏️ Edit";
+                    btn.style.cursor = "";
                     btn.disabled = false;
+                    btn.style.opacity = "";
                 }
                 return;
             } finally {
                 if (btn) {
-                    btn.textContent = "✏️ Edit";
+                    btn.style.cursor = "";
                     btn.disabled = false;
+                    btn.style.opacity = "";
                 }
             }
         }
@@ -104,12 +101,5 @@ export class ControlPanel {
         }
         
         console.log(isActive ? '✏️ Edit mode ON' : '✏️ Edit mode OFF');
-    }
-
-    reset() {
-        if (confirm('Reset all selections?')) {
-            this.engine.reset();
-            console.log('🔄 Reset complete');
-        }
     }
 }

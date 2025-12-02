@@ -8,11 +8,49 @@ body { margin: 0; padding: 0 0 120px 0; background: #1a1a1a; color: #eee; font-f
 #loading { transition: opacity 0.3s; }
 #loading.hidden { opacity: 0; pointer-events: none; }
 
-/* === TOP CONTROLS === */
-.top-controls { position: fixed; top: 10px; right: 10px; z-index: 3000; display: flex; gap: 10px; }
-.ctrl-btn { background: #333; color: #fff; border: 1px solid #555; padding: 8px 15px; cursor: pointer; border-radius: 4px; transition: all 0.2s; opacity: 0.85; font-weight: bold; }
-.ctrl-btn:hover { opacity: 1; background: #444; transform: translateY(-1px); }
-.ctrl-btn.active { background: #0066cc; border-color: #0088ff; opacity: 1; }
+/* === CONTROLS (Updated: Bottom Left Icons) === */
+.bottom-tools { 
+    position: fixed; 
+    bottom: 0; 
+    left: 0; 
+    z-index: 2500; /* Higher than points-bar (2000) */ 
+    display: flex; 
+    gap: 5px; 
+    padding: 10px 15px;
+    height: 60px; /* Aligns with points-bar height roughly */
+    align-items: center;
+}
+
+.ctrl-btn { 
+    background: transparent; 
+    color: #666; /* Simple gray */
+    border: none; 
+    padding: 8px; 
+    cursor: pointer; 
+    border-radius: 50%; 
+    transition: all 0.2s; 
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.ctrl-btn svg {
+    width: 24px;
+    height: 24px;
+    fill: currentColor;
+}
+
+.ctrl-btn:hover { 
+    color: #eee; 
+    background: rgba(255,255,255,0.1); 
+    transform: translateY(-1px); 
+}
+
+.ctrl-btn.active { 
+    color: #4CAF50; /* Green highlight when active */
+    background: rgba(76, 175, 80, 0.1);
+    opacity: 1; 
+}
 
 /* === GAME WRAPPER & PAGE === */
 #game-wrapper { position: relative; max-width: 100%; margin: 0 auto; display: flex; flex-direction: column; align-items: center; }
@@ -277,4 +315,4 @@ body.edit-mode-active #game-wrapper { margin-right: 340px; transition: margin-ri
 
 /* === MOBILE === */
 @media (max-width: 1200px) { .editor-sidebar { width: 100%; max-width: 340px; } body.edit-mode-active #game-wrapper { margin-right: 0; } }
-@media (max-width: 768px) { .top-controls { top: 5px; right: 5px; gap: 5px; } .ctrl-btn { padding: 6px 10px; font-size: 12px; } #points-bar { gap: 20px; padding: 10px; } }
+@media (max-width: 768px) { .bottom-tools { gap: 0; padding: 10px 5px; } .ctrl-btn { padding: 6px; } #points-bar { gap: 20px; padding: 10px; } }
