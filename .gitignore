@@ -8,5 +8,8 @@ full_project_code.txt
 dist
 
 Readme1.md
-!! full_project_code.txt 
+!!_full_project_code.txt
 !!_pack_code.py
+git rm --cached !!_pack_code.py
+git rm --cached "!!_full_project_code.txt"
+
