@@ -1,15 +1,12 @@
+# Вспомогательные файлы — НЕ заливать в репозиторий!
+!!_pack_code.py
+!!_full_project_code.txt
+
+# Остальное как было
 /notes
 /old
 todo
-pack_code.py
-full_project_code.txt
 .env
 /node_modules
 dist
-
 Readme1.md
-!!_full_project_code.txt
-!!_pack_code.py
-git rm --cached !!_pack_code.py
-git rm --cached "!!_full_project_code.txt"
-
