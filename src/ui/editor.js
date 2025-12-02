@@ -30,9 +30,10 @@ export class CYOAEditor {
 
         this.isDragging = false;
         this.isResizing = false;
+        this.resizeMode = null; // 'tl', 'tr', 'bl', 'br'
         this.dragStart = { x: 0, y: 0 };
         this.initialRect = {};
-        this.handleSize = 10;
+        this.handleSize = 15; // Increased slightly for easier grabbing
         this.dragContext = null;
         
         this.enabled = false;
@@ -100,7 +101,6 @@ Return ONLY valid JSON, no explanations.`
         for (const element of page.layout) {
             if (element.type === 'group') {
                 groups++;
-                // Count items inside the group
                 items += element.items?.length || 0;
             } else if (element.type === 'item') {
                 items++;
@@ -222,12 +222,9 @@ Return ONLY valid JSON, no explanations.`
         const currentParent = this.findItemParent(item.id);
         const currentGroup = currentParent?.group || null;
         
-        // Find which group (if any) the item center is now inside
         const targetGroup = this.findGroupAtPoint(center, page);
 
-        // If group changed, move the item
         if (targetGroup !== currentGroup) {
-            // Don't move item into itself (if it's somehow a group)
             if (targetGroup && targetGroup.id === item.id) return;
             
             this.moveItemToGroup(item, targetGroup, page);
@@ -241,7 +238,6 @@ Return ONLY valid JSON, no explanations.`
         const page = this.getPageByIndex(pageIndex);
         if (!page) return;
 
-        // Check all standalone items in layout - should they move into this group?
         const itemsToMove = [];
         for (const element of page.layout) {
             if (element.type === 'item') {
@@ -252,7 +248,6 @@ Return ONLY valid JSON, no explanations.`
             }
         }
 
-        // Check items inside this group - should they move out?
         const itemsToRemove = [];
         if (group.items) {
             for (const item of group.items) {
@@ -263,12 +258,10 @@ Return ONLY valid JSON, no explanations.`
             }
         }
 
-        // Move items into group
         for (const item of itemsToMove) {
             this.moveItemToGroup(item, group, page);
         }
 
-        // Move items out of group
         for (const item of itemsToRemove) {
             this.moveItemToGroup(item, null, page);
         }
@@ -304,8 +297,6 @@ Return ONLY valid JSON, no explanations.`
         }
     }
 
-    // ==================== HELPER: Sort current page ====================
-    
     sortCurrentPageLayout() {
         const page = this.getCurrentPage();
         if (page) {
@@ -313,14 +304,30 @@ Return ONLY valid JSON, no explanations.`
         }
     }
 
-    // ==================== HELPER: Sort all pages ====================
-    
     sortAllLayouts() {
         const pages = this.engine.config.pages || [];
         for (const page of pages) {
             this.sortLayoutByCoords(page.layout);
         }
         console.log('📐 Layouts sorted by coordinates');
+    }
+
+    // ==================== HELPER: Resize Detection ====================
+
+    getResizeHandle(x, y, rect) {
+        const hs = this.handleSize;
+        const dist = (x1, y1, x2, y2) => Math.sqrt((x2-x1)**2 + (y2-y1)**2);
+
+        // Top-Left
+        if (dist(x, y, rect.left, rect.top) < hs) return 'tl';
+        // Top-Right
+        if (dist(x, y, rect.right, rect.top) < hs) return 'tr';
+        // Bottom-Left
+        if (dist(x, y, rect.left, rect.bottom) < hs) return 'bl';
+        // Bottom-Right
+        if (dist(x, y, rect.right, rect.bottom) < hs) return 'br';
+
+        return null;
     }
 
     // ==================== CREATE UI ====================
@@ -340,7 +347,6 @@ Return ONLY valid JSON, no explanations.`
         
         sidebar.appendChild(fileInput);
 
-        // File input for adding pages
         const pageImageInput = document.createElement('input');
         pageImageInput.type = 'file';
         pageImageInput.id = 'add-page-image-input';
@@ -359,7 +365,6 @@ Return ONLY valid JSON, no explanations.`
             
             <div class="sidebar-scroll-content">
                 
-                <!-- TAB 1: CHOICE -->
                 <div id="tab-content-choice" class="tab-content" style="display:none;">
                     <div id="choice-empty-state" class="info-text">
                         <p>Select an item on the page to edit, or add a new one.</p>
@@ -429,13 +434,11 @@ Return ONLY valid JSON, no explanations.`
                         </div>
                     </div>
                     
-                    <!-- Always visible add button -->
                     <div class="editor-section editor-actions-fixed">
                         <button class="action-btn btn-add full-width-btn" onclick="CYOA.editor.addNewItem()">➕ Add New Item</button>
                     </div>
                 </div>
 
-                <!-- TAB 2: GROUP -->
                 <div id="tab-content-group" class="tab-content" style="display:none;">
                     <div id="group-empty-state" class="info-text">
                         <p>Select a group (Info Box) on the page to edit, or create a new one.</p>
@@ -485,16 +488,12 @@ Return ONLY valid JSON, no explanations.`
                         </div>
                     </div>
                     
-                    <!-- Always visible add button -->
                     <div class="editor-section editor-actions-fixed">
                         <button class="action-btn btn-add full-width-btn" onclick="CYOA.editor.addNewGroup()">➕ Add New Group</button>
                     </div>
                 </div>
 
-                <!-- TAB 3: SETTINGS -->
                 <div id="tab-content-settings" class="tab-content" style="display:none;">
-                    
-                    <!-- Page Management -->
                     <div class="editor-section">
                         <div class="accordion-header" onclick="CYOA.editor.toggleAccordion(this)">
                             📄 Pages
@@ -507,7 +506,6 @@ Return ONLY valid JSON, no explanations.`
                         </div>
                     </div>
                     
-                    <!-- File Operations -->
                     <div class="editor-section">
                         <div class="accordion-header" onclick="CYOA.editor.toggleAccordion(this)">
                             💾 File Operations
@@ -528,7 +526,6 @@ Return ONLY valid JSON, no explanations.`
                         </div>
                     </div>
 
-                    <!-- LLM REFINEMENT -->
                     <div class="editor-section">
                          <div class="accordion-header collapsed" onclick="CYOA.editor.toggleAccordion(this)">
                             🧠 AI Smart Refine
@@ -570,7 +567,6 @@ Return ONLY valid JSON, no explanations.`
                             <button id="btn-run-llm" class="full-width-btn primary-btn" style="margin-top:15px; background: linear-gradient(45deg, #9C27B0, #673AB7);">
                                 ✨ Refine Coordinates
                             </button>
-                            <!-- MANUAL MODE UI -->
                             <div id="llm-manual-ui" style="display:none; margin-top:15px; border-top:1px dashed #444; padding-top:10px;">
                                 <div style="font-size:0.8rem; color:#aaa; margin-bottom:5px;">1. Copy Prompt</div>
                                 <textarea id="llm-manual-out" class="code-editor" style="height:80px;" readonly></textarea>
@@ -582,7 +578,6 @@ Return ONLY valid JSON, no explanations.`
                         </div>
                     </div>
 
-                    <!-- SAM3 DETECTOR -->
                     <div class="editor-section">
                         <div class="accordion-header collapsed" onclick="CYOA.editor.toggleAccordion(this)">
                             🤖 Auto-Detect (SAM3)
@@ -636,7 +631,6 @@ Return ONLY valid JSON, no explanations.`
 
             </div>
 
-            <!-- LLM PREVIEW MODAL -->
             <div id="llm-preview-modal" class="modal-overlay" style="display:none;">
                 <div class="modal-content">
                     <h3>🔍 Review Changes</h3>
@@ -668,6 +662,7 @@ Return ONLY valid JSON, no explanations.`
     }
 
     // ==================== PAGE MANAGEMENT ====================
+    // (Same as before)
 
     renderPagesList() {
         const container = document.getElementById('pages-list');
@@ -714,7 +709,6 @@ Return ONLY valid JSON, no explanations.`
         this.deselectChoice();
         this.selectedGroup = null;
         
-        // Update group tab if active
         if (this.activeTab === 'group') {
             document.getElementById('group-props').style.display = 'none';
             document.getElementById('group-empty-state').style.display = 'block';
@@ -760,12 +754,10 @@ Return ONLY valid JSON, no explanations.`
             reader.onload = (evt) => {
                 const dataUrl = evt.target.result;
                 
-                // Initialize pages array if needed
                 if (!this.engine.config.pages) {
                     this.engine.config.pages = [];
                 }
                 
-                // Create new page
                 const newPageIndex = this.engine.config.pages.length;
                 const newPage = {
                     id: `page_${newPageIndex}`,
@@ -776,7 +768,6 @@ Return ONLY valid JSON, no explanations.`
                 this.engine.config.pages.push(newPage);
                 this.activePageIndex = newPageIndex;
                 
-                // Ensure points exist
                 if (!this.engine.config.points || this.engine.config.points.length === 0) {
                     this.engine.config.points = [{ id: "points", name: "Points", start: 0 }];
                 }
@@ -791,7 +782,7 @@ Return ONLY valid JSON, no explanations.`
             };
             reader.readAsDataURL(file);
             
-            input.value = ''; // Reset for next upload
+            input.value = ''; 
         });
     }
 
@@ -873,8 +864,9 @@ Return ONLY valid JSON, no explanations.`
         content.classList.toggle('collapsed');
     }
 
-    // ==================== LLM LOGIC ====================
-
+    // ==================== LLM & SAM LOGIC (Same as before) ====================
+    // ... (Code omitted for brevity, identical to previous) ...
+    
     setupLlmListeners() {
         const providerSel = document.getElementById('llm-provider');
         const baseUrlGroup = document.getElementById('llm-base-url-group');
@@ -1019,9 +1011,7 @@ Return ONLY valid JSON, no explanations.`
 
         try {
             const jsonObj = JSON.parse(jsonStr);
-            
             if (!jsonObj.pages) throw new Error("Missing 'pages' array in response");
-
             document.getElementById('llm-result-json').value = JSON.stringify(jsonObj, null, 2);
             document.getElementById('llm-preview-modal').style.display = 'flex';
         } catch (e) {
@@ -1034,7 +1024,6 @@ Return ONLY valid JSON, no explanations.`
         try {
             const raw = document.getElementById('llm-result-json').value;
             const newConfig = JSON.parse(raw);
-            
             const currentPages = this.engine.config.pages || [];
             if (newConfig.pages) {
                 newConfig.pages.forEach((page, idx) => {
@@ -1043,9 +1032,7 @@ Return ONLY valid JSON, no explanations.`
                     }
                 });
             }
-
             if (!newConfig.meta) newConfig.meta = this.engine.config.meta;
-
             this.engine.config.pages = newConfig.pages;
             if (newConfig.points) this.engine.config.points = newConfig.points;
 
@@ -1059,7 +1046,6 @@ Return ONLY valid JSON, no explanations.`
             
             document.getElementById('llm-preview-modal').style.display = 'none';
             alert("Changes applied successfully!");
-            
         } catch (e) {
             alert(`Error applying changes: ${e.message}`);
         }
@@ -1070,8 +1056,6 @@ Return ONLY valid JSON, no explanations.`
         el.select();
         document.execCommand('copy');
     }
-
-    // ==================== SAM DETECTION ====================
 
     setupLabelAutoHiding() {
         const checkCollision = (input) => {
@@ -1116,7 +1100,6 @@ Return ONLY valid JSON, no explanations.`
 
     setupSamListeners() {
         const runBtn = document.getElementById('btn-run-sam');
-
         if (runBtn) {
             runBtn.addEventListener('click', () => this.runSamDetection());
         }
@@ -1177,7 +1160,6 @@ Return ONLY valid JSON, no explanations.`
             if (accHeader && accHeader.classList.contains('collapsed')) CYOA.editor.toggleAccordion(accHeader);
         };
 
-        // Convert data URL to File for SAM
         const response = await fetch(page.image);
         const blob = await response.blob();
         const file = new File([blob], "page.png", { type: blob.type });
@@ -1203,7 +1185,7 @@ Return ONLY valid JSON, no explanations.`
             this.renderer.renderLayout();
             
             statusEl.textContent = `Done! Added ${detectedItems.length} items.`;
-            this.renderPagesList(); // Update counts
+            this.renderPagesList();
             this.switchTab('choice');
         } else {
             statusEl.textContent = "No items found.";
@@ -1266,13 +1248,18 @@ Return ONLY valid JSON, no explanations.`
         }
         
         if (objectToEdit && target) {
-            target.classList.add('dragging');
             const rect = target.getBoundingClientRect();
-            if (e.clientX >= rect.right - this.handleSize && e.clientY >= rect.bottom - this.handleSize) { 
-                this.isResizing = true; 
-            } else { 
-                this.isDragging = true; 
+            
+            // Check for corner resize
+            this.resizeMode = this.getResizeHandle(e.clientX, e.clientY, rect);
+            
+            if (this.resizeMode) {
+                this.isResizing = true;
+            } else {
+                this.isDragging = true;
             }
+            
+            target.classList.add('dragging');
             this.dragStart = { x: e.clientX, y: e.clientY };
             if (!objectToEdit.coords) objectToEdit.coords = {x:0,y:0,w:100,h:100};
             this.initialRect = { ...objectToEdit.coords };
@@ -1300,7 +1287,7 @@ Return ONLY valid JSON, no explanations.`
         
         const dx = e.clientX - this.dragStart.x;
         const dy = e.clientY - this.dragStart.y;
-        const { scaleX, scaleY, dim, targetObj, pageIndex } = this.dragContext;
+        const { scaleX, scaleY, dim, targetObj } = this.dragContext;
         
         if (this.isDragging) {
             let newX = Math.round(this.initialRect.x + dx * scaleX);
@@ -1316,18 +1303,60 @@ Return ONLY valid JSON, no explanations.`
             
             targetObj.coords.x = newX;
             targetObj.coords.y = newY;
-        } else if (this.isResizing) {
-            let newW = Math.max(20, Math.round(this.initialRect.w + dx * scaleX));
-            let newH = Math.max(20, Math.round(this.initialRect.h + dy * scaleY));
-            
-            // Constrain resize within page boundaries
-            if (dim) {
-                if (targetObj.coords.x + newW > dim.w) newW = dim.w - targetObj.coords.x;
-                if (targetObj.coords.y + newH > dim.h) newH = dim.h - targetObj.coords.y;
+        } 
+        else if (this.isResizing && this.resizeMode) {
+            const deltaX = dx * scaleX;
+            const deltaY = dy * scaleY;
+            const start = this.initialRect;
+            const minSize = 20;
+
+            let newX = start.x;
+            let newY = start.y;
+            let newW = start.w;
+            let newH = start.h;
+
+            // Handle X / Width based on corner
+            if (this.resizeMode.includes('l')) { // Left side (tl, bl)
+                // If dragging left, w increases. If dragging right, w decreases.
+                // We must change X position and Width together.
+                newW = Math.max(minSize, start.w - deltaX);
+                newX = start.x + (start.w - newW); 
+                
+                // Clamp Left Edge to 0
+                if (newX < 0) {
+                    newX = 0;
+                    newW = (start.x + start.w); // Keep right edge constant
+                }
+            } else { // Right side (tr, br)
+                newW = Math.max(minSize, start.w + deltaX);
+                // Clamp Right Edge to page width
+                if (newX + newW > dim.w) {
+                    newW = dim.w - newX;
+                }
             }
-            
-            targetObj.coords.w = newW;
-            targetObj.coords.h = newH;
+
+            // Handle Y / Height based on corner
+            if (this.resizeMode.includes('t')) { // Top side (tl, tr)
+                newH = Math.max(minSize, start.h - deltaY);
+                newY = start.y + (start.h - newH);
+
+                // Clamp Top Edge to 0
+                if (newY < 0) {
+                    newY = 0;
+                    newH = (start.y + start.h); // Keep bottom edge constant
+                }
+            } else { // Bottom side (bl, br)
+                newH = Math.max(minSize, start.h + deltaY);
+                // Clamp Bottom Edge to page height
+                if (newY + newH > dim.h) {
+                    newH = dim.h - newY;
+                }
+            }
+
+            targetObj.coords.x = Math.round(newX);
+            targetObj.coords.y = Math.round(newY);
+            targetObj.coords.w = Math.round(newW);
+            targetObj.coords.h = Math.round(newH);
         }
         
         let domId = targetObj.type === 'group' ? `group-${targetObj.id}` : `btn-${targetObj.id}`;
@@ -1346,34 +1375,35 @@ Return ONLY valid JSON, no explanations.`
             const { targetObj, pageIndex, isGroup } = this.dragContext;
             
             if (isGroup) {
-                // Group was moved/resized - check if items should move in/out
                 this.updateGroupMemberships(targetObj, pageIndex);
             } else {
-                // Item was moved - check if it should change groups
                 this.updateItemGrouping(targetObj, pageIndex);
             }
             
-            // Sort layout after any drag operation
             const page = this.getPageByIndex(pageIndex);
             if (page) {
                 this.sortLayoutByCoords(page.layout);
             }
             
-            // Re-render to reflect changes
             this.renderer.renderLayout();
-            
-            // Update page list to show correct counts
             this.renderPagesList();
             
-            // Update UI to show new group assignment
             if (!isGroup && this.selectedItem) {
                 this.updateChoiceInputs();
+            }
+            // Restore selection highlight manually since renderLayout clears it
+            if(isGroup) {
+                this.selectGroup(targetObj);
+            } else {
+                const el = document.getElementById(`btn-${targetObj.id}`);
+                this.selectChoice(targetObj, el);
             }
         }
         
         document.querySelectorAll('.dragging').forEach(el => el.classList.remove('dragging'));
         this.isDragging = false; 
         this.isResizing = false; 
+        this.resizeMode = null;
         this.dragContext = null;
     }
 
@@ -1395,7 +1425,11 @@ Return ONLY valid JSON, no explanations.`
     selectChoice(item, element) {
         this.selectedItem = item;
         document.querySelectorAll('.editor-selected').forEach(el => el.classList.remove('editor-selected'));
-        if(element) element.classList.add('editor-selected');
+        if(element) {
+            element.classList.add('editor-selected');
+            // Set attribute for CSS Notch content
+            element.setAttribute('data-editor-title', item.title || item.id);
+        }
         document.getElementById('choice-empty-state').style.display = 'none';
         document.getElementById('choice-props').style.display = 'block';
         this.updateChoiceInputs();
@@ -1413,7 +1447,11 @@ Return ONLY valid JSON, no explanations.`
         this.selectedGroup = group;
         document.querySelectorAll('.info-zone.editor-selected').forEach(el => el.classList.remove('editor-selected'));
         const el = document.getElementById(`group-${group.id}`);
-        if(el) el.classList.add('editor-selected');
+        if(el) {
+            el.classList.add('editor-selected');
+            // Set attribute for CSS Notch content
+            el.setAttribute('data-editor-title', group.title || group.id);
+        }
         document.getElementById('group-empty-state').style.display = 'none';
         document.getElementById('group-props').style.display = 'block';
         this.updateGroupInputs();
@@ -1434,6 +1472,11 @@ Return ONLY valid JSON, no explanations.`
         ['x','y','w','h'].forEach(k => { 
             document.getElementById(`edit-${k}`).value = Math.round(item.coords?.[k] || 0); 
         });
+        
+        // Update DOM title if changed
+        const el = document.getElementById(`btn-${item.id}`);
+        if(el) el.setAttribute('data-editor-title', item.title || item.id);
+
         this.updateCodePreview();
         if (this.triggerLabelCheck) this.triggerLabelCheck();
     }
@@ -1447,6 +1490,11 @@ Return ONLY valid JSON, no explanations.`
         ['x','y','w','h'].forEach(k => { 
             document.getElementById(`group-${k}`).value = Math.round(g.coords?.[k] || 0); 
         });
+
+        // Update DOM title if changed
+        const el = document.getElementById(`group-${g.id}`);
+        if(el) el.setAttribute('data-editor-title', g.title || g.id);
+
         this.updateCodePreview();
         if (this.triggerLabelCheck) this.triggerLabelCheck();
     }
@@ -1481,10 +1529,16 @@ Return ONLY valid JSON, no explanations.`
                 this.renderer.renderLayout();
                 setTimeout(() => { 
                     const el = document.getElementById(`btn-${this.selectedItem.id}`); 
-                    if (el) el.classList.add('editor-selected'); 
+                    if (el) this.selectChoice(this.selectedItem, el); // Re-select to keep highlighting
                 }, 0);
             } else { 
                 this.renderer.renderLayout(); 
+                // Re-apply attributes after render
+                const el = document.getElementById(`btn-${this.selectedItem.id}`);
+                if(el) {
+                    el.classList.add('editor-selected');
+                    el.setAttribute('data-editor-title', this.selectedItem.title || this.selectedItem.id);
+                }
             }
             this.updateCodePreview();
         };
@@ -1510,6 +1564,11 @@ Return ONLY valid JSON, no explanations.`
                 this.selectedGroup[key] = val; 
             }
             this.renderer.renderLayout();
+            const el = document.getElementById(`group-${this.selectedGroup.id}`);
+            if(el) {
+                el.classList.add('editor-selected');
+                el.setAttribute('data-editor-title', this.selectedGroup.title || this.selectedGroup.id);
+            }
             this.updateCodePreview();
         };
         const inputs = ['group-id', 'group-title', 'group-description', 'group-x', 'group-y', 'group-w', 'group-h'];
@@ -1535,6 +1594,9 @@ Return ONLY valid JSON, no explanations.`
                         this.renderer.renderLayout(); 
                         this.updateChoiceInputs(); 
                         this.ruleBuilder.loadItem(this.selectedItem, this.selectedGroup); 
+                        
+                        const el = document.getElementById(`btn-${this.selectedItem.id}`);
+                        if(el) this.selectChoice(this.selectedItem, el);
                     } 
                 } catch(err) { 
                     console.error("JSON Error", err); 
@@ -1550,6 +1612,9 @@ Return ONLY valid JSON, no explanations.`
                         this.selectedGroup.rules = data; 
                         this.renderer.renderLayout(); 
                         this.engine.recalculate(); 
+                        
+                        const el = document.getElementById(`group-${this.selectedGroup.id}`);
+                        if(el) this.selectGroup(this.selectedGroup);
                     } 
                 } catch(err) { 
                     console.error("Rules JSON Error", err); 
@@ -1591,7 +1656,6 @@ Return ONLY valid JSON, no explanations.`
             cost: [] 
         };
         
-        // If a group is selected in Group tab, add to that group
         if (this.selectedGroup && this.activeTab === 'group') {
             if (!this.selectedGroup.items) this.selectedGroup.items = [];
             this.selectedGroup.items.push(newItem);
@@ -1601,9 +1665,8 @@ Return ONLY valid JSON, no explanations.`
         
         this.engine.buildMaps();
         this.renderer.renderLayout();
-        this.renderPagesList(); // Update counts
+        this.renderPagesList();
         
-        // Switch to choice tab and select new item
         this.switchTab('choice');
         setTimeout(() => { 
             const el = document.getElementById(`btn-${newItem.id}`); 
@@ -1631,7 +1694,7 @@ Return ONLY valid JSON, no explanations.`
         
         this.engine.buildMaps();
         this.renderer.renderLayout();
-        this.renderPagesList(); // Update counts
+        this.renderPagesList();
         
         setTimeout(() => { 
             const el = document.getElementById(`group-${newGroup.id}`); 
@@ -1660,7 +1723,7 @@ Return ONLY valid JSON, no explanations.`
         document.getElementById('group-props').style.display = 'none'; 
         document.getElementById('group-empty-state').style.display = 'block';
         this.renderer.renderLayout();
-        this.renderPagesList(); // Update counts
+        this.renderPagesList();
     }
 
     // ==================== EXPORT ====================
