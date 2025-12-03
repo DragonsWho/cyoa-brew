@@ -579,6 +579,7 @@ export const EditorIntegrationsMixin = {
         const tokenInput = document.getElementById('sam-token');
         const promptInput = document.getElementById('sam-prompt');
         const shaveInput = document.getElementById('sam-shave');
+        const confInput = document.getElementById('sam-confidence');
         const debugIdxInput = document.getElementById('sam-debug-index');
         const statusEl = document.getElementById('sam-status');
         const galleryEl = document.getElementById('sam-debug-gallery');
@@ -642,7 +643,8 @@ export const EditorIntegrationsMixin = {
                 promptInput.value,
                 parseFloat(shaveInput.value),
                 tokenInput.value,
-                debugIdx
+                debugIdx,
+                parseFloat(confInput.value)
             );
 
             if (detectedItems.length > 0) {

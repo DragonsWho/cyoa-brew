@@ -279,9 +279,11 @@ export const EditorUIMixin = {
                                 <div style="font-size:0.7rem; color:#888; margin-bottom:8px;">
                                     1. Copy the prompt below<br>
                                     2. Paste into your LLM (ChatGPT, Claude, etc.)<br>
-                                    3. If image required, upload it manually<br>
+                                    3. <strong>Upload the page image (use button below)</strong><br>
                                     4. Paste the JSON response back here
                                 </div>
+                                <button id="btn-copy-debug-img" class="full-width-btn" style="background: #e65100; margin-bottom:8px; font-size:0.8rem;" onclick="CYOA.editor.copyDebugImageToClipboard()">📸 Copy Layout Image (For LLM)</button>
+                                
                                 <textarea id="llm-manual-out" class="code-editor" style="height:80px; font-size:0.7rem;" readonly></textarea>
                                 <button class="full-width-btn" onclick="CYOA.editor.copyManualPrompt()" style="margin:6px 0; font-size:0.8rem;">📋 Copy Prompt</button>
                                 
@@ -304,6 +306,10 @@ export const EditorUIMixin = {
                             <div style="margin-top:10px;">
                                 <div style="display:flex; justify-content:space-between; font-size:0.8rem; color:#888;"><span>Shave (Tightness)</span><span id="shave-val">2.0%</span></div>
                                 <input type="range" id="sam-shave" min="0.005" max="0.05" step="0.005" value="0.02" style="width:100%;" oninput="document.getElementById('shave-val').textContent = (this.value*100).toFixed(1)+'%'">
+                            </div>
+                            <div style="margin-top:10px;">
+                                <div style="display:flex; justify-content:space-between; font-size:0.8rem; color:#888;"><span>Confidence</span><span id="conf-val">0.3</span></div>
+                                <input type="range" id="sam-confidence" min="0.05" max="1.0" step="0.05" value="0.3" style="width:100%;" oninput="document.getElementById('conf-val').textContent = this.value">
                             </div>
                              <div class="input-group" style="margin-top:10px;"><input type="number" id="sam-debug-index" placeholder="None"><span class="input-label">Debug Item Index (Optional)</span></div>
                             <button id="btn-run-sam" class="full-width-btn primary-btn" style="margin-top:15px; background: linear-gradient(45deg, #4b6cb7, #182848);">🚀 Run Auto-Detect on Current Page</button>

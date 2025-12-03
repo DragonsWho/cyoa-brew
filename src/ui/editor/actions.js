@@ -539,6 +539,140 @@ export const EditorActionsMixin = {
         this.renderPagesList();
     },
 
+    // ==================== VISUAL HELPERS (LLM SUPPORT) ====================
+    
+    async copyDebugImageToClipboard() {
+        const page = this.getCurrentPage();
+        if (!page || !page.image) {
+            alert("No image on this page.");
+            return;
+        }
+
+        const btn = document.getElementById('btn-copy-debug-img');
+        if(btn) { 
+            btn.disabled = true; 
+            btn.textContent = "⏳ Generating..."; 
+            btn.style.opacity = "0.7";
+        }
+
+        try {
+            // 1. Load Image
+            const img = new Image();
+            img.crossOrigin = "Anonymous";
+            await new Promise((resolve, reject) => {
+                img.onload = resolve;
+                img.onerror = reject;
+                img.src = page.image;
+            });
+
+            // 2. Setup Canvas
+            const canvas = document.createElement('canvas');
+            canvas.width = img.naturalWidth;
+            canvas.height = img.naturalHeight;
+            const ctx = canvas.getContext('2d');
+
+            // 3. Draw Original Image
+            ctx.drawImage(img, 0, 0);
+
+            // 4. Calculate Font Size
+            const fontSize = Math.max(16, Math.min(48, Math.floor(canvas.width / 60)));
+            const lineWidth = Math.max(3, Math.floor(fontSize / 5));
+
+            // 5. Helper to draw boxes
+            const drawBox = (obj, isGroup) => {
+                if (!obj.coords) return;
+                
+                // Convert coords to pixels
+                const c = CoordHelper.toPixels(obj.coords, { w: canvas.width, h: canvas.height });
+
+                // Draw Rect
+                ctx.lineWidth = lineWidth;
+                ctx.strokeStyle = isGroup ? '#FFD700' : '#00FF00'; // Gold for Group, Green for Item
+                ctx.strokeRect(c.x, c.y, c.w, c.h);
+
+                // Draw Label
+                ctx.font = `bold ${fontSize}px sans-serif`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'top'; // Draw text INSIDE the box (downwards from top edge)
+                
+                let text = obj.id;
+                if (isGroup) text = `[Group] ${text}`;
+                
+                // Truncate overly long IDs
+                if (text.length > 30) text = text.substring(0, 27) + '...';
+
+                const tx = c.x + c.w / 2;
+                const ty = c.y + lineWidth + 5; // Padding from top border inside
+
+                // Black stroke (halo)
+                ctx.lineJoin = 'round';
+                ctx.lineWidth = lineWidth + 2;
+                ctx.strokeStyle = '#000000';
+                ctx.strokeText(text, tx, ty);
+                
+                // White/Gold fill
+                ctx.fillStyle = isGroup ? '#FFD700' : '#FFFFFF';
+                ctx.fillText(text, tx, ty);
+            };
+
+            // 6. Flatten layout for drawing
+            const groupsToDraw = [];
+            const itemsToDraw = [];
+
+            const traverse = (list) => {
+                list.forEach(el => {
+                    if (el.type === 'group') {
+                        groupsToDraw.push(el);
+                        if (el.items) traverse(el.items);
+                    } else {
+                        itemsToDraw.push(el);
+                    }
+                });
+            };
+            traverse(page.layout);
+
+            groupsToDraw.forEach(g => drawBox(g, true));
+            itemsToDraw.forEach(i => drawBox(i, false));
+
+            // 7. Copy to Clipboard
+            canvas.toBlob(async (blob) => {
+                if (!blob) {
+                    throw new Error("Canvas failed to blob");
+                }
+                try {
+                    const item = new ClipboardItem({ "image/png": blob });
+                    await navigator.clipboard.write([item]);
+                    
+                    if(btn) { 
+                        btn.textContent = "✅ Copied!"; 
+                        setTimeout(() => {
+                            btn.disabled = false;
+                            btn.textContent = "📸 Copy Layout Image (For LLM)";
+                            btn.style.opacity = "1";
+                        }, 2000);
+                    }
+                } catch (err) {
+                    console.error("Clipboard Error:", err);
+                    alert("Failed to copy image to clipboard. See console for details.\nNote: This feature requires a secure context (HTTPS or localhost).");
+                    if(btn) { 
+                        btn.disabled = false; 
+                        btn.textContent = "📸 Copy Layout Image (For LLM)";
+                        btn.style.opacity = "1";
+                    }
+                }
+            }, 'image/png');
+
+        } catch (e) {
+            console.error("Image Gen Error:", e);
+            alert("Error generating debug image: " + e.message);
+            if(btn) { 
+                btn.disabled = false; 
+                btn.textContent = "📸 Copy Layout Image (For LLM)";
+                btn.style.opacity = "1";
+            }
+        }
+    },
+
     // ==================== EXPORT ====================
     exportConfig() {
         this.sortAllLayouts();
