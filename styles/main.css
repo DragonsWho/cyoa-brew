@@ -120,10 +120,15 @@ body.text-mode .text-content { display: block; pointer-events: auto; }
 
 /* === EDIT MODE VISUALS === */
 
-/* Base debug style (Using background-color to allow gradients on top) */
+body.editor-interacting .click-zone,
+body.editor-interacting .info-zone {
+    transition: none !important;
+}
+
+/* Base debug style */
 body.show-zones .click-zone { 
     border: 2px solid rgba(255,0,0,0.5) !important; 
-    background-color: rgba(255,0,0,0.05) !important; /* Changed from background shorthand */
+    background-color: rgba(255,0,0,0.05) !important;
     border-radius: 0 !important; 
     box-shadow: none !important; 
 }
@@ -135,6 +140,9 @@ body.edit-mode-choice .item-zone { pointer-events: auto; cursor: move; }
 body.edit-mode-choice .info-zone { pointer-events: none; }
 body.edit-mode-group .info-zone { pointer-events: auto; cursor: move; z-index: 2000; } 
 body.edit-mode-group .item-zone { pointer-events: none; opacity: 0.5; }
+
+
+
 
 /* === SELECTION HIGHLIGHTS (Borders, Shadows, Corners, Notch) === */
 
