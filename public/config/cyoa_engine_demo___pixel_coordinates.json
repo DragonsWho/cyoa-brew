@@ -1,0 +1,120 @@
+{
+  "meta": {
+    "title": "CYOA Engine Demo — Pixel Coordinates",
+    "author": "System",
+    "version": "2.1",
+    "app": "Cyoa Brew",
+    "app_id": "cyoa_brew",
+    "app_version": "0.3.1",
+    "saved_at": "2025-12-03T18:44:25.540Z"
+  },
+  "points": [
+    {
+      "id": "points",
+      "name": "Points",
+      "start": 100
+    },
+    {
+      "id": "gold",
+      "name": "Gold",
+      "start": 50
+    },
+    {
+      "id": "karma",
+      "name": "Karma",
+      "start": 0
+    },
+    {
+      "id": "skill_points",
+      "name": "Skill Points",
+      "start": 10
+    }
+  ],
+  "pages": [
+    {
+      "id": "page_2",
+      "image": "data:image/avif;base64,AAAAIGZ0",
+      "layout": [
+        {
+          "type": "item",
+          "id": "item_1764787266408",
+          "title": "Title card",
+          "description": "",
+          "coords": {
+            "x": 727,
+            "y": 49,
+            "w": 200,
+            "h": 100
+          },
+          "cost": []
+        },
+        {
+          "type": "group",
+          "id": "group_1",
+          "title": "Demo Group",
+          "description": "",
+          "coords": {
+            "x": 372,
+            "y": 201,
+            "w": 920,
+            "h": 120
+          },
+          "items": [
+            {
+              "type": "item",
+              "id": "item_1764787247889",
+              "title": "Card 1",
+              "description": "",
+              "coords": {
+                "x": 382,
+                "y": 211,
+                "w": 200,
+                "h": 100
+              },
+              "cost": []
+            },
+            {
+              "type": "item",
+              "id": "item_1764787280676",
+              "title": "Card 2",
+              "description": "",
+              "coords": {
+                "x": 615,
+                "y": 211,
+                "w": 200,
+                "h": 100
+              },
+              "cost": []
+            },
+            {
+              "type": "item",
+              "id": "item_1764787286332",
+              "title": "Card 3",
+              "description": "",
+              "coords": {
+                "x": 849,
+                "y": 211,
+                "w": 200,
+                "h": 100
+              },
+              "cost": []
+            },
+            {
+              "type": "item",
+              "id": "item_1764787293002",
+              "title": "Card 4",
+              "description": "",
+              "coords": {
+                "x": 1082,
+                "y": 211,
+                "w": 200,
+                "h": 100
+              },
+              "cost": []
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

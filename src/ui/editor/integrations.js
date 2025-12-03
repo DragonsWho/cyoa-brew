@@ -51,7 +51,6 @@ export const EditorIntegrationsMixin = {
                     if (manualUi) manualUi.style.display = 'none';
                     if (apiFields) apiFields.style.display = 'block';
                     
-                    // Populate model dropdown
                     if (modelSel && providerConfig.models) {
                         modelSel.innerHTML = providerConfig.models.map(m => 
                             `<option value="${m}" ${m === providerConfig.defaultModel ? 'selected' : ''}>${m}</option>`
@@ -60,23 +59,18 @@ export const EditorIntegrationsMixin = {
                         this.llmConfig.model = providerConfig.defaultModel;
                     }
                     
-                    // Update base URL
                     const urlInput = document.getElementById('llm-base-url');
                     if (urlInput) {
                         urlInput.value = providerConfig.baseUrl;
                     }
                 }
                 
-                // Hide custom model input initially
                 if (customModelInput) customModelInput.style.display = 'none';
-                
-                // Show custom URL only for openrouter/openai (they support custom endpoints)
                 if (customUrlGroup) {
                     customUrlGroup.style.display = (val === 'openai' || val === 'openrouter') ? 'block' : 'none';
                 }
             });
             
-            // Trigger initial setup
             providerSel.dispatchEvent(new Event('change'));
         }
 
@@ -101,26 +95,20 @@ export const EditorIntegrationsMixin = {
             });
         }
 
-        // 3. Prompt Selector Logic (Refine / Fill / Audit)
+        // 3. Prompt Selector Logic
         if (promptSel && promptArea) {
-            // Initialize with Refine prompt
             this.currentPromptMode = 'refine';
             promptArea.value = this.editablePrompts.refine;
 
             promptSel.addEventListener('change', (e) => {
-                // Save changes to memory before switching
                 if (this.currentPromptMode) {
                     this.editablePrompts[this.currentPromptMode] = promptArea.value;
                 }
                 
-                // Switch mode
                 this.currentPromptMode = e.target.value;
-                
-                // Load prompt for new mode
                 promptArea.value = this.editablePrompts[this.currentPromptMode];
             });
 
-            // Save on typing
             promptArea.addEventListener('input', (e) => {
                 if (this.currentPromptMode) {
                     this.editablePrompts[this.currentPromptMode] = e.target.value;
@@ -146,16 +134,39 @@ export const EditorIntegrationsMixin = {
         }
     },
 
+    // ==================== HELPER: SORT & RENAME ====================
+
+    sortAndRenameLayout(layout) {
+        if (!layout || layout.length === 0) return;
+
+        // 1. Sort by Y then X (with threshold for rows)
+        // Если разница по Y меньше 40px, считаем это одной строкой и сортируем по X
+        layout.sort((a, b) => {
+            const yDiff = Math.abs(a.coords.y - b.coords.y);
+            if (yDiff < 40) {
+                return a.coords.x - b.coords.x;
+            }
+            return a.coords.y - b.coords.y;
+        });
+
+        // 2. Rename IDs sequentially
+        layout.forEach((item, index) => {
+            if (item.type === 'item' || item.type === 'group') {
+                item.id = `Card_${index + 1}`;
+            }
+        });
+        
+        return layout;
+    },
+
     // ==================== MAIN ACTION RUNNER ====================
 
     async runLlmAction(mode) {
-        // Ensure we save the latest edit to the prompt before running
         const promptArea = document.getElementById('llm-user-prompt');
         if (promptArea && this.currentPromptMode === mode) {
             this.editablePrompts[mode] = promptArea.value;
         }
 
-        // Read current config from UI
         this.llmConfig.apiKey = document.getElementById('llm-key')?.value;
         this.llmConfig.baseUrl = document.getElementById('llm-base-url')?.value;
         
@@ -167,7 +178,6 @@ export const EditorIntegrationsMixin = {
             this.llmConfig.model = modelSel.value;
         }
 
-        // Validation for API mode
         if (this.llmConfig.provider !== 'manual' && !this.llmConfig.apiKey) {
             alert("Please enter API Key");
             return;
@@ -184,23 +194,28 @@ export const EditorIntegrationsMixin = {
         let imageToSend = null;
 
         if (mode === 'refine') {
-            // Send boxes from current page layout
-            const boxes = page.layout.map((item, idx) => ({
-                id: idx + 1,
-                original_id: item.id,
+            // Сначала сортируем и переименовываем ID в стейте по-настоящему
+            this.sortAndRenameLayout(page.layout);
+            
+            // Отрисовываем обновленный порядок (визуальная проверка для юзера)
+            this.renderer.renderLayout();
+
+            // Отправляем массив layout (а не boxes), как в образце
+            dataForPrompt.layout = page.layout.map(item => ({
+                type: item.type,
+                id: item.id,
                 coords: item.coords,
-                type: item.type
+                cost: []
             }));
-            dataForPrompt.boxes = boxes;
             imageToSend = page.image;
         } 
         else if (mode === 'fill') {
-            // Send boxes and full context
             const boxes = page.layout.map((item, idx) => ({
-                id: idx + 1,
+                id: item.id,
+                type: item.type,
                 coords: item.coords
             }));
-            dataForPrompt.boxes = boxes;
+            dataForPrompt.layout = boxes;
             dataForPrompt.context = {
                 points: this.engine.config.points || [],
                 existing_items: this.collectAllItemIds()
@@ -253,10 +268,15 @@ export const EditorIntegrationsMixin = {
         const systemPrompt = SYSTEM_PROMPTS[mode];
         let userPrompt = this.editablePrompts[mode];
         
-        // Replace placeholders in user prompt
-        if (data.boxes) {
-            userPrompt = userPrompt.replace('{{BOXES_JSON}}', JSON.stringify(data.boxes, null, 2));
+        if (data.layout) {
+            // В refine используем layout
+            userPrompt = userPrompt.replace('{{LAYOUT_JSON}}', JSON.stringify(data.layout, null, 2));
         }
+        else if (data.boxes) {
+            // Обратная совместимость
+            userPrompt = userPrompt.replace('{{LAYOUT_JSON}}', JSON.stringify(data.boxes, null, 2));
+        }
+
         if (data.context) {
             userPrompt = userPrompt.replace('{{CONTEXT_JSON}}', JSON.stringify(data.context, null, 2));
         }
@@ -322,11 +342,9 @@ export const EditorIntegrationsMixin = {
         const manualOut = document.getElementById('llm-manual-out');
         const manualUi = document.getElementById('llm-manual-ui');
         
-        // Construct copy-paste friendly text
         let pasteText = `=== SYSTEM PROMPT ===\n${messages[0].content}\n\n`;
         pasteText += `=== USER MESSAGE ===\n`;
         
-        // Handle content that might be array (with image)
         const userContent = messages[1].content;
         if (Array.isArray(userContent)) {
             const textPart = userContent.find(p => p.type === 'text');
@@ -336,14 +354,12 @@ export const EditorIntegrationsMixin = {
         }
         
         if (imageToSend) {
-            pasteText = `⚠️ IMAGE REQUIRED: Please upload the page image to your LLM chat manually.\n\n` + pasteText;
-            alert("This task requires an image. Copy the prompt below, paste into your LLM, and manually upload the page image.");
+            pasteText = `⚠️ IMAGE REQUIRED: Upload the page image to your LLM.\n\n` + pasteText;
         }
 
         manualOut.value = pasteText;
         if (manualUi) manualUi.style.display = 'block';
         
-        // Store pending mode for applying response later
         this.pendingLlmMode = mode;
     },
 
@@ -363,7 +379,6 @@ export const EditorIntegrationsMixin = {
             el.select();
             document.execCommand('copy');
             
-            // Visual feedback
             const btn = document.querySelector('[onclick*="copyManualPrompt"]');
             if (btn) {
                 const orig = btn.textContent;
@@ -390,30 +405,31 @@ export const EditorIntegrationsMixin = {
             
             if (mode === 'audit') {
                 if (resultObj.changes && Array.isArray(resultObj.changes)) {
-                    const fixes = resultObj.changes.filter(c => c.type === 'fix').length;
-                    const warnings = resultObj.changes.filter(c => c.type === 'warning').length;
-                    summary = `Found ${fixes} fixes, ${warnings} warnings`;
-                }
-                if (resultObj.summary) {
-                    summary = resultObj.summary;
+                    summary = `Found ${resultObj.changes.length} changes`;
                 }
                 displayData = resultObj.fixed_config || resultObj;
             } else if (mode === 'refine') {
-                const items = Array.isArray(resultObj) ? resultObj : resultObj.layout || [];
-                const classifications = {};
-                items.forEach(i => {
-                    classifications[i.classification || 'unknown'] = (classifications[i.classification || 'unknown'] || 0) + 1;
-                });
-                summary = Object.entries(classifications).map(([k, v]) => `${v} ${k}`).join(', ');
+                // Handle nested layout for summary
+                const items = Array.isArray(resultObj) ? resultObj : (resultObj.layout || []);
+                let groupsCount = 0;
+                let itemsCount = 0;
+                
+                const countRecursive = (arr) => {
+                    for (const el of arr) {
+                        if (el.type === 'group') {
+                            groupsCount++;
+                            if (el.items) countRecursive(el.items);
+                        } else {
+                            itemsCount++;
+                        }
+                    }
+                };
+                countRecursive(items);
+                
+                summary = `Refined: ${groupsCount} Groups, ${itemsCount} Cards detected`;
             } else if (mode === 'fill') {
                 const layout = resultObj.layout || [];
-                const groups = layout.filter(l => l.type === 'group').length;
-                const items = layout.filter(l => l.type === 'item').length;
-                const groupItems = layout.filter(l => l.type === 'group').reduce((sum, g) => sum + (g.items?.length || 0), 0);
-                summary = `${groups} groups, ${items + groupItems} items total`;
-                if (resultObj.parsing_notes) {
-                    summary += ` | Notes: ${resultObj.parsing_notes}`;
-                }
+                summary = `Extracted data for ${layout.length} elements`;
             }
 
             if (textArea) {
@@ -471,49 +487,19 @@ export const EditorIntegrationsMixin = {
 
     applyRefineResult(data) {
         const page = this.getCurrentPage();
-        const refined = Array.isArray(data) ? data : data.layout || [];
         
-        // Update coords and filter out ignored items
-        const updatedLayout = [];
-        const ignoreIds = new Set();
-        
-        for (const box of refined) {
-            if (box.classification === 'ignore') {
-                ignoreIds.add(box.id);
-                continue;
-            }
-            
-            // Find original item by ID or index
-            let originalItem = null;
-            if (box.original_id) {
-                originalItem = page.layout.find(item => item.id === box.original_id);
-            }
-            if (!originalItem && typeof box.id === 'number') {
-                originalItem = page.layout[box.id - 1];
-            }
-            
-            if (originalItem) {
-                // Update coords
-                originalItem.coords = box.coords;
-                
-                // Update type if classification suggests group_header
-                if (box.classification === 'group_header' && originalItem.type === 'item') {
-                    originalItem.type = 'group';
-                    originalItem.items = originalItem.items || [];
-                }
-                
-                updatedLayout.push(originalItem);
-            } else {
-                // New item from split - create minimal entry
-                updatedLayout.push({
-                    type: box.classification === 'group_header' ? 'group' : 'item',
-                    id: `item_${String(box.id).replace('.', '_')}`,
-                    coords: box.coords
-                });
-            }
+        // Data может быть массивом или объектом { layout: [] }
+        const newLayout = Array.isArray(data) ? data : (data.layout || []);
+
+        if (newLayout.length === 0) {
+            console.warn("LLM returned empty layout");
+            return;
         }
+
+        // Заменяем лейаут страницы на структуру, полученную от LLM (вложенные группы/элементы)
+        page.layout = newLayout;
         
-        page.layout = updatedLayout;
+        console.log("Applied refined layout:", page.layout);
     },
 
     applyFillResult(data) {
@@ -524,15 +510,12 @@ export const EditorIntegrationsMixin = {
             throw new Error("No layout data in response");
         }
         
-        // Ensure all items have type
-        const processedLayout = newLayout.map(item => ({
+        page.layout = newLayout.map(item => ({
             type: item.type || 'item',
             ...item
         }));
         
-        page.layout = processedLayout;
-        
-        // Add any new currencies
+        // Add new currencies
         if (data.inferred_currencies && Array.isArray(data.inferred_currencies)) {
             const existingIds = new Set((this.engine.config.points || []).map(p => p.id));
             for (const currency of data.inferred_currencies) {
@@ -547,15 +530,12 @@ export const EditorIntegrationsMixin = {
     applyAuditResult(data) {
         const newConfig = data.fixed_config || data;
         
-        // SAFETY: Preserve image paths that LLM might have corrupted
         if (newConfig.pages && Array.isArray(newConfig.pages)) {
             newConfig.pages.forEach((p, i) => {
                 const originalPage = this.engine.config.pages?.[i];
                 if (originalPage?.image) {
-                    // Restore image if missing, placeholder, or obviously wrong
                     if (!p.image || 
                         p.image === "<IMAGE_PLACEHOLDER>" || 
-                        p.image === "placeholder" ||
                         !p.image.includes('.')) {
                         p.image = originalPage.image;
                     }
@@ -648,12 +628,14 @@ export const EditorIntegrationsMixin = {
             );
 
             if (detectedItems.length > 0) {
+                // Добавляем новые элементы
                 for (const item of detectedItems) {
                     item.type = 'item';
                     page.layout.push(item);
                 }
                 
-                this.sortLayoutByCoords(page.layout);
+                // Авто-сортировка и переименование сразу после обнаружения
+                this.sortAndRenameLayout(page.layout);
                 
                 this.engine.buildMaps();
                 this.engine.recalculate();

@@ -9,16 +9,14 @@ export const LLM_PROVIDERS = {
     google: {
         name: 'Google Gemini',
         baseUrl: 'https://generativelanguage.googleapis.com/v1beta/models/',
-        defaultModel: 'gemini-2.5-flash',
+        defaultModel: 'gemini-2.0-flash',
         models: [
-            'gemini-2.5-flash',
-            'gemini-2.5-pro',
             'gemini-2.0-flash',
-            'gemini-1.5-flash',
-            'gemini-1.5-pro'
+            'gemini-2.0-pro-exp-02-05',
+            'gemini-1.5-pro',
+            'gemini-1.5-flash'
         ],
         supportsVision: true,
-        // Google uses URL parameter for API key
         formatRequest: (model, messages, apiKey) => ({
             url: `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
             headers: { 'Content-Type': 'application/json' },
@@ -44,10 +42,7 @@ export const LLM_PROVIDERS = {
             'gpt-4o',
             'gpt-4o-mini',
             'gpt-4-turbo',
-            'gpt-4',
             'o1',
-            'o1-mini',
-            'o1-preview',
             'o3-mini'
         ],
         supportsVision: true,
@@ -72,10 +67,8 @@ export const LLM_PROVIDERS = {
     anthropic: {
         name: 'Anthropic Claude',
         baseUrl: 'https://api.anthropic.com/v1',
-        defaultModel: 'claude-sonnet-4-20250514',
+        defaultModel: 'claude-3-5-sonnet-20241022',
         models: [
-            'claude-sonnet-4-20250514',
-            'claude-opus-4-20250514',
             'claude-3-7-sonnet-20250219',
             'claude-3-5-sonnet-20241022',
             'claude-3-5-haiku-20241022',
@@ -83,7 +76,6 @@ export const LLM_PROVIDERS = {
         ],
         supportsVision: true,
         formatRequest: (model, messages, apiKey, baseUrl) => {
-            // Anthropic uses separate system message
             const systemMsg = messages.find(m => m.role === 'system');
             const otherMsgs = messages.filter(m => m.role !== 'system');
             
@@ -116,16 +108,12 @@ export const LLM_PROVIDERS = {
     openrouter: {
         name: 'OpenRouter',
         baseUrl: 'https://openrouter.ai/api/v1',
-        defaultModel: 'anthropic/claude-sonnet-4',
+        defaultModel: 'anthropic/claude-3.5-sonnet',
         models: [
-            'anthropic/claude-sonnet-4',
             'anthropic/claude-3.5-sonnet',
             'openai/gpt-4o',
-            'openai/gpt-4o-mini',
-            'google/gemini-2.5-flash-preview',
             'google/gemini-2.0-flash-001',
-            'meta-llama/llama-3.3-70b-instruct',
-            'deepseek/deepseek-chat-v3-0324'
+            'deepseek/deepseek-chat-v3'
         ],
         supportsVision: true,
         formatRequest: (model, messages, apiKey, baseUrl) => ({
@@ -166,213 +154,104 @@ const TOOL_REFERENCE_SUMMARY = `
 ### Item Structure:
 {
   "type": "item",
-  "id": "unique_snake_case_id",
+  "id": "Card_1",
   "title": "Display Title",
-  "description": "Card description text",
   "coords": { "x": 100, "y": 200, "w": 300, "h": 180 },
-  "tags": ["tag1", "tag2"],
-  "cost": [{ "currency": "points", "value": -10 }],
-  "requirements": ["other_item_id"],
-  "incompatible": ["conflicting_item_id"],
-  "max_quantity": 1,
-  "effects": []
+  "cost": []
 }
 
 ### Group Structure:
 {
   "type": "group",
-  "id": "group_id",
+  "id": "group_1",
   "title": "Group Title",
-  "description": "Group description",
   "coords": { "x": 50, "y": 100, "w": 800, "h": 400 },
-  "rules": {
-    "max_choices": 3,
-    "budget": { "currency": "points", "amount": 20, "name": "Free Budget" }
-  },
   "items": [...]
 }
-
-### Cost Rules:
-- Negative value = spending: { "currency": "points", "value": -10 }
-- Positive value = gaining (drawbacks): { "currency": "points", "value": 5 }
-
-### Requirements:
-- Simple: ["required_item_id"]
-- Negation: ["!forbidden_item_id"]  
-- Formula: ["count.tag('magic') >= 2"]
-- Complex: ["has('sword') || has('axe')"]
-
-### Effects Types:
-- modify_group_limit: { "type": "modify_group_limit", "group_id": "spells", "value": 2 }
-- modify_cost: { "type": "modify_cost", "tag": "magic", "mode": "multiply", "value": 0.5 }
-- force_selection: { "type": "force_selection", "target_id": "item_id" }
-
-### ID Naming:
-- Use snake_case, ASCII only
-- Must be unique across entire config
-- Prefix with category: magic_, perk_, drawback_
 `;
 
-
 export const SYSTEM_PROMPTS = {
-    refine: `You are an expert at analyzing CYOA (Choose Your Own Adventure) images and refining detected bounding boxes.
+    // Основные инструкции перенесены в User Prompt для удобства редактирования в UI,
+    // System Prompt задает только роль.
+    refine: `You are an expert CYOA layout engine. Your task is to refine bounding boxes, merge/split them based on visual evidence, and organize them into logical groups with calculated coordinates. Return only valid JSON.`,
 
-## Your Task
-You receive an image with green numbered rectangles overlaid (detection boxes) and a JSON array of those boxes with coordinates.
+    fill: `You are an expert at parsing CYOA images. Extract text, costs, and rules from the provided regions.`,
 
-Your job is to:
-1. **Adjust boundaries** - Move/resize boxes to precisely match actual card edges visible in the image
-2. **Merge boxes** - If multiple boxes cover parts of a single card, merge them into one
-3. **Split boxes** - If one box contains multiple distinct cards, split into separate entries
-4. **Classify boxes** - Label each as: "item" | "group_header" | "decorative" | "ignore"
-
-## Classification Guide:
-- **item**: A selectable choice/card with title, description, possibly cost
-- **group_header**: A section title or category header (not selectable, just organizational)
-- **decorative**: Background art, borders, or visual elements (not interactive)
-- **ignore**: Artifacts, partial detections, or elements outside the CYOA content
-
-## Output Format
-Return ONLY a valid JSON array. Each object must have:
-{
-  "id": <number>,           // Keep original ID from input
-  "coords": { "x": <num>, "y": <num>, "w": <num>, "h": <num> },
-  "classification": "item" | "group_header" | "decorative" | "ignore"
-}
-
-For merged boxes: Keep the lower ID, mark others as "ignore"
-For split boxes: Use IDs like 5, 5.1, 5.2 (decimal notation)
-
-Do NOT include any text before or after the JSON array.`,
-
-    fill: `You are an expert at parsing CYOA (Choose Your Own Adventure) images and extracting structured game data.
-
-## Your Task
-You receive:
-1. An image of a CYOA page with cards/options
-2. A JSON with detected box coordinates (already refined)
-3. The existing game config (for context: currencies, previous items, etc.)
-
-Your job is to:
-1. **OCR** - Read all text within each detected box
-2. **Extract data** - Parse titles, descriptions, costs, requirements from the text
-3. **Create structure** - Build proper Item and Group objects
-4. **Infer rules** - Detect costs like "10 points", requirements like "Requires X", limits like "Choose 2"
-5. **Link references** - Connect requirements to existing item IDs from previous pages
-
-${TOOL_REFERENCE_SUMMARY}
-
-## Text Parsing Patterns:
-- "Costs X points" or "-X" or "X pts" → cost: [{ "currency": "points", "value": -X }]
-- "+X points" or "Grants X" → cost: [{ "currency": "points", "value": X }]
-- "Requires [Item Name]" → find that item's ID, add to requirements
-- "Incompatible with [Item]" → add to incompatible array
-- "Choose X" or "Pick up to X" → group rules: { "max_choices": X }
-- "First X free" → group rules: { "budget": { "amount": X, ... } }
-
-## Output Format
-Return a JSON object:
-{
-  "layout": [
-    // Groups and standalone items
-    {
-      "type": "group",
-      "id": "inferred_group_id",
-      "title": "Section Title from image",
-      "coords": { ... },
-      "rules": { ... },
-      "items": [ ... ]
-    },
-    {
-      "type": "item",
-      "id": "inferred_item_id",
-      ...
-    }
-  ],
-  "inferred_currencies": [
-    // Any new currencies you detected that aren't in the existing config
-    { "id": "mana", "name": "Mana", "start": 0 }
-  ],
-  "parsing_notes": "Any ambiguities or assumptions made"
-}
-
-Be conservative with IDs - use descriptive snake_case based on the title.
-If unsure about a cost, default to 0 and note it in parsing_notes.`,
-
-    audit: `You are a CYOA game logic auditor. Your job is to validate and fix configuration errors.
-
-## Your Task
-You receive the complete game configuration JSON. Check for:
-
-1. **Broken References**
-   - Requirements pointing to non-existent item IDs
-   - Incompatible arrays referencing non-existent items
-   - Effects targeting non-existent groups or items
-   
-2. **Asymmetric Incompatibilities**
-   - If A lists B as incompatible, B should list A too
-   
-3. **Currency Errors**
-   - Costs referencing currencies not defined in points array
-   - Potentially inverted signs (spending should be negative)
-   
-4. **ID Issues**
-   - Duplicate IDs across different pages
-   - Invalid characters in IDs (spaces, special chars)
-   
-5. **Logic Issues**
-   - Requirements that can never be satisfied
-   - Circular dependencies
-   - Groups with max_choices but no items
-   
-6. **Balance Suggestions** (warnings only)
-   - Items with unusually high/low costs
-   - Orphaned currencies (defined but never used)
-
-${TOOL_REFERENCE_SUMMARY}
-
-## Output Format
-{
-  "fixed_config": { ... },  // The corrected full config
-  "changes": [
-    {
-      "type": "fix" | "warning",
-      "location": "pages[0].layout[1].items[2]",
-      "issue": "Description of what was wrong",
-      "action": "What was changed (or suggested for warnings)"
-    }
-  ],
-  "summary": "Brief human-readable summary of all fixes"
-}
-
-Preserve ALL image paths exactly as they are.
-Only make changes that fix actual errors. Don't restructure or rename things unnecessarily.`
+    audit: `You are a CYOA game logic auditor. Validate configurations and fix logical errors.`
 };
 
 
 // ==================== USER PROMPT TEMPLATES ====================
 
 export const USER_PROMPTS = {
-    refine: `Analyze the image and adjust the bounding boxes.
+    refine: `Привет, мы сделали скрипт что превращает статичные CYOA в интерактивные отрисовывая кнопки поверх изображения. 
 
-The green numbered rectangles are detection results. 
-Review each one and:
-- Tighten bounds to match actual card edges
-- Merge overlapping detections of the same card
-- Mark decorative elements appropriately
+Я уже предварительно распознала и выделила границы будующих кнопок и карточек с помощью SAM, системы компьютерного зрения.
+
+Текущая задача:
+
+Вы получаете изображение с наложенными зелёными пронумерованными прямоугольниками (блоками обнаружения сгенерированных SAM) и JSON-массив этих блоков с координатами этих блоков. ID будут совпадать.
+
+Ваша задача:
+1. **Скорректировать границы** — Переместить/изменить размер блоков, чтобы они точно соответствовали краям карты, видимым на изображении, если они не совпадают. Важно, выровнять близкие карточке по высоте и ширине, что бы они выглядели одинакого.
+2. **Объединить блоки** — Если несколько блоков закрывают части одной карты, объединить их в один, это ошибка распознания.
+3. **Разделить блоки** — Если один блок содержит несколько отдельных карт, разделить их на отдельные записи. Одна карточка - один сегмент.
+4. Классифицировать карточки - обозначить заголовки разделов, которые не должны быть нажимаемыми как **group_header** - в них потом все равно вставим текст, что бы читатель мог его перевести на родной язык гуглтранслейтом. Обозначить сами карточки как **Card**. 
+5. **Объединить группы** - группа это логическая область-контейнер, обычно все карточки в одном разделе. Их нужно объединить в группу внутри json, потому что у группы могут быть свои отдельные правила. Среди представленных координат группы не будет, ее размеры нужно будет вычислить, что бы внутрь попали все карточки этой группы.
+
+## Правила групповой компоновки:
+Для каждого отдельного раздела с вариантами, найденными на изображении:
+1. Определите группу элементов, принадлежащих ему.
+2. Создайте запись \`group\`.
+3. Задайте координаты \`group\`, чтобы охватить эти элементы с отступами в 10 px с каждой стороны:
+- x: (самый левый элемент x) - 10
+- y: (самый верхний элемент y) - 10
+- w: (общая ширина слева направо) + 20
+- h: (общая высота сверху вниз) + 20
+
+## Формат вывода
+Возвращать ТОЛЬКО допустимый массив JSON с объектами layout ("layout": [...]).
+
+Для разделённых блоков: используйте идентификаторы типа 5, 5.1, 5.2 (десятичная система счисления).
+
+НЕ добавляйте текст перед или после массива JSON.
+
+## Образец формата (layout)
+[
+  {
+    "type": "item",
+    "id": "Card_1",
+    "title": "Title card",
+    "coords": { "x": 727, "y": 49, "w": 200, "h": 100 },
+    "cost": []
+  },
+  {
+    "type": "group",
+    "id": "group_1",
+    "title": "Demo Group",
+    "coords": { "x": 372, "y": 201, "w": 920, "h": 120 },
+    "items": [
+      {
+        "type": "item",
+        "id": "Card_2",
+        "title": "Card 2",
+        "coords": { "x": 382, "y": 211, "w": 200, "h": 100 },
+        "cost": []
+      }
+    ]
+  }
+]
 
 Current detected boxes:
 \`\`\`json
-{{BOXES_JSON}}
-\`\`\`
-
-Return the refined JSON array with classifications.`,
+{{LAYOUT_JSON}}
+\`\`\``,
 
     fill: `Extract all game content from this CYOA page image.
 
 Detected regions (box IDs and coordinates):
 \`\`\`json
-{{BOXES_JSON}}
+{{LAYOUT_JSON}}
 \`\`\`
 
 Existing game configuration for reference (currencies, previous items):
@@ -405,9 +284,15 @@ export function buildMessages(mode, data) {
     let userPrompt = USER_PROMPTS[mode];
     
     // Replace placeholders
-    if (data.boxes) {
-        userPrompt = userPrompt.replace('{{BOXES_JSON}}', JSON.stringify(data.boxes, null, 2));
+    if (data.layout) {
+        // Updated to use LAYOUT_JSON placeholder for refine mode
+        userPrompt = userPrompt.replace('{{LAYOUT_JSON}}', JSON.stringify(data.layout, null, 2));
     }
+    // Fallback for backward compatibility if code passes 'boxes'
+    if (data.boxes && !data.layout) {
+        userPrompt = userPrompt.replace('{{LAYOUT_JSON}}', JSON.stringify(data.boxes, null, 2));
+    }
+    
     if (data.context) {
         userPrompt = userPrompt.replace('{{CONTEXT_JSON}}', JSON.stringify(data.context, null, 2));
     }
@@ -432,7 +317,6 @@ export function addImageToMessages(messages, imageDataUrl, provider) {
     const lastUserMsg = messages[messages.length - 1];
     
     if (provider === 'google') {
-        // Google Gemini uses parts array
         const base64Data = imageDataUrl.split(',')[1];
         const mimeType = imageDataUrl.split(';')[0].split(':')[1];
         
@@ -446,7 +330,6 @@ export function addImageToMessages(messages, imageDataUrl, provider) {
             }
         ];
     } else if (provider === 'anthropic') {
-        // Anthropic uses content array with image blocks
         const base64Data = imageDataUrl.split(',')[1];
         const mimeType = imageDataUrl.split(';')[0].split(':')[1];
         
@@ -465,7 +348,6 @@ export function addImageToMessages(messages, imageDataUrl, provider) {
             }
         ];
     } else {
-        // OpenAI / OpenRouter format
         lastUserMsg.content = [
             {
                 type: 'image_url',
@@ -487,19 +369,16 @@ export function addImageToMessages(messages, imageDataUrl, provider) {
 export function extractJsonFromResponse(text) {
     let jsonStr = text.trim();
     
-    // Try to find JSON in code blocks first
     const jsonBlockMatch = jsonStr.match(/```json\s*([\s\S]*?)\s*```/);
     if (jsonBlockMatch) {
         jsonStr = jsonBlockMatch[1];
     } else {
-        // Try generic code block
         const codeBlockMatch = jsonStr.match(/```\s*([\s\S]*?)\s*```/);
         if (codeBlockMatch) {
             jsonStr = codeBlockMatch[1];
         }
     }
     
-    // Try to find JSON object/array boundaries
     const firstBrace = jsonStr.indexOf('{');
     const firstBracket = jsonStr.indexOf('[');
     
@@ -518,7 +397,6 @@ export function extractJsonFromResponse(text) {
         isArray = firstBracket < firstBrace;
     }
     
-    // Find matching closing bracket
     const openChar = isArray ? '[' : '{';
     const closeChar = isArray ? ']' : '}';
     let depth = 0;
