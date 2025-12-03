@@ -148,34 +148,10 @@ export const LLM_PROVIDERS = {
 
 // ==================== SYSTEM PROMPTS ====================
 
-const TOOL_REFERENCE_SUMMARY = `
-## JSON Schema Quick Reference
-
-### Item Structure:
-{
-  "type": "item",
-  "id": "Card_1",
-  "title": "Display Title",
-  "coords": { "x": 100, "y": 200, "w": 300, "h": 180 },
-  "cost": []
-}
-
-### Group Structure:
-{
-  "type": "group",
-  "id": "group_1",
-  "title": "Group Title",
-  "coords": { "x": 50, "y": 100, "w": 800, "h": 400 },
-  "items": [...]
-}
-`;
-
 export const SYSTEM_PROMPTS = {
-    // Основные инструкции перенесены в User Prompt для удобства редактирования в UI,
-    // System Prompt задает только роль.
     refine: `You are an expert CYOA layout engine. Your task is to refine bounding boxes, merge/split them based on visual evidence, and organize them into logical groups with calculated coordinates. Return only valid JSON.`,
 
-    fill: `You are an expert at parsing CYOA images. Extract text, costs, and rules from the provided regions.`,
+    fill: `You are an expert at parsing CYOA images and extracting structured game data. You strictly follow JSON schemas and game logic rules.`,
 
     audit: `You are a CYOA game logic auditor. Validate configurations and fix logical errors.`
 };
@@ -247,21 +223,90 @@ Current detected boxes:
 {{LAYOUT_JSON}}
 \`\`\``,
 
-    fill: `Extract all game content from this CYOA page image.
+    fill: `**INPUTS:**
+1.  **Image:** An image file of the CYOA page. Так же здесь отмечены зелеными рамочками с нумерацией распознанные карточки. Нумерация (белые цифры с черной окантовкой над верхним левым углом  зеленой рамочки) совпадает с нумерацией в json. Желтыми рамочками обозначенны Группы. 
+2.  **Layout JSON:** A list of detected bounding boxes with coordinates (\`x\`, \`y\`, \`w\`, \`h\`) карточек и групп. 
+ 
+ Твоя задача - распознать текст на картинке и заполнить Json файл. Текст карточек, их Id, названия. А самое важное - правила. Ниже будет приложен полный список доступных инструментов с описаниями и примерами использования. Используй их. Именно в том формате что там показан. Так же будет приложен демонстрационный образец готовой игры где корректно используются эти правила для описания карточек и групп. 
 
-Detected regions (box IDs and coordinates):
+
+ 
+Example Output Item:
+
+\`\`\`json
+{{EXAMPLE_JSON}}
+\`\`\`
+
+### **PROCESS INSTRUCTIONS**
+
+1.  **Analyze the Image:** Read the Intro text to find Starting Points. Read headers to define Groups.
+2.  **Extract Logic:** Read every card text carefully. Look for keywords: "Free if", "Requires", "Incompatible", "Discount", "Gain".
+3.  **Извлеки и укажи цены**
+4.  **Учитывай правила на предыдущих страницах** - используй те же системы очков и правила что и не предыдущей странице. Это одна игра и она должна быть последовательна и связна. 
+5.  **Generate JSON:** Output **ONLY** the valid JSON. Create proper IDs that don't conflict with existing ones.
+
+
+### Правила!
+
+{{TOOLS_MD}}
+
+
+
+### Ниже идет Json с игрой. Включая предыдущие, заполненные страницы. Твоя текущая задача - заполнить layout текущей страницы номер {{PAGE_NUM}} и прислать только его. 
+
+
+\`\`\`json
+{{FULL_CONFIG}}
+\`\`\`
+
+
+### ответ должен быть вот такого формата
+
+\`\`\`json
+[
+  {
+    "type": "group",
+    "id": "section_basic",
+    "title": "📘 SECTION 1: Basic Selection",
+    "description": "Simple items with costs. Click to select, click again to deselect.",
+    "coords": {
+      "x": 38,
+      "y": 22,
+      "w": 1241,
+      "h": 183
+    },
+    "items": [
+      {
+        "type": "item",
+        "id": "basic_sword",
+        "title": "Iron Sword",
+        "description": "A basic weapon.\\nCosts 10 points.",
+        "coords": {
+          "x": 52,
+          "y": 80,
+          "w": 288,
+          "h": 108
+        },
+        "cost": [
+          {
+            "currency": "points",
+            "value": -10
+          }
+        ],
+        "tags": [
+          "combat"
+        ]
+      }
+    ]
+  }
+]
+\`\`\`
+
+**LAYOUT JSON (Coordinates):**
 \`\`\`json
 {{LAYOUT_JSON}}
 \`\`\`
-
-Existing game configuration for reference (currencies, previous items):
-\`\`\`json
-{{CONTEXT_JSON}}
-\`\`\`
-
-Read the text in each region, identify items and groups, extract all game mechanics (costs, requirements, effects).
-Create proper IDs that don't conflict with existing ones.
-Return the structured layout JSON.`,
+`,
 
     audit: `Audit this CYOA game configuration for errors and inconsistencies.
 
@@ -283,19 +328,38 @@ export function buildMessages(mode, data) {
     const systemPrompt = SYSTEM_PROMPTS[mode];
     let userPrompt = USER_PROMPTS[mode];
     
-    // Replace placeholders
+    // Replace common placeholders
     if (data.layout) {
-        // Updated to use LAYOUT_JSON placeholder for refine mode
         userPrompt = userPrompt.replace('{{LAYOUT_JSON}}', JSON.stringify(data.layout, null, 2));
     }
-    // Fallback for backward compatibility if code passes 'boxes'
-    if (data.boxes && !data.layout) {
+    else if (data.boxes) {
         userPrompt = userPrompt.replace('{{LAYOUT_JSON}}', JSON.stringify(data.boxes, null, 2));
     }
-    
-    if (data.context) {
-        userPrompt = userPrompt.replace('{{CONTEXT_JSON}}', JSON.stringify(data.context, null, 2));
+
+    // Replace FILL specific placeholders
+    if (mode === 'fill') {
+        if (data.exampleJson) {
+            userPrompt = userPrompt.replace('{{EXAMPLE_JSON}}', data.exampleJson);
+        } else {
+             userPrompt = userPrompt.replace('{{EXAMPLE_JSON}}', '{}');
+        }
+
+        if (data.toolsMd) {
+            userPrompt = userPrompt.replace('{{TOOLS_MD}}', data.toolsMd);
+        } else {
+            userPrompt = userPrompt.replace('{{TOOLS_MD}}', 'No tools reference available.');
+        }
+
+        if (data.fullConfig) {
+            userPrompt = userPrompt.replace('{{FULL_CONFIG}}', JSON.stringify(data.fullConfig, null, 2));
+        }
+
+        if (data.pageNum) {
+            userPrompt = userPrompt.replace('{{PAGE_NUM}}', data.pageNum);
+        }
     }
+    
+    // Replace AUDIT specific
     if (data.config) {
         userPrompt = userPrompt.replace('{{CONFIG_JSON}}', JSON.stringify(data.config, null, 2));
     }

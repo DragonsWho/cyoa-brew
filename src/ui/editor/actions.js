@@ -426,6 +426,42 @@ export const EditorActionsMixin = {
         this.renderer.renderAll();
         this.renderPagesList();
     },
+    
+    // ==================== POINTS / CURRENCY MANAGEMENT ====================
+    addNewPointSystem() {
+        if (!this.engine.config.points) this.engine.config.points = [];
+        this.engine.config.points.push({
+            id: `pts_${Date.now()}`,
+            name: "New Currency",
+            start: 10
+        });
+        this.engine.state.resetCurrencies(); // Update state to reflect new currency
+        this.renderPointsList(); // UI Update
+        this.renderer.renderAll(); // Rerender in case UI depends on it (e.g. points bar)
+    },
+
+    deletePointSystem(index) {
+        if (!this.engine.config.points) return;
+        if (!confirm("Delete this currency? Any rules referring to this ID will break.")) return;
+        
+        this.engine.config.points.splice(index, 1);
+        
+        this.engine.state.resetCurrencies();
+        this.renderPointsList();
+        this.renderer.renderAll();
+    },
+
+    updatePointSystem(index, field, value) {
+        if (!this.engine.config.points || !this.engine.config.points[index]) return;
+        const pt = this.engine.config.points[index];
+        
+        if (field === 'start') value = parseInt(value) || 0;
+        pt[field] = value;
+        
+        // Update state and re-render
+        this.engine.state.resetCurrencies(); 
+        this.renderer.renderAll();
+    },
 
     // ==================== CLIPBOARD ACTIONS ====================
     actionCopy(type, id) {

@@ -320,6 +320,15 @@ export const EditorUIMixin = {
                             </div>
                         </div>
                     </div>
+
+                    <div class="editor-section">
+                        <div class="accordion-header collapsed" onclick="CYOA.editor.toggleAccordion(this)">💰 Point Systems</div>
+                        <div class="accordion-content collapsed">
+                            <div id="points-list-container" style="margin-bottom:10px;"></div>
+                            <button class="full-width-btn" style="background:#2e7d32;" onclick="CYOA.editor.addNewPointSystem()">➕ Add Currency</button>
+                        </div>
+                    </div>
+
                 </div>
             </div>
             
@@ -506,6 +515,7 @@ export const EditorUIMixin = {
             }
         } else if (tabName === 'settings') {
             this.renderPagesList();
+            this.renderPointsList();
         }
     },
 
@@ -552,6 +562,43 @@ export const EditorUIMixin = {
                 </div>
             `;
         }).join('');
+    },
+    
+    renderPointsList() {
+        const container = document.getElementById('points-list-container');
+        if (!container) return;
+        
+        const points = this.engine.config.points || [];
+        
+        if (points.length === 0) {
+            container.innerHTML = `<div style="color:#888; font-size:0.8rem; text-align:center;">No currencies defined.</div>`;
+            return;
+        }
+
+        container.innerHTML = points.map((p, idx) => `
+            <div class="point-row" style="background:#222; padding:8px; margin-bottom:6px; border-radius:4px; border:1px solid #333;">
+                <div style="display:flex; gap:5px; margin-bottom:5px;">
+                    <div class="input-group" style="flex:1;">
+                        <input type="text" value="${p.id}" onchange="CYOA.editor.updatePointSystem(${idx}, 'id', this.value)">
+                        <span class="input-label">ID</span>
+                    </div>
+                    <div class="input-group" style="width:70px;">
+                        <input type="number" value="${p.start || 0}" onchange="CYOA.editor.updatePointSystem(${idx}, 'start', this.value)">
+                        <span class="input-label">Start</span>
+                    </div>
+                </div>
+                <div style="display:flex; gap:5px; align-items:center;">
+                    <div class="input-group" style="flex:1;">
+                        <input type="text" value="${p.name || ''}" onchange="CYOA.editor.updatePointSystem(${idx}, 'name', this.value)">
+                        <span class="input-label">Name</span>
+                    </div>
+                     <button style="background:#b71c1c; border:none; color:white; width:30px; height:30px; border-radius:3px; cursor:pointer; display:flex; align-items:center; justify-content:center;" onclick="CYOA.editor.deletePointSystem(${idx})" title="Delete Currency">🗑️</button>
+                </div>
+            </div>
+        `).join('');
+        
+        // Ensure the new inputs get label hiding logic applied
+        if (this.triggerLabelCheck) setTimeout(this.triggerLabelCheck, 100);
     },
 
     selectPage(index) {

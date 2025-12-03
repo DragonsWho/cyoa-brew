@@ -139,8 +139,6 @@ export const EditorIntegrationsMixin = {
     sortAndRenameLayout(layout) {
         if (!layout || layout.length === 0) return;
 
-        // 1. Sort by Y then X (with threshold for rows)
-        // Если разница по Y меньше 40px, считаем это одной строкой и сортируем по X
         layout.sort((a, b) => {
             const yDiff = Math.abs(a.coords.y - b.coords.y);
             if (yDiff < 40) {
@@ -149,7 +147,6 @@ export const EditorIntegrationsMixin = {
             return a.coords.y - b.coords.y;
         });
 
-        // 2. Rename IDs sequentially
         layout.forEach((item, index) => {
             if (item.type === 'item' || item.type === 'group') {
                 item.id = `Card_${index + 1}`;
@@ -157,6 +154,35 @@ export const EditorIntegrationsMixin = {
         });
         
         return layout;
+    },
+
+    // ==================== HELPER: GET CLEAN CONFIG ====================
+    
+    // Returns a copy of the config with images stripped out (to save context)
+    getCleanConfig() {
+        const configStr = JSON.stringify(this.engine.config);
+        const cleanConfig = JSON.parse(configStr);
+        
+        if (cleanConfig.pages) {
+            cleanConfig.pages.forEach(p => {
+                if (p.image) p.image = "<IMAGE_PLACEHOLDER>";
+            });
+        }
+        
+        return cleanConfig;
+    },
+
+    // ==================== HELPER: LOAD STATIC FILE ====================
+
+    async loadStaticFile(path) {
+        try {
+            const res = await fetch(path);
+            if (!res.ok) throw new Error(`Status ${res.status}`);
+            return await res.text();
+        } catch (e) {
+            console.warn(`Failed to load ${path}:`, e);
+            return null;
+        }
     },
 
     // ==================== MAIN ACTION RUNNER ====================
@@ -189,58 +215,7 @@ export const EditorIntegrationsMixin = {
             return;
         }
 
-        // 1. Prepare Data
-        let dataForPrompt = {};
-        let imageToSend = null;
-
-        if (mode === 'refine') {
-            // Сначала сортируем и переименовываем ID в стейте по-настоящему
-            this.sortAndRenameLayout(page.layout);
-            
-            // Отрисовываем обновленный порядок (визуальная проверка для юзера)
-            this.renderer.renderLayout();
-
-            // Отправляем массив layout (а не boxes), как в образце
-            dataForPrompt.layout = page.layout.map(item => ({
-                type: item.type,
-                id: item.id,
-                coords: item.coords,
-                cost: []
-            }));
-            imageToSend = page.image;
-        } 
-        else if (mode === 'fill') {
-            const boxes = page.layout.map((item, idx) => ({
-                id: item.id,
-                type: item.type,
-                coords: item.coords
-            }));
-            dataForPrompt.layout = boxes;
-            dataForPrompt.context = {
-                points: this.engine.config.points || [],
-                existing_items: this.collectAllItemIds()
-            };
-            imageToSend = page.image;
-        } 
-        else if (mode === 'audit') {
-            dataForPrompt.config = this.engine.config;
-        }
-
-        // 2. Build messages
-        let messages = this.buildMessagesForMode(mode, dataForPrompt);
-
-        // 3. Add image if needed
-        if (imageToSend) {
-            messages = addImageToMessages(messages, imageToSend, this.llmConfig.provider);
-        }
-
-        // --- MANUAL MODE ---
-        if (this.llmConfig.provider === 'manual') {
-            this.showManualMode(mode, messages, imageToSend);
-            return;
-        }
-
-        // --- API MODE ---
+        // --- BUTTON STATE ---
         const btn = document.activeElement;
         const originalText = btn ? btn.innerHTML : '';
         if (btn) { 
@@ -249,13 +224,67 @@ export const EditorIntegrationsMixin = {
         }
 
         try {
+            // 1. Prepare Data
+            let dataForPrompt = {};
+            let imageToSend = null;
+
+            if (mode === 'refine') {
+                this.sortAndRenameLayout(page.layout);
+                this.renderer.renderLayout();
+
+                dataForPrompt.layout = page.layout.map(item => ({
+                    type: item.type,
+                    id: item.id,
+                    coords: item.coords,
+                    cost: []
+                }));
+                imageToSend = page.image;
+            } 
+            else if (mode === 'fill') {
+                // Fetch external resources for the prompt
+                const [toolsMd, exampleJson] = await Promise.all([
+                    this.loadStaticFile('/docs/llm-tools-reference.md'),
+                    this.loadStaticFile('/config/test_config.json')
+                ]);
+
+                dataForPrompt.layout = page.layout; // Send full nested layout!
+                dataForPrompt.toolsMd = toolsMd;
+                dataForPrompt.exampleJson = exampleJson;
+                dataForPrompt.fullConfig = this.getCleanConfig();
+                
+                // Find current page index for "Page X" context
+                const pageIndex = this.engine.config.pages.indexOf(page);
+                dataForPrompt.pageNum = pageIndex !== -1 ? pageIndex + 1 : "?";
+
+                imageToSend = page.image;
+            } 
+            else if (mode === 'audit') {
+                dataForPrompt.config = this.engine.config;
+            }
+
+            // 2. Build messages
+            let messages = this.buildMessagesForMode(mode, dataForPrompt);
+
+            // 3. Add image if needed
+            if (imageToSend) {
+                messages = addImageToMessages(messages, imageToSend, this.llmConfig.provider);
+            }
+
+            // --- MANUAL MODE ---
+            if (this.llmConfig.provider === 'manual') {
+                this.showManualMode(mode, messages, imageToSend);
+                return; // Return here, button reset handled in finally block? No, manually reset logic needed for manual.
+            }
+
+            // --- API MODE ---
             const responseText = await this.callLlmApi(messages);
             this.processLlmResponse(responseText, mode);
+
         } catch (e) {
             alert(`LLM Error: ${e.message}`);
             console.error('LLM Error:', e);
         } finally {
-            if (btn) { 
+            if (btn && this.llmConfig.provider !== 'manual') { 
                 btn.disabled = false; 
                 btn.innerHTML = originalText; 
             }
@@ -265,32 +294,12 @@ export const EditorIntegrationsMixin = {
     // ==================== MESSAGE BUILDING ====================
 
     buildMessagesForMode(mode, data) {
-        const systemPrompt = SYSTEM_PROMPTS[mode];
-        let userPrompt = this.editablePrompts[mode];
-        
-        if (data.layout) {
-            // В refine используем layout
-            userPrompt = userPrompt.replace('{{LAYOUT_JSON}}', JSON.stringify(data.layout, null, 2));
-        }
-        else if (data.boxes) {
-            // Обратная совместимость
-            userPrompt = userPrompt.replace('{{LAYOUT_JSON}}', JSON.stringify(data.boxes, null, 2));
-        }
-
-        if (data.context) {
-            userPrompt = userPrompt.replace('{{CONTEXT_JSON}}', JSON.stringify(data.context, null, 2));
-        }
-        if (data.config) {
-            userPrompt = userPrompt.replace('{{CONFIG_JSON}}', JSON.stringify(data.config, null, 2));
-        }
-        
-        return [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: userPrompt }
-        ];
+        // We use the helper from config to keep logic centralized
+        return buildMessages(mode, data);
     },
 
     collectAllItemIds() {
+        // (Legacy helper, mostly handled by sending fullConfig now, but kept for safety)
         const ids = [];
         for (const page of this.engine.config.pages || []) {
             for (const entry of page.layout || []) {
@@ -361,6 +370,13 @@ export const EditorIntegrationsMixin = {
         if (manualUi) manualUi.style.display = 'block';
         
         this.pendingLlmMode = mode;
+
+        // Reset button immediately since we are just showing text
+        const btn = document.querySelector(`button[onclick*="runLlmAction('${mode}')"]`);
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = btn.getAttribute('data-original-text') || btn.textContent.replace('⏳ Processing...', 'Run ' + mode);
+        }
     },
 
     applyManualResponse() {
@@ -409,11 +425,9 @@ export const EditorIntegrationsMixin = {
                 }
                 displayData = resultObj.fixed_config || resultObj;
             } else if (mode === 'refine') {
-                // Handle nested layout for summary
                 const items = Array.isArray(resultObj) ? resultObj : (resultObj.layout || []);
                 let groupsCount = 0;
                 let itemsCount = 0;
-                
                 const countRecursive = (arr) => {
                     for (const el of arr) {
                         if (el.type === 'group') {
@@ -425,11 +439,14 @@ export const EditorIntegrationsMixin = {
                     }
                 };
                 countRecursive(items);
-                
                 summary = `Refined: ${groupsCount} Groups, ${itemsCount} Cards detected`;
             } else if (mode === 'fill') {
-                const layout = resultObj.layout || [];
-                summary = `Extracted data for ${layout.length} elements`;
+                const layout = resultObj.layout || (Array.isArray(resultObj) ? resultObj : []);
+                // Simple recursive count for summary
+                let count = 0;
+                const countR = (arr) => arr.forEach(i => { count++; if(i.items) countR(i.items); });
+                countR(layout);
+                summary = `Extracted data for ${count} elements (groups + items)`;
             }
 
             if (textArea) {
@@ -487,8 +504,6 @@ export const EditorIntegrationsMixin = {
 
     applyRefineResult(data) {
         const page = this.getCurrentPage();
-        
-        // Data может быть массивом или объектом { layout: [] }
         const newLayout = Array.isArray(data) ? data : (data.layout || []);
 
         if (newLayout.length === 0) {
@@ -496,9 +511,7 @@ export const EditorIntegrationsMixin = {
             return;
         }
 
-        // Заменяем лейаут страницы на структуру, полученную от LLM (вложенные группы/элементы)
         page.layout = newLayout;
-        
         console.log("Applied refined layout:", page.layout);
     },
 
@@ -510,6 +523,7 @@ export const EditorIntegrationsMixin = {
             throw new Error("No layout data in response");
         }
         
+        // Ensure nesting is preserved (the response is already a full layout)
         page.layout = newLayout.map(item => ({
             type: item.type || 'item',
             ...item
@@ -628,13 +642,11 @@ export const EditorIntegrationsMixin = {
             );
 
             if (detectedItems.length > 0) {
-                // Добавляем новые элементы
                 for (const item of detectedItems) {
                     item.type = 'item';
                     page.layout.push(item);
                 }
                 
-                // Авто-сортировка и переименование сразу после обнаружения
                 this.sortAndRenameLayout(page.layout);
                 
                 this.engine.buildMaps();
