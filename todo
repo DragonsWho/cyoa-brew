@@ -5,6 +5,26 @@
 
 
 
+перетаскивание границ - почему-то откусывает высоту, хотя карточка "толкает" соседнюю сбоку. 
+при перетаскивании раздела часто замирает недойдет 10-20 пикселей. особенно горизонтально
+есть какое-то замедление при сдвигании соседней карточки. Вроде как "плавно анимировано" но по факту получается лаг, когда та граница не успевает сдвинуться и новая накладывается. 
+
+
+разобрать editor .js на модули по функционалу - core, ui, input, geometry, actions, integrations.
+    editor-core.js (CYOAEditor): Основной класс. Инициализация, включение/выключение, хранение состояния (selectedItem, clipboard).
+    editor-ui.js: Метод createEditorUI и вся логика генерации HTML (сайдбар, контекстное меню, модалки).
+    editor-input.js: Обработчики событий мыши и клавиатуры (handleMouseDown, handleMouseMove и т.д.).
+    editor-geometry.js: Вспомогательные функции для расчетов: isInsideRect, getResizeHandle, resolveGroupCollisions, getSmartCoords.
+    editor-actions.js: Логика действий: addNewItem, deleteItem, copy, paste, duplicate.
+    editor-integrations.js: Логика для LLM и SAM.
+
+
+
+
+
+
+
+
 перенести настройки уверенности в Sam3
  
 

@@ -2,7 +2,7 @@
  * CYOA Editor - Visual editing mode
  * 
  * Architecture v2: Works with config.pages[].layout[]
- * Features: Auto-grouping, Context Menu, Copy/Paste, Undo-like logic (via duplicate)
+ * Features: Auto-grouping, Context Menu, Smart Collisions (Group blocking/pushing)
  */
 
 import { CoordHelper } from '../utils/coords.js';
@@ -170,6 +170,30 @@ Return ONLY valid JSON, no explanations.`
             point.y >= rect.y &&
             point.y <= rect.y + rect.h
         );
+    }
+    
+    // Check intersection of two rectangles
+    checkRectIntersection(r1, r2) {
+        return !(r2.x >= r1.x + r1.w || 
+                 r2.x + r2.w <= r1.x || 
+                 r2.y >= r1.y + r1.h || 
+                 r2.y + r2.h <= r1.y);
+    }
+
+    // Find all groups colliding with a rect (for dragging/resizing logic)
+    getCollidingGroups(rect, ignoreId, pageIndex) {
+        const page = this.getPageByIndex(pageIndex);
+        if (!page || !page.layout) return [];
+        
+        const collisions = [];
+        for (const element of page.layout) {
+            if (element.type === 'group' && element.id !== ignoreId) {
+                if (this.checkRectIntersection(rect, element.coords)) {
+                    collisions.push(element);
+                }
+            }
+        }
+        return collisions;
     }
 
     // ==================== HELPER: Get item center ====================
@@ -712,7 +736,9 @@ Return ONLY valid JSON, no explanations.`
             
             <div class="menu-divider ctx-paste"></div>
             <div class="menu-item ctx-paste" id="ctx-paste-btn" onclick="CYOA.editor.handleContextAction('paste')">📌 Paste</div>
-             
+            
+            <div class="menu-divider"></div>
+            <div class="menu-item" onclick="CYOA.editor.handleContextAction('auto-detect')">🚀 Auto-Detect (SAM)</div>
         `;
         document.body.appendChild(contextMenu);
 
@@ -1379,7 +1405,14 @@ Return ONLY valid JSON, no explanations.`
             case 'delete':
                 if (targetType === 'item') this.deleteSelectedItem();
                 if (targetType === 'group') this.deleteSelectedGroup();
-                break; 
+                break;
+            case 'auto-detect':
+                this.switchTab('settings');
+                const samHeader = document.querySelector("#tab-content-settings .accordion-header:nth-of-type(3)");
+                if (samHeader && samHeader.classList.contains('collapsed')) {
+                    this.toggleAccordion(samHeader);
+                }
+                break;
         }
     }
 
@@ -1600,8 +1633,9 @@ Return ONLY valid JSON, no explanations.`
         
         const dx = e.clientX - this.dragStart.x;
         const dy = e.clientY - this.dragStart.y;
-        const { scaleX, scaleY, dim, targetObj } = this.dragContext;
+        const { scaleX, scaleY, dim, targetObj, pageIndex, isGroup } = this.dragContext;
         
+        // ========== DRAGGING LOGIC (Move) ==========
         if (this.isDragging) {
             let newX = Math.round(this.initialRect.x + dx * scaleX);
             let newY = Math.round(this.initialRect.y + dy * scaleY);
@@ -1614,55 +1648,129 @@ Return ONLY valid JSON, no explanations.`
                 newY = Math.max(0, Math.min(newY, dim.h - h));
             }
             
+            // --- Group Collision Logic for Dragging ---
+            if (isGroup) {
+                // Check X axis independently
+                const testRectX = { ...targetObj.coords, x: newX };
+                const collidersX = this.getCollidingGroups(testRectX, targetObj.id, pageIndex);
+                if (collidersX.length > 0) {
+                    newX = targetObj.coords.x; // Block X movement if collision
+                }
+
+                // Check Y axis independently
+                const testRectY = { ...targetObj.coords, y: newY, x: newX }; // Use safe X
+                const collidersY = this.getCollidingGroups(testRectY, targetObj.id, pageIndex);
+                if (collidersY.length > 0) {
+                    newY = targetObj.coords.y; // Block Y movement if collision
+                }
+            }
+            
             targetObj.coords.x = newX;
             targetObj.coords.y = newY;
         } 
+        // ========== RESIZING LOGIC (Scale & Push) ==========
         else if (this.isResizing && this.resizeMode) {
             const deltaX = dx * scaleX;
             const deltaY = dy * scaleY;
             const start = this.initialRect;
-            const minSize = 20;
+            const minSize = 30; // Min size for self AND neighbors
 
             let newX = start.x;
             let newY = start.y;
             let newW = start.w;
             let newH = start.h;
 
-            // Handle X / Width based on corner
+            // --- 1. Calculate Proposed Geometry ---
+
             if (this.resizeMode.includes('l')) { // Left side (tl, bl)
-                // If dragging left, w increases. If dragging right, w decreases.
-                // We must change X position and Width together.
                 newW = Math.max(minSize, start.w - deltaX);
                 newX = start.x + (start.w - newW); 
-                
-                // Clamp Left Edge to 0
-                if (newX < 0) {
-                    newX = 0;
-                    newW = (start.x + start.w); // Keep right edge constant
-                }
+                if (newX < 0) { newX = 0; newW = (start.x + start.w); }
             } else { // Right side (tr, br)
                 newW = Math.max(minSize, start.w + deltaX);
-                // Clamp Right Edge to page width
-                if (newX + newW > dim.w) {
-                    newW = dim.w - newX;
-                }
+                if (newX + newW > dim.w) newW = dim.w - newX;
             }
 
-            // Handle Y / Height based on corner
             if (this.resizeMode.includes('t')) { // Top side (tl, tr)
                 newH = Math.max(minSize, start.h - deltaY);
                 newY = start.y + (start.h - newH);
-
-                // Clamp Top Edge to 0
-                if (newY < 0) {
-                    newY = 0;
-                    newH = (start.y + start.h); // Keep bottom edge constant
-                }
+                if (newY < 0) { newY = 0; newH = (start.y + start.h); }
             } else { // Bottom side (bl, br)
                 newH = Math.max(minSize, start.h + deltaY);
-                // Clamp Bottom Edge to page height
-                if (newY + newH > dim.h) {
-                    newH = dim.h - newY;
+                if (newY + newH > dim.h) newH = dim.h - newY;
+            }
+
+            // --- 2. Check for Neighbor "Push" (Territory Steal) ---
+            if (isGroup) {
+                const proposedRect = { x: newX, y: newY, w: newW, h: newH };
+                const neighbors = this.getCollidingGroups(proposedRect, targetObj.id, pageIndex);
+                
+                for (const neighbor of neighbors) {
+                    // Logic: Overwrite neighbor's edge with our new edge
+                    
+                    // Horizontal Push
+                    if (this.resizeMode.includes('r')) { // Dragging Right
+                        // Neighbor is to the right. Push its Left edge.
+                        // Overlap = (newX + newW) - neighbor.x
+                        const neighborRight = neighbor.coords.x + neighbor.coords.w;
+                        const newNeighborX = newX + newW;
+                        const newNeighborW = neighborRight - newNeighborX;
+                        
+                        if (newNeighborW < minSize) {
+                            // Block expand: Neighbor too small. Cap our width.
+                            newW = (neighborRight - minSize) - newX;
+                        } else {
+                            // Shrink neighbor
+                            neighbor.coords.x = newNeighborX;
+                            neighbor.coords.w = newNeighborW;
+                        }
+                    } else if (this.resizeMode.includes('l')) { // Dragging Left
+                        // Neighbor is to the left. Push its Right edge.
+                        const neighborX = neighbor.coords.x;
+                        const newNeighborW = newX - neighborX;
+
+                        if (newNeighborW < minSize) {
+                             // Block expand
+                            const limit = neighborX + minSize;
+                            newW = (start.x + start.w) - limit;
+                            newX = limit;
+                        } else {
+                            // Shrink neighbor
+                            neighbor.coords.w = newNeighborW;
+                        }
+                    }
+
+                    // Vertical Push
+                    if (this.resizeMode.includes('b')) { // Dragging Bottom
+                        const neighborBottom = neighbor.coords.y + neighbor.coords.h;
+                        const newNeighborY = newY + newH;
+                        const newNeighborH = neighborBottom - newNeighborY;
+
+                        if (newNeighborH < minSize) {
+                            newH = (neighborBottom - minSize) - newY;
+                        } else {
+                            neighbor.coords.y = newNeighborY;
+                            neighbor.coords.h = newNeighborH;
+                        }
+                    } else if (this.resizeMode.includes('t')) { // Dragging Top
+                        const neighborY = neighbor.coords.y;
+                        const newNeighborH = newY - neighborY;
+                        
+                        if (newNeighborH < minSize) {
+                            const limit = neighborY + minSize;
+                            newH = (start.y + start.h) - limit;
+                            newY = limit;
+                        } else {
+                            neighbor.coords.h = newNeighborH;
+                        }
+                    }
+
+                    // Visual Update for Neighbor
+                    const elN = document.getElementById(`group-${neighbor.id}`);
+                    if (elN) {
+                        const styleN = CoordHelper.toPercent(neighbor.coords, dim);
+                        Object.assign(elN.style, styleN);
+                    }
                 }
             }
 
