@@ -55,9 +55,9 @@ export class ControlPanel {
 
             try {
                 console.log('📦 Downloading Editor module...');
-                // ВОТ ОНА, МАГИЯ: Браузер скачает editor.js и все его тяжелые библиотеки 
-                // (Gradio, JSZip) только в этот момент!
-                const module = await import('./editor.js');
+                
+                // ИЗМЕНЕНИЕ ЗДЕСЬ: Импорт из index.js внутри папки editor
+                const module = await import('./editor/index.js');
                 
                 const CYOAEditor = module.CYOAEditor;
                 this.editor = new CYOAEditor(this.engine, this.renderer);
