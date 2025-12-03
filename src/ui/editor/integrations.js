@@ -1,106 +1,250 @@
+/**
+ * Editor Integrations Mixin
+ * Handles LLM (AI) and SAM (Auto-Detect) integrations
+ */
+
+import { Client } from "@gradio/client";
+
 export const EditorIntegrationsMixin = {
-    // ==================== LLM LOGIC ====================
+    
+    // Default User Prompts for different modes
+    prompts: {
+        refine: `Align these items into neat rows and columns based on their coordinates. 
+Snap them to a grid. 
+Do not change IDs or Titles, only x/y/w/h.
+Ensure items do not overlap visually.`,
+        
+        fill: `Analyze the image. Identify all game cards/options. 
+For each card, extract: 
+- Title
+- Description
+- Cost (points) - infer negative values for spending
+- Tags (keywords like 'magic', 'fire', 'item')
+Infer "effects" or "requirements" if the text explicitly mentions them.`,
+        
+        audit: `Analyze the game logic. Check for:
+1. Requirements referencing IDs that do not exist in the config.
+2. Costs that add points instead of subtracting (positive value error).
+3. Logical loops or broken formulas.
+4. Typos in currency names.`
+    },
+
+    // ==================== SETUP LISTENERS ====================
+
     setupLlmListeners() {
         const providerSel = document.getElementById('llm-provider');
-        const baseUrlGroup = document.getElementById('llm-base-url-group');
-        const baseUrlInput = document.getElementById('llm-base-url');
         const manualUi = document.getElementById('llm-manual-ui');
         const apiFields = document.getElementById('llm-api-fields');
-        const runBtn = document.getElementById('btn-run-llm');
-        const promptArea = document.getElementById('llm-prompt');
+        const promptSel = document.getElementById('llm-prompt-selector');
+        const promptArea = document.getElementById('llm-user-prompt');
 
-        if (promptArea) promptArea.value = this.llmConfig.systemPrompt;
-
+        // 1. Provider Change Logic (Google / OpenAI / Manual)
         if (providerSel) {
             providerSel.addEventListener('change', (e) => {
                 const val = e.target.value;
                 this.llmConfig.provider = val;
                 
+                // Show/Hide fields
+                if (val === 'manual') {
+                    if (manualUi) manualUi.style.display = 'block';
+                    if (apiFields) apiFields.style.display = 'none';
+                } else {
+                    if (manualUi) manualUi.style.display = 'none';
+                    if (apiFields) apiFields.style.display = 'block';
+                }
+
+                // Set Defaults for API
+                const urlInput = document.getElementById('llm-base-url');
+                const modelInput = document.getElementById('llm-model');
+                
                 if (val === 'google') {
-                    baseUrlInput.value = 'https://generativelanguage.googleapis.com/v1beta/models/';
-                    document.getElementById('llm-model').value = 'gemini-2.0-flash';
-                    manualUi.style.display = 'none';
-                    apiFields.style.display = 'block';
-                    baseUrlGroup.style.display = 'block';
-                    runBtn.textContent = '✨ Refine Coordinates';
+                    if (urlInput) urlInput.value = 'https://generativelanguage.googleapis.com/v1beta/models/';
+                    if (modelInput) modelInput.value = 'gemini-2.0-flash';
                 } else if (val === 'openai') {
-                    baseUrlInput.value = 'https://api.openai.com/v1';
-                    document.getElementById('llm-model').value = 'gpt-4o';
-                    manualUi.style.display = 'none';
-                    apiFields.style.display = 'block';
-                    baseUrlGroup.style.display = 'block';
-                    runBtn.textContent = '✨ Refine Coordinates';
-                } else if (val === 'manual') {
-                    manualUi.style.display = 'block';
-                    apiFields.style.display = 'none';
-                    runBtn.textContent = '📝 Generate Prompt';
+                    if (urlInput) urlInput.value = 'https://api.openai.com/v1';
+                    if (modelInput) modelInput.value = 'gpt-4o';
                 }
             });
         }
 
-        if (runBtn) {
-            runBtn.addEventListener('click', async () => {
-                this.llmConfig.apiKey = document.getElementById('llm-key').value;
-                this.llmConfig.model = document.getElementById('llm-model').value;
-                this.llmConfig.baseUrl = document.getElementById('llm-base-url').value;
-                this.llmConfig.systemPrompt = document.getElementById('llm-prompt').value;
+        // 2. Prompt Selector Logic (Refine / Fill / Audit)
+        if (promptSel && promptArea) {
+            // Initialize with Refine prompt
+            promptArea.value = this.prompts.refine;
+            this.currentPromptMode = 'refine';
 
-                const cleanConfig = JSON.parse(JSON.stringify(this.engine.config));
-                if (cleanConfig.pages) {
-                    cleanConfig.pages.forEach(p => { p.image = "<IMAGE_PLACEHOLDER>"; });
+            promptSel.addEventListener('change', (e) => {
+                // Save changes to memory before switching
+                if (this.currentPromptMode) {
+                    this.prompts[this.currentPromptMode] = promptArea.value;
                 }
+                
+                // Switch mode
+                this.currentPromptMode = e.target.value;
+                
+                // Load new prompt
+                promptArea.value = this.prompts[this.currentPromptMode];
+            });
 
-                const contextData = { pages: cleanConfig.pages, points: cleanConfig.points };
-                const fullPrompt = `${this.llmConfig.systemPrompt}\n\n${JSON.stringify(contextData, null, 2)}`;
-
-                if (this.llmConfig.provider === 'manual') {
-                    document.getElementById('llm-manual-out').value = fullPrompt;
-                    alert("Prompt generated below. Copy it to your LLM.");
-                    return;
-                }
-
-                if (!this.llmConfig.apiKey) {
-                    alert("Please enter an API Key!");
-                    return;
-                }
-
-                runBtn.disabled = true;
-                runBtn.textContent = '⏳ Processing...';
-
-                try {
-                    const result = await this.callLlmApi(fullPrompt);
-                    this.processLlmResponse(result);
-                } catch (e) {
-                    alert(`LLM Error: ${e.message}`);
-                    console.error(e);
-                } finally {
-                    runBtn.disabled = false;
-                    runBtn.textContent = '✨ Refine Coordinates';
-                }
+            // Save on typing
+            promptArea.addEventListener('input', (e) => {
+                this.prompts[this.currentPromptMode] = e.target.value;
             });
         }
     },
 
-    async callLlmApi(prompt) {
+    // ==================== MAIN ACTION RUNNER ====================
+
+    async runLlmAction(mode) {
+        // Ensure we save the latest edit to the prompt before running
+        const promptArea = document.getElementById('llm-user-prompt');
+        if (promptArea && this.currentPromptMode === mode) {
+            this.prompts[mode] = promptArea.value;
+        }
+
+        this.llmConfig.apiKey = document.getElementById('llm-key')?.value;
+        this.llmConfig.model = document.getElementById('llm-model')?.value;
+        this.llmConfig.baseUrl = document.getElementById('llm-base-url')?.value;
+
+        // Validation for API mode
+        if (this.llmConfig.provider !== 'manual' && !this.llmConfig.apiKey) {
+            alert("Please enter API Key");
+            return;
+        }
+
+        const page = this.getCurrentPage();
+        if (mode !== 'audit' && !page) {
+            alert("No active page selected");
+            return;
+        }
+
+        // 1. Prepare Data & Context
+        let userInstruction = this.prompts[mode];
+        let technicalContext = "";
+        let contextData = null;
+        let imageToSend = null;
+
+        if (mode === 'refine') {
+            technicalContext = `
+TECHNICAL RULE: Return ONLY a valid JSON array of objects.
+Input format matches Output format.
+Update 'coords' (x,y,w,h) to align items.
+Do NOT remove items. Do NOT change IDs.`;
+            // Send only current page layout
+            contextData = page.layout; 
+        } 
+        else if (mode === 'fill') {
+            technicalContext = `
+TECHNICAL RULE: Return a valid JSON object: { "layout": [ ...items... ] }.
+Structure each item as: { "id": "unique_id", "type": "item", "title": "...", "coords": {x,y,w,h}, "cost": [...], "tags": [...] }.
+Use the provided Global Config JSON to understand currency IDs.
+The image is the source of truth.`;
+            // Send global config for context + Page Image
+            contextData = this.engine.config;
+            imageToSend = page.image;
+        } 
+        else if (mode === 'audit') {
+            technicalContext = `
+TECHNICAL RULE: Return a JSON object: { "fixed_config": { ... }, "comments": "string report" }.
+Preserve all "image" paths exactly as is. 
+Fix syntax errors in 'formula' fields.
+Fix broken IDs.`;
+            // Send entire config
+            contextData = this.engine.config;
+        }
+
+        const fullPrompt = `${userInstruction}\n\n${technicalContext}`;
+
+        // 2. Execution Flow
+
+        // --- MANUAL MODE ---
+        if (this.llmConfig.provider === 'manual') {
+            const manualOut = document.getElementById('llm-manual-out');
+            const manualUi = document.getElementById('llm-manual-ui');
+            
+            // Construct a human-friendly copy-paste block
+            let pasteText = `=== SYSTEM INSTRUCTION ===\n${fullPrompt}\n\n=== DATA CONTEXT (JSON) ===\n${JSON.stringify(contextData, null, 2)}`;
+            
+            if (imageToSend) {
+                pasteText = `[ATTENTION: This task requires an image. Please DRAG & DROP the page image into your LLM chat manually]\n\n` + pasteText;
+                alert("Manual Mode for Image: Please copy the text below, paste it into your LLM, and manually upload the page image to the chat.");
+            }
+
+            manualOut.value = pasteText;
+            if (manualUi) manualUi.style.display = 'block';
+            
+            // Store pending mode to know how to apply response later
+            this.pendingLlmMode = mode;
+            return;
+        }
+
+        // --- API MODE ---
+        const btn = document.activeElement;
+        const originalText = btn ? btn.innerHTML : '';
+        if(btn) { btn.disabled = true; btn.innerHTML = '⏳ Processing...'; }
+
+        try {
+            const responseText = await this.callLlmApi(fullPrompt, contextData, imageToSend);
+            this.processLlmResponse(responseText, mode);
+        } catch (e) {
+            alert(`LLM Error: ${e.message}`);
+            console.error(e);
+        } finally {
+            if(btn) { btn.disabled = false; btn.innerHTML = originalText; }
+        }
+    },
+
+    // ==================== API CALLER ====================
+
+    async callLlmApi(prompt, jsonData, imageUrl = null) {
         const { provider, baseUrl, apiKey, model } = this.llmConfig;
+        
+        // Append JSON to prompt if sending via API
+        const finalPrompt = `${prompt}\n\nDATA:\n${JSON.stringify(jsonData)}`;
+
         let url, body, headers;
 
+        // --- GOOGLE GEMINI ---
         if (provider === 'google') {
             url = `${baseUrl}${model}:generateContent?key=${apiKey}`;
             headers = { 'Content-Type': 'application/json' };
-            body = JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] });
-        } else {
+            
+            const parts = [{ text: finalPrompt }];
+            
+            if (imageUrl && imageUrl.startsWith('data:image')) {
+                const base64Data = imageUrl.split(',')[1];
+                const mimeType = imageUrl.split(';')[0].split(':')[1];
+                parts.push({
+                    inline_data: {
+                        mime_type: mimeType,
+                        data: base64Data
+                    }
+                });
+            }
+
+            body = JSON.stringify({ contents: [{ parts }] });
+        } 
+        // --- OPENAI GPT-4o ---
+        else {
             url = `${baseUrl.replace(/\/+$/, '')}/chat/completions`;
             headers = {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${apiKey}`
             };
-            if (url.includes('openrouter')) headers['HTTP-Referer'] = window.location.href;
+
+            const content = [{ type: "text", text: finalPrompt }];
+            
+            if (imageUrl) {
+                content.push({
+                    type: "image_url",
+                    image_url: { url: imageUrl }
+                });
+            }
 
             body = JSON.stringify({
                 model: model,
-                messages: [{ role: "user", content: prompt }],
-                temperature: 0.1 
+                messages: [{ role: "user", content }],
+                temperature: 0.1
             });
         }
 
@@ -113,7 +257,10 @@ export const EditorIntegrationsMixin = {
         return data.choices?.[0]?.message?.content || '';
     },
 
-    processLlmResponse(text) {
+    // ==================== RESPONSE HANDLING ====================
+
+    processLlmResponse(text, mode) {
+        // Strip markdown code blocks
         let jsonStr = text;
         if (text.includes('```json')) {
             jsonStr = text.split('```json')[1].split('```')[0];
@@ -122,42 +269,94 @@ export const EditorIntegrationsMixin = {
         }
 
         try {
-            const jsonObj = JSON.parse(jsonStr);
-            if (!jsonObj.pages) throw new Error("Missing 'pages' array in response");
-            document.getElementById('llm-result-json').value = JSON.stringify(jsonObj, null, 2);
-            document.getElementById('llm-preview-modal').style.display = 'flex';
+            const resultObj = JSON.parse(jsonStr);
+            this.pendingLlmResult = { mode, data: resultObj };
+
+            // Show Preview Modal
+            const modal = document.getElementById('llm-preview-modal');
+            const textArea = document.getElementById('llm-result-json');
+            
+            if (mode === 'audit' && resultObj.comments) {
+                // If audit, show comments and just the fixed config
+                textArea.value = JSON.stringify(resultObj.fixed_config || resultObj, null, 2);
+                alert(`🤖 Auditor Report:\n\n${resultObj.comments}`);
+            } else {
+                textArea.value = JSON.stringify(resultObj, null, 2);
+            }
+
+            if (modal) modal.style.display = 'flex';
+
         } catch (e) {
             alert(`Failed to parse JSON response: ${e.message}\nCheck console for raw output.`);
-            console.log("Raw LLM Output:", text);
+            console.log("Raw Output:", text);
         }
     },
 
     applyLlmChanges() {
-        try {
-            const raw = document.getElementById('llm-result-json').value;
-            const newConfig = JSON.parse(raw);
-            const currentPages = this.engine.config.pages || [];
-            if (newConfig.pages) {
-                newConfig.pages.forEach((page, idx) => {
-                    if (currentPages[idx]) page.image = currentPages[idx].image;
-                });
-            }
-            if (!newConfig.meta) newConfig.meta = this.engine.config.meta;
-            this.engine.config.pages = newConfig.pages;
-            if (newConfig.points) this.engine.config.points = newConfig.points;
+        if (!this.pendingLlmResult) return;
+        const { mode, data } = this.pendingLlmResult;
 
+        try {
+            // 1. REFINE: Update only current page layout
+            if (mode === 'refine') {
+                const page = this.getCurrentPage();
+                const newLayout = Array.isArray(data) ? data : data.layout;
+                if (!newLayout) throw new Error("Invalid response format: Expected array or {layout:[]}");
+                page.layout = newLayout;
+            } 
+            // 2. FILL: Update current page layout (add items)
+            else if (mode === 'fill') {
+                const page = this.getCurrentPage();
+                const newLayout = Array.isArray(data) ? data : data.layout;
+                if (!newLayout) throw new Error("Invalid response format: Expected array or {layout:[]}");
+                
+                // Replace layout completely (assuming fill is mostly empty before)
+                // If you want to append, you could do: page.layout = [...page.layout, ...newLayout];
+                page.layout = newLayout;
+            } 
+            // 3. AUDIT: Replace entire config
+            else if (mode === 'audit') {
+                const newConfig = data.fixed_config || data;
+                
+                // SAFETY: Ensure images are not lost if LLM returned placeholders
+                if (newConfig.pages && Array.isArray(newConfig.pages)) {
+                    newConfig.pages.forEach((p, i) => {
+                        if (this.engine.config.pages[i] && this.engine.config.pages[i].image) {
+                            // Restore image from current config if missing or placeholder
+                            if (!p.image || p.image === "<IMAGE_PLACEHOLDER>") {
+                                p.image = this.engine.config.pages[i].image;
+                            }
+                        }
+                    });
+                }
+                this.engine.config = newConfig;
+            }
+
+            // Rebuild Engine & UI
             this.engine.buildMaps();
-            this.engine.reset();
+            this.engine.reset(); // Reset selection state as IDs might have changed
             this.engine.recalculate();
             this.renderer.renderAll();
             
-            this.deselectChoice();
+            // UI Updates
             this.renderPagesList();
+            this.deselectChoice();
+            
             document.getElementById('llm-preview-modal').style.display = 'none';
-            alert("Changes applied successfully!");
+            alert("✅ Changes applied successfully!");
+
         } catch (e) {
             alert(`Error applying changes: ${e.message}`);
         }
+    },
+
+    // ==================== MANUAL MODE UTILS ====================
+
+    applyManualResponse() {
+        const text = document.getElementById('llm-manual-in').value;
+        // Use pending mode if set (from runLlmAction), otherwise try to guess or default to current prompt mode
+        const mode = this.pendingLlmMode || this.currentPromptMode || 'refine';
+        this.processLlmResponse(text, mode);
     },
 
     copyManualPrompt() {
@@ -166,7 +365,9 @@ export const EditorIntegrationsMixin = {
         document.execCommand('copy');
     },
 
-    // ==================== SAM (Auto-Detect) LOGIC ====================
+    // ==================== SAM (AUTO-DETECT) LOGIC ====================
+    // Keeps the existing functionality for Auto-Detect button
+
     setupSamListeners() {
         const runBtn = document.getElementById('btn-run-sam');
         if (runBtn) {
@@ -234,7 +435,9 @@ export const EditorIntegrationsMixin = {
                 item.type = 'item';
                 page.layout.push(item);
             }
+            // Sort by coords for better readability
             this.sortLayoutByCoords(page.layout);
+            
             this.engine.buildMaps();
             this.engine.recalculate();
             this.renderer.renderLayout();

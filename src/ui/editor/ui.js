@@ -191,35 +191,79 @@ export const EditorUIMixin = {
                             </div>
                         </div>
                     </div>
-                    <div class="editor-section">
-                         <div class="accordion-header collapsed" onclick="CYOA.editor.toggleAccordion(this)">🧠 AI Smart Refine</div>
-                        <div class="accordion-content collapsed">
-                            <div class="info-text" style="font-size:0.75rem; margin:5px 0;">Send current layout to LLM to fix alignments and groupings.<br><span style="color:#4CAF50;">Recommended: Gemini 2.0 Flash</span></div>
-                            <div class="input-group">
-                                <select id="llm-provider" style="width:100%; padding:8px; background:#222; color:#fff; border:1px solid #333; border-radius:4px;">
-                                    <option value="google">Google AI Studio (Gemini)</option>
-                                    <option value="openai">OpenAI / Compatible</option>
-                                    <option value="manual">Manual (Copy/Paste)</option>
-                                </select>
-                            </div>
-                            <div id="llm-api-fields">
-                                <div class="input-group"><input type="password" id="llm-key" placeholder="API Key"><span class="input-label">API Key</span></div>
-                                <div class="input-group"><input type="text" id="llm-model" value="gemini-2.0-flash"><span class="input-label">Model Name</span></div>
-                                <div class="input-group" id="llm-base-url-group"><input type="text" id="llm-base-url" value="https://generativelanguage.googleapis.com/v1beta/models/"><span class="input-label">Base URL</span></div>
-                            </div>
-                            <div class="editor-section" style="border:none; padding:0; margin-top:10px;">
-                                <div class="accordion-header collapsed" onclick="CYOA.editor.toggleAccordion(this)" style="font-size:0.8rem;">📝 Edit System Prompt</div>
-                                <div class="accordion-content collapsed"><textarea id="llm-prompt" class="code-editor" style="height:150px;"></textarea></div>
-                            </div>
-                            <button id="btn-run-llm" class="full-width-btn primary-btn" style="margin-top:15px; background: linear-gradient(45deg, #9C27B0, #673AB7);">✨ Refine Coordinates</button>
-                            <div id="llm-manual-ui" style="display:none; margin-top:15px; border-top:1px dashed #444; padding-top:10px;">
-                                <textarea id="llm-manual-out" class="code-editor" style="height:80px;" readonly></textarea>
-                                <button class="full-width-btn" onclick="CYOA.editor.copyManualPrompt()" style="margin-bottom:10px;">📋 Copy to Clipboard</button>
-                                <textarea id="llm-manual-in" class="code-editor" style="height:80px;" placeholder="Paste JSON response here..."></textarea>
-                                <button class="full-width-btn primary-btn" onclick="CYOA.editor.processLlmResponse(document.getElementById('llm-manual-in').value)">Apply JSON</button>
-                            </div>
-                        </div>
+
+
+
+        <div class="editor-section">
+            <div class="accordion-header collapsed" onclick="CYOA.editor.toggleAccordion(this)">🧠 AI Assistant</div>
+            <div class="accordion-content collapsed">
+                
+                <!-- 1. Global Connection Settings -->
+                <div style="background:#222; padding:5px; border-radius:4px; margin-bottom:10px;">
+                    <div class="input-group" style="margin-bottom:5px;">
+                        <select id="llm-provider" style="width:100%; padding:6px; background:#111; color:#fff; border:1px solid #333; border-radius:3px;">
+                            <option value="google">Google Gemini (API)</option>
+                            <option value="openai">OpenAI (API)</option>
+                            <option value="manual">Manual (Copy/Paste)</option>
+                        </select>
                     </div>
+                    
+                    <div id="llm-api-fields">
+                        <div class="input-group"><input type="password" id="llm-key" placeholder="API Key"><span class="input-label">Key</span></div>
+                        <div class="input-group"><input type="text" id="llm-model" value="gemini-2.0-flash"><span class="input-label">Model</span></div>
+                        <div class="input-group"><input type="text" id="llm-base-url" value="https://generativelanguage.googleapis.com/v1beta/models/"><span class="input-label">URL</span></div>
+                    </div>
+                </div>
+
+                <!-- 2. Per-Mode Prompt Editor -->
+                <div style="margin-bottom:10px; border-top:1px solid #333; padding-top:5px;">
+                    <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                        <label style="font-size:0.75rem; color:#888;">Instruction (User Prompt):</label>
+                        <select id="llm-prompt-selector" style="font-size:0.75rem; background:#333; color:#fff; border:none; border-radius:3px;">
+                            <option value="refine">For: Refine Layout</option>
+                            <option value="fill">For: OCR & Fill</option>
+                            <option value="audit">For: Global Audit</option>
+                        </select>
+                    </div>
+                    <textarea id="llm-user-prompt" class="code-editor" style="height:80px; font-family:sans-serif; color:#ddd;"></textarea>
+                    <div style="font-size:0.65rem; color:#666; text-align:right;">* Technical context (JSON structure) will be appended automatically.</div>
+                </div>
+
+                <!-- 3. Action Buttons -->
+                <div style="display:flex; flex-direction:column; gap:6px;">
+                    <button onclick="CYOA.editor.runLlmAction('refine')" class="action-btn" style="background: #4b6cb7; text-align:left; font-size:0.8rem; padding:8px;">
+                        <span style="float:right;">📐</span> <strong>Run Refine Layout</strong>
+                    </button>
+                    <button onclick="CYOA.editor.runLlmAction('fill')" class="action-btn" style="background: #8e24aa; text-align:left; font-size:0.8rem; padding:8px;">
+                        <span style="float:right;">👁️</span> <strong>Run OCR & Fill</strong>
+                    </button>
+                    <button onclick="CYOA.editor.runLlmAction('audit')" class="action-btn" style="background: #2e7d32; text-align:left; font-size:0.8rem; padding:8px;">
+                        <span style="float:right;">🛡️</span> <strong>Run Audit</strong>
+                    </button>
+                </div>
+
+                <!-- 4. Manual Mode Output Area (Hidden by default) -->
+                <div id="llm-manual-ui" style="display:none; margin-top:15px; border-top:1px dashed #444; padding-top:10px;">
+                    <div class="info-text" style="font-size:0.7rem; padding:5px; margin:0 0 5px 0;">
+                        <strong>Manual Mode:</strong><br>
+                        1. Copy the full request below.<br>
+                        2. Paste into ChatGPT/Claude/Gemini.<br>
+                        3. Paste their JSON response back here.
+                    </div>
+                    <textarea id="llm-manual-out" class="code-editor" style="height:100px;" readonly placeholder="Generated request will appear here..."></textarea>
+                    <button class="full-width-btn" onclick="CYOA.editor.copyManualPrompt()" style="margin-bottom:10px;">📋 Copy Request</button>
+                    
+                    <textarea id="llm-manual-in" class="code-editor" style="height:80px;" placeholder="Paste JSON response here..."></textarea>
+                    <button class="full-width-btn primary-btn" onclick="CYOA.editor.applyManualResponse()">✅ Apply Response</button>
+                </div>
+
+            </div>
+        </div>
+
+
+
+
+
                     <div class="editor-section">
                         <div class="accordion-header collapsed" onclick="CYOA.editor.toggleAccordion(this)">🤖 Auto-Detect (SAM3)</div>
                         <div class="accordion-content collapsed">
