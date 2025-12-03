@@ -1,49 +1,47 @@
 /**
- * src\ui\editor\integrations.js
+ * src/ui/editor/integrations.js
  * Editor Integrations Mixin
  * Handles LLM (AI) and SAM (Auto-Detect) integrations
  */
 
 import { Client } from "@gradio/client";
+import { 
+    LLM_PROVIDERS, 
+    SYSTEM_PROMPTS, 
+    USER_PROMPTS,
+    buildMessages, 
+    addImageToMessages, 
+    extractJsonFromResponse 
+} from '../../config/llm-config.js';
 
 export const EditorIntegrationsMixin = {
     
-    // Default User Prompts for different modes
-    prompts: {
-        refine: `Align these items into neat rows and columns based on their coordinates. 
-Snap them to a grid. 
-Do not change IDs or Titles, only x/y/w/h.
-Ensure items do not overlap visually.`,
-        
-        fill: `Analyze the image. Identify all game cards/options. 
-For each card, extract: 
-- Title
-- Description
-- Cost (points) - infer negative values for spending
-- Tags (keywords like 'magic', 'fire', 'item')
-Infer "effects" or "requirements" if the text explicitly mentions them.`,
-        
-        audit: `Analyze the game logic. Check for:
-1. Requirements referencing IDs that do not exist in the config.
-2. Costs that add points instead of subtracting (positive value error).
-3. Logical loops or broken formulas.
-4. Typos in currency names.`
+    // Mutable copies of prompts that user can edit in UI
+    editablePrompts: {
+        refine: USER_PROMPTS.refine,
+        fill: USER_PROMPTS.fill,
+        audit: USER_PROMPTS.audit
     },
 
     // ==================== SETUP LISTENERS ====================
 
     setupLlmListeners() {
         const providerSel = document.getElementById('llm-provider');
+        const modelSel = document.getElementById('llm-model-select');
         const manualUi = document.getElementById('llm-manual-ui');
         const apiFields = document.getElementById('llm-api-fields');
         const promptSel = document.getElementById('llm-prompt-selector');
         const promptArea = document.getElementById('llm-user-prompt');
+        const customModelInput = document.getElementById('llm-model-custom');
+        const customUrlGroup = document.getElementById('llm-custom-url-group');
 
-        // 1. Provider Change Logic (Google / OpenAI / Manual)
+        // 1. Provider Change Logic
         if (providerSel) {
             providerSel.addEventListener('change', (e) => {
                 const val = e.target.value;
                 this.llmConfig.provider = val;
+                
+                const providerConfig = LLM_PROVIDERS[val];
                 
                 // Show/Hide fields
                 if (val === 'manual') {
@@ -52,44 +50,98 @@ Infer "effects" or "requirements" if the text explicitly mentions them.`,
                 } else {
                     if (manualUi) manualUi.style.display = 'none';
                     if (apiFields) apiFields.style.display = 'block';
+                    
+                    // Populate model dropdown
+                    if (modelSel && providerConfig.models) {
+                        modelSel.innerHTML = providerConfig.models.map(m => 
+                            `<option value="${m}" ${m === providerConfig.defaultModel ? 'selected' : ''}>${m}</option>`
+                        ).join('') + '<option value="__custom__">Custom...</option>';
+                        
+                        this.llmConfig.model = providerConfig.defaultModel;
+                    }
+                    
+                    // Update base URL
+                    const urlInput = document.getElementById('llm-base-url');
+                    if (urlInput) {
+                        urlInput.value = providerConfig.baseUrl;
+                    }
                 }
-
-                // Set Defaults for API
-                const urlInput = document.getElementById('llm-base-url');
-                const modelInput = document.getElementById('llm-model');
                 
-                if (val === 'google') {
-                    if (urlInput) urlInput.value = 'https://generativelanguage.googleapis.com/v1beta/models/';
-                    if (modelInput) modelInput.value = 'gemini-2.0-flash';
-                } else if (val === 'openai') {
-                    if (urlInput) urlInput.value = 'https://api.openai.com/v1';
-                    if (modelInput) modelInput.value = 'gpt-4o';
+                // Hide custom model input initially
+                if (customModelInput) customModelInput.style.display = 'none';
+                
+                // Show custom URL only for openrouter/openai (they support custom endpoints)
+                if (customUrlGroup) {
+                    customUrlGroup.style.display = (val === 'openai' || val === 'openrouter') ? 'block' : 'none';
+                }
+            });
+            
+            // Trigger initial setup
+            providerSel.dispatchEvent(new Event('change'));
+        }
+
+        // 2. Model Selection
+        if (modelSel) {
+            modelSel.addEventListener('change', (e) => {
+                if (e.target.value === '__custom__') {
+                    if (customModelInput) {
+                        customModelInput.style.display = 'block';
+                        customModelInput.focus();
+                    }
+                } else {
+                    if (customModelInput) customModelInput.style.display = 'none';
+                    this.llmConfig.model = e.target.value;
                 }
             });
         }
+        
+        if (customModelInput) {
+            customModelInput.addEventListener('input', (e) => {
+                this.llmConfig.model = e.target.value;
+            });
+        }
 
-        // 2. Prompt Selector Logic (Refine / Fill / Audit)
+        // 3. Prompt Selector Logic (Refine / Fill / Audit)
         if (promptSel && promptArea) {
             // Initialize with Refine prompt
-            promptArea.value = this.prompts.refine;
             this.currentPromptMode = 'refine';
+            promptArea.value = this.editablePrompts.refine;
 
             promptSel.addEventListener('change', (e) => {
                 // Save changes to memory before switching
                 if (this.currentPromptMode) {
-                    this.prompts[this.currentPromptMode] = promptArea.value;
+                    this.editablePrompts[this.currentPromptMode] = promptArea.value;
                 }
                 
                 // Switch mode
                 this.currentPromptMode = e.target.value;
                 
-                // Load new prompt
-                promptArea.value = this.prompts[this.currentPromptMode];
+                // Load prompt for new mode
+                promptArea.value = this.editablePrompts[this.currentPromptMode];
             });
 
             // Save on typing
             promptArea.addEventListener('input', (e) => {
-                this.prompts[this.currentPromptMode] = e.target.value;
+                if (this.currentPromptMode) {
+                    this.editablePrompts[this.currentPromptMode] = e.target.value;
+                }
+            });
+        }
+        
+        // 4. Reset Prompts Button
+        const resetBtn = document.getElementById('llm-reset-prompts');
+        if (resetBtn) {
+            resetBtn.addEventListener('click', () => {
+                if (confirm('Reset all prompts to defaults?')) {
+                    this.editablePrompts = {
+                        refine: USER_PROMPTS.refine,
+                        fill: USER_PROMPTS.fill,
+                        audit: USER_PROMPTS.audit
+                    };
+                    if (promptArea && this.currentPromptMode) {
+                        promptArea.value = this.editablePrompts[this.currentPromptMode];
+                    }
+                }
             });
         }
     },
@@ -100,12 +152,20 @@ Infer "effects" or "requirements" if the text explicitly mentions them.`,
         // Ensure we save the latest edit to the prompt before running
         const promptArea = document.getElementById('llm-user-prompt');
         if (promptArea && this.currentPromptMode === mode) {
-            this.prompts[mode] = promptArea.value;
+            this.editablePrompts[mode] = promptArea.value;
         }
 
+        // Read current config from UI
         this.llmConfig.apiKey = document.getElementById('llm-key')?.value;
-        this.llmConfig.model = document.getElementById('llm-model')?.value;
         this.llmConfig.baseUrl = document.getElementById('llm-base-url')?.value;
+        
+        const modelSel = document.getElementById('llm-model-select');
+        const customModel = document.getElementById('llm-model-custom');
+        if (modelSel?.value === '__custom__' && customModel?.value) {
+            this.llmConfig.model = customModel.value;
+        } else if (modelSel) {
+            this.llmConfig.model = modelSel.value;
+        }
 
         // Validation for API mode
         if (this.llmConfig.provider !== 'manual' && !this.llmConfig.apiKey) {
@@ -119,177 +179,258 @@ Infer "effects" or "requirements" if the text explicitly mentions them.`,
             return;
         }
 
-        // 1. Prepare Data & Context
-        let userInstruction = this.prompts[mode];
-        let technicalContext = "";
-        let contextData = null;
+        // 1. Prepare Data
+        let dataForPrompt = {};
         let imageToSend = null;
 
         if (mode === 'refine') {
-            technicalContext = `
-TECHNICAL RULE: Return ONLY a valid JSON array of objects.
-Input format matches Output format.
-Update 'coords' (x,y,w,h) to align items.
-Do NOT remove items. Do NOT change IDs.`;
-            // Send only current page layout
-            contextData = page.layout; 
+            // Send boxes from current page layout
+            const boxes = page.layout.map((item, idx) => ({
+                id: idx + 1,
+                original_id: item.id,
+                coords: item.coords,
+                type: item.type
+            }));
+            dataForPrompt.boxes = boxes;
+            imageToSend = page.image;
         } 
         else if (mode === 'fill') {
-            technicalContext = `
-TECHNICAL RULE: Return a valid JSON object: { "layout": [ ...items... ] }.
-Structure each item as: { "id": "unique_id", "type": "item", "title": "...", "coords": {x,y,w,h}, "cost": [...], "tags": [...] }.
-Use the provided Global Config JSON to understand currency IDs.
-The image is the source of truth.`;
-            // Send global config for context + Page Image
-            contextData = this.engine.config;
+            // Send boxes and full context
+            const boxes = page.layout.map((item, idx) => ({
+                id: idx + 1,
+                coords: item.coords
+            }));
+            dataForPrompt.boxes = boxes;
+            dataForPrompt.context = {
+                points: this.engine.config.points || [],
+                existing_items: this.collectAllItemIds()
+            };
             imageToSend = page.image;
         } 
         else if (mode === 'audit') {
-            technicalContext = `
-TECHNICAL RULE: Return a JSON object: { "fixed_config": { ... }, "comments": "string report" }.
-Preserve all "image" paths exactly as is. 
-Fix syntax errors in 'formula' fields.
-Fix broken IDs.`;
-            // Send entire config
-            contextData = this.engine.config;
+            dataForPrompt.config = this.engine.config;
         }
 
-        const fullPrompt = `${userInstruction}\n\n${technicalContext}`;
+        // 2. Build messages
+        let messages = this.buildMessagesForMode(mode, dataForPrompt);
 
-        // 2. Execution Flow
+        // 3. Add image if needed
+        if (imageToSend) {
+            messages = addImageToMessages(messages, imageToSend, this.llmConfig.provider);
+        }
 
         // --- MANUAL MODE ---
         if (this.llmConfig.provider === 'manual') {
-            const manualOut = document.getElementById('llm-manual-out');
-            const manualUi = document.getElementById('llm-manual-ui');
-            
-            // Construct a human-friendly copy-paste block
-            let pasteText = `=== SYSTEM INSTRUCTION ===\n${fullPrompt}\n\n=== DATA CONTEXT (JSON) ===\n${JSON.stringify(contextData, null, 2)}`;
-            
-            if (imageToSend) {
-                pasteText = `[ATTENTION: This task requires an image. Please DRAG & DROP the page image into your LLM chat manually]\n\n` + pasteText;
-                alert("Manual Mode for Image: Please copy the text below, paste it into your LLM, and manually upload the page image to the chat.");
-            }
-
-            manualOut.value = pasteText;
-            if (manualUi) manualUi.style.display = 'block';
-            
-            // Store pending mode to know how to apply response later
-            this.pendingLlmMode = mode;
+            this.showManualMode(mode, messages, imageToSend);
             return;
         }
 
         // --- API MODE ---
         const btn = document.activeElement;
         const originalText = btn ? btn.innerHTML : '';
-        if(btn) { btn.disabled = true; btn.innerHTML = '⏳ Processing...'; }
+        if (btn) { 
+            btn.disabled = true; 
+            btn.innerHTML = '⏳ Processing...'; 
+        }
 
         try {
-            const responseText = await this.callLlmApi(fullPrompt, contextData, imageToSend);
+            const responseText = await this.callLlmApi(messages);
             this.processLlmResponse(responseText, mode);
         } catch (e) {
             alert(`LLM Error: ${e.message}`);
-            console.error(e);
+            console.error('LLM Error:', e);
         } finally {
-            if(btn) { btn.disabled = false; btn.innerHTML = originalText; }
+            if (btn) { 
+                btn.disabled = false; 
+                btn.innerHTML = originalText; 
+            }
         }
+    },
+
+    // ==================== MESSAGE BUILDING ====================
+
+    buildMessagesForMode(mode, data) {
+        const systemPrompt = SYSTEM_PROMPTS[mode];
+        let userPrompt = this.editablePrompts[mode];
+        
+        // Replace placeholders in user prompt
+        if (data.boxes) {
+            userPrompt = userPrompt.replace('{{BOXES_JSON}}', JSON.stringify(data.boxes, null, 2));
+        }
+        if (data.context) {
+            userPrompt = userPrompt.replace('{{CONTEXT_JSON}}', JSON.stringify(data.context, null, 2));
+        }
+        if (data.config) {
+            userPrompt = userPrompt.replace('{{CONFIG_JSON}}', JSON.stringify(data.config, null, 2));
+        }
+        
+        return [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userPrompt }
+        ];
+    },
+
+    collectAllItemIds() {
+        const ids = [];
+        for (const page of this.engine.config.pages || []) {
+            for (const entry of page.layout || []) {
+                if (entry.type === 'item') {
+                    ids.push(entry.id);
+                } else if (entry.type === 'group' && entry.items) {
+                    for (const item of entry.items) {
+                        ids.push(item.id);
+                    }
+                }
+            }
+        }
+        return ids;
     },
 
     // ==================== API CALLER ====================
 
-    async callLlmApi(prompt, jsonData, imageUrl = null) {
+    async callLlmApi(messages) {
         const { provider, baseUrl, apiKey, model } = this.llmConfig;
+        const providerConfig = LLM_PROVIDERS[provider];
         
-        // Append JSON to prompt if sending via API
-        const finalPrompt = `${prompt}\n\nDATA:\n${JSON.stringify(jsonData)}`;
-
-        let url, body, headers;
-
-        // --- GOOGLE GEMINI ---
-        if (provider === 'google') {
-            url = `${baseUrl}${model}:generateContent?key=${apiKey}`;
-            headers = { 'Content-Type': 'application/json' };
-            
-            const parts = [{ text: finalPrompt }];
-            
-            if (imageUrl && imageUrl.startsWith('data:image')) {
-                const base64Data = imageUrl.split(',')[1];
-                const mimeType = imageUrl.split(';')[0].split(':')[1];
-                parts.push({
-                    inline_data: {
-                        mime_type: mimeType,
-                        data: base64Data
-                    }
-                });
-            }
-
-            body = JSON.stringify({ contents: [{ parts }] });
-        } 
-        // --- OPENAI GPT-4o ---
-        else {
-            url = `${baseUrl.replace(/\/+$/, '')}/chat/completions`;
-            headers = {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${apiKey}`
-            };
-
-            const content = [{ type: "text", text: finalPrompt }];
-            
-            if (imageUrl) {
-                content.push({
-                    type: "image_url",
-                    image_url: { url: imageUrl }
-                });
-            }
-
-            body = JSON.stringify({
-                model: model,
-                messages: [{ role: "user", content }],
-                temperature: 0.1
-            });
+        if (!providerConfig || !providerConfig.formatRequest) {
+            throw new Error(`Unknown provider: ${provider}`);
         }
 
-        const response = await fetch(url, { method: 'POST', headers, body });
+        const request = providerConfig.formatRequest(model, messages, apiKey, baseUrl);
+        
+        console.log(`📡 Calling ${provider} API:`, request.url);
+        
+        const response = await fetch(request.url, {
+            method: 'POST',
+            headers: request.headers,
+            body: JSON.stringify(request.body)
+        });
+
         const data = await response.json();
 
-        if (!response.ok) throw new Error(data.error?.message || JSON.stringify(data));
+        if (!response.ok) {
+            const errorMsg = data.error?.message || data.error?.type || JSON.stringify(data);
+            throw new Error(`API Error (${response.status}): ${errorMsg}`);
+        }
 
-        if (provider === 'google') return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-        return data.choices?.[0]?.message?.content || '';
+        return providerConfig.parseResponse(data);
+    },
+
+    // ==================== MANUAL MODE ====================
+
+    showManualMode(mode, messages, imageToSend) {
+        const manualOut = document.getElementById('llm-manual-out');
+        const manualUi = document.getElementById('llm-manual-ui');
+        
+        // Construct copy-paste friendly text
+        let pasteText = `=== SYSTEM PROMPT ===\n${messages[0].content}\n\n`;
+        pasteText += `=== USER MESSAGE ===\n`;
+        
+        // Handle content that might be array (with image)
+        const userContent = messages[1].content;
+        if (Array.isArray(userContent)) {
+            const textPart = userContent.find(p => p.type === 'text');
+            pasteText += textPart?.text || JSON.stringify(userContent);
+        } else {
+            pasteText += userContent;
+        }
+        
+        if (imageToSend) {
+            pasteText = `⚠️ IMAGE REQUIRED: Please upload the page image to your LLM chat manually.\n\n` + pasteText;
+            alert("This task requires an image. Copy the prompt below, paste into your LLM, and manually upload the page image.");
+        }
+
+        manualOut.value = pasteText;
+        if (manualUi) manualUi.style.display = 'block';
+        
+        // Store pending mode for applying response later
+        this.pendingLlmMode = mode;
+    },
+
+    applyManualResponse() {
+        const text = document.getElementById('llm-manual-in')?.value;
+        if (!text) {
+            alert('Please paste the LLM response first');
+            return;
+        }
+        const mode = this.pendingLlmMode || this.currentPromptMode || 'refine';
+        this.processLlmResponse(text, mode);
+    },
+
+    copyManualPrompt() {
+        const el = document.getElementById('llm-manual-out');
+        if (el) {
+            el.select();
+            document.execCommand('copy');
+            
+            // Visual feedback
+            const btn = document.querySelector('[onclick*="copyManualPrompt"]');
+            if (btn) {
+                const orig = btn.textContent;
+                btn.textContent = '✓ Copied!';
+                setTimeout(() => btn.textContent = orig, 1500);
+            }
+        }
     },
 
     // ==================== RESPONSE HANDLING ====================
 
     processLlmResponse(text, mode) {
-        // Strip markdown code blocks
-        let jsonStr = text;
-        if (text.includes('```json')) {
-            jsonStr = text.split('```json')[1].split('```')[0];
-        } else if (text.includes('```')) {
-            jsonStr = text.split('```')[1].split('```')[0];
-        }
-
         try {
-            const resultObj = JSON.parse(jsonStr);
+            const resultObj = extractJsonFromResponse(text);
             this.pendingLlmResult = { mode, data: resultObj };
 
             // Show Preview Modal
             const modal = document.getElementById('llm-preview-modal');
             const textArea = document.getElementById('llm-result-json');
+            const summaryEl = document.getElementById('llm-result-summary');
             
-            if (mode === 'audit' && resultObj.comments) {
-                // If audit, show comments and just the fixed config
-                textArea.value = JSON.stringify(resultObj.fixed_config || resultObj, null, 2);
-                alert(`🤖 Auditor Report:\n\n${resultObj.comments}`);
-            } else {
-                textArea.value = JSON.stringify(resultObj, null, 2);
+            let displayData = resultObj;
+            let summary = '';
+            
+            if (mode === 'audit') {
+                if (resultObj.changes && Array.isArray(resultObj.changes)) {
+                    const fixes = resultObj.changes.filter(c => c.type === 'fix').length;
+                    const warnings = resultObj.changes.filter(c => c.type === 'warning').length;
+                    summary = `Found ${fixes} fixes, ${warnings} warnings`;
+                }
+                if (resultObj.summary) {
+                    summary = resultObj.summary;
+                }
+                displayData = resultObj.fixed_config || resultObj;
+            } else if (mode === 'refine') {
+                const items = Array.isArray(resultObj) ? resultObj : resultObj.layout || [];
+                const classifications = {};
+                items.forEach(i => {
+                    classifications[i.classification || 'unknown'] = (classifications[i.classification || 'unknown'] || 0) + 1;
+                });
+                summary = Object.entries(classifications).map(([k, v]) => `${v} ${k}`).join(', ');
+            } else if (mode === 'fill') {
+                const layout = resultObj.layout || [];
+                const groups = layout.filter(l => l.type === 'group').length;
+                const items = layout.filter(l => l.type === 'item').length;
+                const groupItems = layout.filter(l => l.type === 'group').reduce((sum, g) => sum + (g.items?.length || 0), 0);
+                summary = `${groups} groups, ${items + groupItems} items total`;
+                if (resultObj.parsing_notes) {
+                    summary += ` | Notes: ${resultObj.parsing_notes}`;
+                }
             }
 
-            if (modal) modal.style.display = 'flex';
+            if (textArea) {
+                textArea.value = JSON.stringify(displayData, null, 2);
+            }
+            if (summaryEl) {
+                summaryEl.textContent = summary;
+                summaryEl.style.display = summary ? 'block' : 'none';
+            }
+            if (modal) {
+                modal.style.display = 'flex';
+            }
 
         } catch (e) {
-            alert(`Failed to parse JSON response: ${e.message}\nCheck console for raw output.`);
-            console.log("Raw Output:", text);
+            alert(`Failed to parse JSON response: ${e.message}\n\nCheck console for raw output.`);
+            console.error('Parse Error:', e);
+            console.log('Raw LLM Output:', text);
         }
     },
 
@@ -298,76 +439,134 @@ Fix broken IDs.`;
         const { mode, data } = this.pendingLlmResult;
 
         try {
-            // 1. REFINE: Update only current page layout
             if (mode === 'refine') {
-                const page = this.getCurrentPage();
-                const newLayout = Array.isArray(data) ? data : data.layout;
-                if (!newLayout) throw new Error("Invalid response format: Expected array or {layout:[]}");
-                page.layout = newLayout;
+                this.applyRefineResult(data);
             } 
-            // 2. FILL: Update current page layout (add items)
             else if (mode === 'fill') {
-                const page = this.getCurrentPage();
-                const newLayout = Array.isArray(data) ? data : data.layout;
-                if (!newLayout) throw new Error("Invalid response format: Expected array or {layout:[]}");
-                
-                // Replace layout completely (assuming fill is mostly empty before)
-                // If you want to append, you could do: page.layout = [...page.layout, ...newLayout];
-                page.layout = newLayout;
+                this.applyFillResult(data);
             } 
-            // 3. AUDIT: Replace entire config
             else if (mode === 'audit') {
-                const newConfig = data.fixed_config || data;
-                
-                // SAFETY: Ensure images are not lost if LLM returned placeholders
-                if (newConfig.pages && Array.isArray(newConfig.pages)) {
-                    newConfig.pages.forEach((p, i) => {
-                        if (this.engine.config.pages[i] && this.engine.config.pages[i].image) {
-                            // Restore image from current config if missing or placeholder
-                            if (!p.image || p.image === "<IMAGE_PLACEHOLDER>") {
-                                p.image = this.engine.config.pages[i].image;
-                            }
-                        }
-                    });
-                }
-                this.engine.config = newConfig;
+                this.applyAuditResult(data);
             }
 
             // Rebuild Engine & UI
             this.engine.buildMaps();
-            this.engine.reset(); // Reset selection state as IDs might have changed
+            this.engine.reset();
             this.engine.recalculate();
             this.renderer.renderAll();
             
-            // UI Updates
             this.renderPagesList();
             this.deselectChoice();
             
             document.getElementById('llm-preview-modal').style.display = 'none';
+            this.pendingLlmResult = null;
+            
             alert("✅ Changes applied successfully!");
 
         } catch (e) {
             alert(`Error applying changes: ${e.message}`);
+            console.error('Apply Error:', e);
         }
     },
 
-    // ==================== MANUAL MODE UTILS ====================
-
-    applyManualResponse() {
-        const text = document.getElementById('llm-manual-in').value;
-        // Use pending mode if set (from runLlmAction), otherwise try to guess or default to current prompt mode
-        const mode = this.pendingLlmMode || this.currentPromptMode || 'refine';
-        this.processLlmResponse(text, mode);
+    applyRefineResult(data) {
+        const page = this.getCurrentPage();
+        const refined = Array.isArray(data) ? data : data.layout || [];
+        
+        // Update coords and filter out ignored items
+        const updatedLayout = [];
+        const ignoreIds = new Set();
+        
+        for (const box of refined) {
+            if (box.classification === 'ignore') {
+                ignoreIds.add(box.id);
+                continue;
+            }
+            
+            // Find original item by ID or index
+            let originalItem = null;
+            if (box.original_id) {
+                originalItem = page.layout.find(item => item.id === box.original_id);
+            }
+            if (!originalItem && typeof box.id === 'number') {
+                originalItem = page.layout[box.id - 1];
+            }
+            
+            if (originalItem) {
+                // Update coords
+                originalItem.coords = box.coords;
+                
+                // Update type if classification suggests group_header
+                if (box.classification === 'group_header' && originalItem.type === 'item') {
+                    originalItem.type = 'group';
+                    originalItem.items = originalItem.items || [];
+                }
+                
+                updatedLayout.push(originalItem);
+            } else {
+                // New item from split - create minimal entry
+                updatedLayout.push({
+                    type: box.classification === 'group_header' ? 'group' : 'item',
+                    id: `item_${String(box.id).replace('.', '_')}`,
+                    coords: box.coords
+                });
+            }
+        }
+        
+        page.layout = updatedLayout;
     },
 
-    copyManualPrompt() {
-        const el = document.getElementById('llm-manual-out');
-        el.select();
-        document.execCommand('copy');
+    applyFillResult(data) {
+        const page = this.getCurrentPage();
+        const newLayout = data.layout || (Array.isArray(data) ? data : []);
+        
+        if (!newLayout.length) {
+            throw new Error("No layout data in response");
+        }
+        
+        // Ensure all items have type
+        const processedLayout = newLayout.map(item => ({
+            type: item.type || 'item',
+            ...item
+        }));
+        
+        page.layout = processedLayout;
+        
+        // Add any new currencies
+        if (data.inferred_currencies && Array.isArray(data.inferred_currencies)) {
+            const existingIds = new Set((this.engine.config.points || []).map(p => p.id));
+            for (const currency of data.inferred_currencies) {
+                if (!existingIds.has(currency.id)) {
+                    this.engine.config.points = this.engine.config.points || [];
+                    this.engine.config.points.push(currency);
+                }
+            }
+        }
+    },
+
+    applyAuditResult(data) {
+        const newConfig = data.fixed_config || data;
+        
+        // SAFETY: Preserve image paths that LLM might have corrupted
+        if (newConfig.pages && Array.isArray(newConfig.pages)) {
+            newConfig.pages.forEach((p, i) => {
+                const originalPage = this.engine.config.pages?.[i];
+                if (originalPage?.image) {
+                    // Restore image if missing, placeholder, or obviously wrong
+                    if (!p.image || 
+                        p.image === "<IMAGE_PLACEHOLDER>" || 
+                        p.image === "placeholder" ||
+                        !p.image.includes('.')) {
+                        p.image = originalPage.image;
+                    }
+                }
+            });
+        }
+        
+        this.engine.config = newConfig;
     },
 
     // ==================== SAM (AUTO-DETECT) LOGIC ====================
-    // Keeps the existing functionality for Auto-Detect button
 
     setupSamListeners() {
         const runBtn = document.getElementById('btn-run-sam');
@@ -385,8 +584,14 @@ Fix broken IDs.`;
         const galleryEl = document.getElementById('sam-debug-gallery');
 
         const page = this.getCurrentPage();
-        if (!page || !page.image) { alert("Please add a page with an image first!"); return; }
-        if (!tokenInput.value) { alert("Please enter your Hugging Face Token!"); return; }
+        if (!page || !page.image) { 
+            alert("Please add a page with an image first!"); 
+            return; 
+        }
+        if (!tokenInput.value) { 
+            alert("Please enter your Hugging Face Token!"); 
+            return; 
+        }
 
         const btn = document.getElementById('btn-run-sam');
         btn.disabled = true;
@@ -394,17 +599,24 @@ Fix broken IDs.`;
         galleryEl.innerHTML = '';
         
         let debugIdx = -1;
-        if (debugIdxInput.value) debugIdx = parseInt(debugIdxInput.value) - 1; 
+        if (debugIdxInput.value) {
+            debugIdx = parseInt(debugIdxInput.value) - 1;
+        }
 
-        this.autoDetector.statusCallback = (msg) => { statusEl.textContent = msg; };
+        this.autoDetector.statusCallback = (msg) => { 
+            statusEl.textContent = msg; 
+        };
+        
         this.autoDetector.debugCallback = (title, dataUrl) => {
             const wrapper = document.createElement('div');
             wrapper.style.marginBottom = "15px";
+            
             const label = document.createElement('div');
             label.textContent = title;
             label.style.color = "#4CAF50";
             label.style.fontSize = "0.75rem";
             label.style.marginBottom = "5px";
+            
             const img = document.createElement('img');
             img.src = dataUrl;
             img.style.maxWidth = "100%";
@@ -414,40 +626,46 @@ Fix broken IDs.`;
                 const w = window.open("");
                 w.document.write(`<img src="${dataUrl}" style="border:1px solid red;">`);
             };
+            
             wrapper.appendChild(label);
             wrapper.appendChild(img);
             galleryEl.appendChild(wrapper);
         };
 
-        const response = await fetch(page.image);
-        const blob = await response.blob();
-        const file = new File([blob], "page.png", { type: blob.type });
+        try {
+            const response = await fetch(page.image);
+            const blob = await response.blob();
+            const file = new File([blob], "page.png", { type: blob.type });
 
-        const detectedItems = await this.autoDetector.processImage(
-            file,
-            promptInput.value,
-            parseFloat(shaveInput.value),
-            tokenInput.value,
-            debugIdx
-        );
+            const detectedItems = await this.autoDetector.processImage(
+                file,
+                promptInput.value,
+                parseFloat(shaveInput.value),
+                tokenInput.value,
+                debugIdx
+            );
 
-        if (detectedItems.length > 0) {
-            for (const item of detectedItems) {
-                item.type = 'item';
-                page.layout.push(item);
+            if (detectedItems.length > 0) {
+                for (const item of detectedItems) {
+                    item.type = 'item';
+                    page.layout.push(item);
+                }
+                
+                this.sortLayoutByCoords(page.layout);
+                
+                this.engine.buildMaps();
+                this.engine.recalculate();
+                this.renderer.renderLayout();
+                
+                statusEl.textContent = `✅ Done! Added ${detectedItems.length} items.`;
+                this.renderPagesList();
+                this.switchTab('choice');
+            } else {
+                statusEl.textContent = "⚠️ No items found.";
             }
-            // Sort by coords for better readability
-            this.sortLayoutByCoords(page.layout);
-            
-            this.engine.buildMaps();
-            this.engine.recalculate();
-            this.renderer.renderLayout();
-            
-            statusEl.textContent = `Done! Added ${detectedItems.length} items.`;
-            this.renderPagesList();
-            this.switchTab('choice');
-        } else {
-            statusEl.textContent = "No items found.";
+        } catch (e) {
+            statusEl.textContent = `❌ Error: ${e.message}`;
+            console.error('SAM Error:', e);
         }
 
         btn.disabled = false;
