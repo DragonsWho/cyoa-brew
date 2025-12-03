@@ -1,7 +1,9 @@
 /**
  * src/ui/editor/integrations.js
  * Editor Integrations Mixin
- * Handles LLM (AI) and SAM (Auto-Detect) integrations
+ * Handles LLM (AI) and SAM (Auto-Detect) integrations logic.
+ * 
+ * NOTE: Setup of UI listeners for LLM is handled in ui.js to prevent Mixin override conflicts.
  */
 
 import { Client } from "@gradio/client";
@@ -21,117 +23,6 @@ export const EditorIntegrationsMixin = {
         refine: USER_PROMPTS.refine,
         fill: USER_PROMPTS.fill,
         audit: USER_PROMPTS.audit
-    },
-
-    // ==================== SETUP LISTENERS ====================
-
-    setupLlmListeners() {
-        const providerSel = document.getElementById('llm-provider');
-        const modelSel = document.getElementById('llm-model-select');
-        const manualUi = document.getElementById('llm-manual-ui');
-        const apiFields = document.getElementById('llm-api-fields');
-        const promptSel = document.getElementById('llm-prompt-selector');
-        const promptArea = document.getElementById('llm-user-prompt');
-        const customModelInput = document.getElementById('llm-model-custom');
-        const customUrlGroup = document.getElementById('llm-custom-url-group');
-
-        // 1. Provider Change Logic
-        if (providerSel) {
-            providerSel.addEventListener('change', (e) => {
-                const val = e.target.value;
-                this.llmConfig.provider = val;
-                
-                const providerConfig = LLM_PROVIDERS[val];
-                
-                // Show/Hide fields
-                if (val === 'manual') {
-                    if (manualUi) manualUi.style.display = 'block';
-                    if (apiFields) apiFields.style.display = 'none';
-                } else {
-                    if (manualUi) manualUi.style.display = 'none';
-                    if (apiFields) apiFields.style.display = 'block';
-                    
-                    if (modelSel && providerConfig.models) {
-                        modelSel.innerHTML = providerConfig.models.map(m => 
-                            `<option value="${m}" ${m === providerConfig.defaultModel ? 'selected' : ''}>${m}</option>`
-                        ).join('') + '<option value="__custom__">Custom...</option>';
-                        
-                        this.llmConfig.model = providerConfig.defaultModel;
-                    }
-                    
-                    const urlInput = document.getElementById('llm-base-url');
-                    if (urlInput) {
-                        urlInput.value = providerConfig.baseUrl;
-                    }
-                }
-                
-                if (customModelInput) customModelInput.style.display = 'none';
-                if (customUrlGroup) {
-                    customUrlGroup.style.display = (val === 'openai' || val === 'openrouter') ? 'block' : 'none';
-                }
-            });
-            
-            providerSel.dispatchEvent(new Event('change'));
-        }
-
-        // 2. Model Selection
-        if (modelSel) {
-            modelSel.addEventListener('change', (e) => {
-                if (e.target.value === '__custom__') {
-                    if (customModelInput) {
-                        customModelInput.style.display = 'block';
-                        customModelInput.focus();
-                    }
-                } else {
-                    if (customModelInput) customModelInput.style.display = 'none';
-                    this.llmConfig.model = e.target.value;
-                }
-            });
-        }
-        
-        if (customModelInput) {
-            customModelInput.addEventListener('input', (e) => {
-                this.llmConfig.model = e.target.value;
-            });
-        }
-
-        // 3. Prompt Selector Logic
-        if (promptSel && promptArea) {
-            this.currentPromptMode = 'refine';
-            promptArea.value = this.editablePrompts.refine;
-
-            promptSel.addEventListener('change', (e) => {
-                if (this.currentPromptMode) {
-                    this.editablePrompts[this.currentPromptMode] = promptArea.value;
-                }
-                
-                this.currentPromptMode = e.target.value;
-                promptArea.value = this.editablePrompts[this.currentPromptMode];
-            });
-
-            promptArea.addEventListener('input', (e) => {
-                if (this.currentPromptMode) {
-                    this.editablePrompts[this.currentPromptMode] = e.target.value;
-                }
-            });
-        }
-        
-        // 4. Reset Prompts Button
-        const resetBtn = document.getElementById('llm-reset-prompts');
-        if (resetBtn) {
-            resetBtn.addEventListener('click', () => {
-                if (confirm('Reset all prompts to defaults?')) {
-                    this.editablePrompts = {
-                        refine: USER_PROMPTS.refine,
-                        fill: USER_PROMPTS.fill,
-                        audit: USER_PROMPTS.audit
-                    };
-                    if (promptArea && this.currentPromptMode) {
-                        promptArea.value = this.editablePrompts[this.currentPromptMode];
-                    }
-                }
-            });
-        }
     },
 
     // ==================== HELPER: SORT & RENAME ====================
@@ -158,7 +49,6 @@ export const EditorIntegrationsMixin = {
 
     // ==================== HELPER: GET CLEAN CONFIG ====================
     
-    // Returns a copy of the config with images stripped out (to save context)
     getCleanConfig() {
         const configStr = JSON.stringify(this.engine.config);
         const cleanConfig = JSON.parse(configStr);
@@ -241,18 +131,16 @@ export const EditorIntegrationsMixin = {
                 imageToSend = page.image;
             } 
             else if (mode === 'fill') {
-                // Fetch external resources for the prompt
                 const [toolsMd, exampleJson] = await Promise.all([
                     this.loadStaticFile('/docs/llm-tools-reference.md'),
                     this.loadStaticFile('/config/test_config.json')
                 ]);
 
-                dataForPrompt.layout = page.layout; // Send full nested layout!
+                dataForPrompt.layout = page.layout;
                 dataForPrompt.toolsMd = toolsMd;
                 dataForPrompt.exampleJson = exampleJson;
                 dataForPrompt.fullConfig = this.getCleanConfig();
                 
-                // Find current page index for "Page X" context
                 const pageIndex = this.engine.config.pages.indexOf(page);
                 dataForPrompt.pageNum = pageIndex !== -1 ? pageIndex + 1 : "?";
 
@@ -273,7 +161,7 @@ export const EditorIntegrationsMixin = {
             // --- MANUAL MODE ---
             if (this.llmConfig.provider === 'manual') {
                 this.showManualMode(mode, messages, imageToSend);
-                return; // Return here, button reset handled in finally block? No, manually reset logic needed for manual.
+                return;
             }
 
             // --- API MODE ---
@@ -291,31 +179,9 @@ export const EditorIntegrationsMixin = {
         }
     },
 
-    // ==================== MESSAGE BUILDING ====================
-
     buildMessagesForMode(mode, data) {
-        // We use the helper from config to keep logic centralized
         return buildMessages(mode, data);
     },
-
-    collectAllItemIds() {
-        // (Legacy helper, mostly handled by sending fullConfig now, but kept for safety)
-        const ids = [];
-        for (const page of this.engine.config.pages || []) {
-            for (const entry of page.layout || []) {
-                if (entry.type === 'item') {
-                    ids.push(entry.id);
-                } else if (entry.type === 'group' && entry.items) {
-                    for (const item of entry.items) {
-                        ids.push(item.id);
-                    }
-                }
-            }
-        }
-        return ids;
-    },
-
-    // ==================== API CALLER ====================
 
     async callLlmApi(messages) {
         const { provider, baseUrl, apiKey, model } = this.llmConfig;
@@ -326,7 +192,6 @@ export const EditorIntegrationsMixin = {
         }
 
         const request = providerConfig.formatRequest(model, messages, apiKey, baseUrl);
-        
         console.log(`📡 Calling ${provider} API:`, request.url);
         
         const response = await fetch(request.url, {
@@ -371,7 +236,6 @@ export const EditorIntegrationsMixin = {
         
         this.pendingLlmMode = mode;
 
-        // Reset button immediately since we are just showing text
         const btn = document.querySelector(`button[onclick*="runLlmAction('${mode}')"]`);
         if (btn) {
             btn.disabled = false;
@@ -394,7 +258,6 @@ export const EditorIntegrationsMixin = {
         if (el) {
             el.select();
             document.execCommand('copy');
-            
             const btn = document.querySelector('[onclick*="copyManualPrompt"]');
             if (btn) {
                 const orig = btn.textContent;
@@ -411,7 +274,6 @@ export const EditorIntegrationsMixin = {
             const resultObj = extractJsonFromResponse(text);
             this.pendingLlmResult = { mode, data: resultObj };
 
-            // Show Preview Modal
             const modal = document.getElementById('llm-preview-modal');
             const textArea = document.getElementById('llm-result-json');
             const summaryEl = document.getElementById('llm-result-summary');
@@ -442,23 +304,18 @@ export const EditorIntegrationsMixin = {
                 summary = `Refined: ${groupsCount} Groups, ${itemsCount} Cards detected`;
             } else if (mode === 'fill') {
                 const layout = resultObj.layout || (Array.isArray(resultObj) ? resultObj : []);
-                // Simple recursive count for summary
                 let count = 0;
                 const countR = (arr) => arr.forEach(i => { count++; if(i.items) countR(i.items); });
                 countR(layout);
                 summary = `Extracted data for ${count} elements (groups + items)`;
             }
 
-            if (textArea) {
-                textArea.value = JSON.stringify(displayData, null, 2);
-            }
+            if (textArea) textArea.value = JSON.stringify(displayData, null, 2);
             if (summaryEl) {
                 summaryEl.textContent = summary;
                 summaryEl.style.display = summary ? 'block' : 'none';
             }
-            if (modal) {
-                modal.style.display = 'flex';
-            }
+            if (modal) modal.style.display = 'flex';
 
         } catch (e) {
             alert(`Failed to parse JSON response: ${e.message}\n\nCheck console for raw output.`);
@@ -472,22 +329,14 @@ export const EditorIntegrationsMixin = {
         const { mode, data } = this.pendingLlmResult;
 
         try {
-            if (mode === 'refine') {
-                this.applyRefineResult(data);
-            } 
-            else if (mode === 'fill') {
-                this.applyFillResult(data);
-            } 
-            else if (mode === 'audit') {
-                this.applyAuditResult(data);
-            }
+            if (mode === 'refine') this.applyRefineResult(data);
+            else if (mode === 'fill') this.applyFillResult(data);
+            else if (mode === 'audit') this.applyAuditResult(data);
 
-            // Rebuild Engine & UI
             this.engine.buildMaps();
             this.engine.reset();
             this.engine.recalculate();
             this.renderer.renderAll();
-            
             this.renderPagesList();
             this.deselectChoice();
             
@@ -505,31 +354,23 @@ export const EditorIntegrationsMixin = {
     applyRefineResult(data) {
         const page = this.getCurrentPage();
         const newLayout = Array.isArray(data) ? data : (data.layout || []);
-
         if (newLayout.length === 0) {
             console.warn("LLM returned empty layout");
             return;
         }
-
         page.layout = newLayout;
-        console.log("Applied refined layout:", page.layout);
     },
 
     applyFillResult(data) {
         const page = this.getCurrentPage();
         const newLayout = data.layout || (Array.isArray(data) ? data : []);
+        if (!newLayout.length) throw new Error("No layout data in response");
         
-        if (!newLayout.length) {
-            throw new Error("No layout data in response");
-        }
-        
-        // Ensure nesting is preserved (the response is already a full layout)
         page.layout = newLayout.map(item => ({
             type: item.type || 'item',
             ...item
         }));
         
-        // Add new currencies
         if (data.inferred_currencies && Array.isArray(data.inferred_currencies)) {
             const existingIds = new Set((this.engine.config.points || []).map(p => p.id));
             for (const currency of data.inferred_currencies) {
@@ -543,20 +384,16 @@ export const EditorIntegrationsMixin = {
 
     applyAuditResult(data) {
         const newConfig = data.fixed_config || data;
-        
         if (newConfig.pages && Array.isArray(newConfig.pages)) {
             newConfig.pages.forEach((p, i) => {
                 const originalPage = this.engine.config.pages?.[i];
                 if (originalPage?.image) {
-                    if (!p.image || 
-                        p.image === "<IMAGE_PLACEHOLDER>" || 
-                        !p.image.includes('.')) {
+                    if (!p.image || p.image === "<IMAGE_PLACEHOLDER>" || !p.image.includes('.')) {
                         p.image = originalPage.image;
                     }
                 }
             });
         }
-        
         this.engine.config = newConfig;
     },
 
@@ -598,30 +435,18 @@ export const EditorIntegrationsMixin = {
             debugIdx = parseInt(debugIdxInput.value) - 1;
         }
 
-        this.autoDetector.statusCallback = (msg) => { 
-            statusEl.textContent = msg; 
-        };
-        
+        this.autoDetector.statusCallback = (msg) => { statusEl.textContent = msg; };
         this.autoDetector.debugCallback = (title, dataUrl) => {
             const wrapper = document.createElement('div');
             wrapper.style.marginBottom = "15px";
-            
             const label = document.createElement('div');
             label.textContent = title;
             label.style.color = "#4CAF50";
             label.style.fontSize = "0.75rem";
-            label.style.marginBottom = "5px";
-            
             const img = document.createElement('img');
             img.src = dataUrl;
             img.style.maxWidth = "100%";
             img.style.border = "1px solid #444";
-            img.style.cursor = "pointer";
-            img.onclick = () => {
-                const w = window.open("");
-                w.document.write(`<img src="${dataUrl}" style="border:1px solid red;">`);
-            };
-            
             wrapper.appendChild(label);
             wrapper.appendChild(img);
             galleryEl.appendChild(wrapper);
@@ -646,16 +471,12 @@ export const EditorIntegrationsMixin = {
                     item.type = 'item';
                     page.layout.push(item);
                 }
-                
                 this.sortAndRenameLayout(page.layout);
-                
                 this.engine.buildMaps();
                 this.engine.recalculate();
                 this.renderer.renderLayout();
-                
                 statusEl.textContent = `✅ Done! Added ${detectedItems.length} items.`;
                 this.renderPagesList();
-                this.switchTab('choice');
             } else {
                 statusEl.textContent = "⚠️ No items found.";
             }
@@ -663,7 +484,6 @@ export const EditorIntegrationsMixin = {
             statusEl.textContent = `❌ Error: ${e.message}`;
             console.error('SAM Error:', e);
         }
-
         btn.disabled = false;
         btn.style.opacity = 1;
     }

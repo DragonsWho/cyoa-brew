@@ -3,6 +3,15 @@
  * Editor UI Mixin - Manages the editor user interface
  */
 
+import { 
+    LLM_PROVIDERS, 
+    fetchAvailableModels, 
+    saveLlmSettings, 
+    loadLlmSettings,
+    getStoredApiKey,
+    USER_PROMPTS 
+} from '../../config/llm-config.js';
+
 export const EditorUIMixin = {
     // ==================== CREATE UI ====================
     createEditorUI() {
@@ -26,7 +35,12 @@ export const EditorUIMixin = {
         pageImageInput.style.display = 'none';
         sidebar.appendChild(pageImageInput);
 
-        sidebar.innerHTML += `
+        // Build provider options
+        const providerOptions = Object.entries(LLM_PROVIDERS)
+            .map(([key, config]) => `<option value="${key}">${config.name}</option>`)
+            .join('');
+
+        sidebar.innerHTML = `
             <div class="editor-tabs">
                 <button class="tab-btn" data-tab="choice" onclick="CYOA.editor.switchTab('choice')">Choice</button>
                 <button class="tab-btn" data-tab="group" onclick="CYOA.editor.switchTab('group')">Group</button>
@@ -37,7 +51,7 @@ export const EditorUIMixin = {
             <div class="sidebar-scroll-content">
                 <div id="tab-content-choice" class="tab-content" style="display:none;">
                     
-                    <!-- Multi-Select Toolbar (Shown when > 1 items) -->
+                    <!-- Multi-Select Toolbar -->
                     <div id="multi-props" style="display:none;">
                         <div class="info-text" style="text-align:center; padding:10px; margin-bottom:5px;">
                             <strong id="multi-count">0 items</strong> selected
@@ -50,28 +64,21 @@ export const EditorUIMixin = {
                             <div class="accordion-header" onclick="CYOA.editor.toggleAccordion(this)">📐 Alignment</div>
                             <div class="accordion-content">
                                 <div class="row-buttons">
-                                    <button class="action-btn" style="background:#444;" onclick="CYOA.editor.alignSelectedItems('top')" title="Align all items to the Y position of the highest item in selection">⬆️ Top</button>
-                                    <button class="action-btn" style="background:#444;" onclick="CYOA.editor.alignSelectedItems('bottom')" title="Align all items to the bottom edge of the lowest item in selection">⬇️ Bottom</button>
+                                    <button class="action-btn" style="background:#444;" onclick="CYOA.editor.alignSelectedItems('top')">⬆️ Top</button>
+                                    <button class="action-btn" style="background:#444;" onclick="CYOA.editor.alignSelectedItems('bottom')">⬇️ Bottom</button>
                                 </div>
                                 <div class="row-buttons">
-                                    <button class="action-btn" style="background:#444;" onclick="CYOA.editor.alignSelectedItems('left')" title="Align all items to the X position of the leftmost item in selection">⬅️ Left</button>
-                                    <button class="action-btn" style="background:#444;" onclick="CYOA.editor.alignSelectedItems('right')" title="Align all items to the right edge of the rightmost item in selection">➡️ Right</button>
+                                    <button class="action-btn" style="background:#444;" onclick="CYOA.editor.alignSelectedItems('left')">⬅️ Left</button>
+                                    <button class="action-btn" style="background:#444;" onclick="CYOA.editor.alignSelectedItems('right')">➡️ Right</button>
                                 </div>
-                            </div>
-                        </div>
-                        <div class="editor-section">
-                             <div class="accordion-header" onclick="CYOA.editor.toggleAccordion(this)">📏 Distribution</div>
-                            <div class="accordion-content">
-                                <button class="full-width-btn" onclick="CYOA.editor.distributeSelectedItems('vertical')" title="Space items evenly between the top-most and bottom-most item">↕️ Distribute Vertically</button>
-                                <button class="full-width-btn" onclick="CYOA.editor.distributeSelectedItems('horizontal')" title="Space items evenly between the left-most and right-most item">↔️ Distribute Horizontally</button>
                             </div>
                         </div>
                         <div class="editor-section">
                              <div class="accordion-header" onclick="CYOA.editor.toggleAccordion(this)">◻️ Sizing</div>
                             <div class="accordion-content">
-                                <button class="full-width-btn" onclick="CYOA.editor.matchSizeSelectedItems('width')" title="Set all items to the width of the last selected item (Primary)">Match Width</button>
-                                <button class="full-width-btn" onclick="CYOA.editor.matchSizeSelectedItems('height')" title="Set all items to the height of the last selected item (Primary)">Match Height</button>
-                                <button class="full-width-btn" onclick="CYOA.editor.matchSizeSelectedItems('both')" title="Set all items to the size of the last selected item (Primary)">Match Both</button>
+                                <button class="full-width-btn" onclick="CYOA.editor.matchSizeSelectedItems('width')">Match Width</button>
+                                <button class="full-width-btn" onclick="CYOA.editor.matchSizeSelectedItems('height')">Match Height</button>
+                                <button class="full-width-btn" onclick="CYOA.editor.matchSizeSelectedItems('both')">Match Both</button>
                             </div>
                         </div>
                         <div class="editor-section" style="margin-top: 10px; border-top: 1px solid #222;">
@@ -137,13 +144,13 @@ export const EditorUIMixin = {
                         </div>
                     </div>
                     <div class="editor-section editor-actions-fixed">
-                        <button class="action-btn btn-add full-width-btn" onclick="CYOA.editor.addNewItem()">➕ Add New Item (Center)</button>
+                        <button class="action-btn btn-add full-width-btn" onclick="CYOA.editor.addNewItem()">➕ Add New Item</button>
                     </div>
                 </div>
 
                 <div id="tab-content-group" class="tab-content" style="display:none;">
                     <div id="group-empty-state" class="info-text">
-                        <p>Select a group (Info Box) on the page to edit, or create a new one.</p>
+                        <p>Select a group (Info Box) to edit.</p>
                     </div>
                     <div id="group-props" style="display:none;">
                          <div class="editor-section">
@@ -173,7 +180,7 @@ export const EditorUIMixin = {
                         </div>
                     </div>
                     <div class="editor-section editor-actions-fixed">
-                        <button class="action-btn btn-add full-width-btn" onclick="CYOA.editor.addNewGroup()">➕ Add New Group (Center)</button>
+                        <button class="action-btn btn-add full-width-btn" onclick="CYOA.editor.addNewGroup()">➕ Add New Group</button>
                     </div>
                 </div>
 
@@ -188,7 +195,7 @@ export const EditorUIMixin = {
                     <div class="editor-section">
                         <div class="accordion-header" onclick="CYOA.editor.toggleAccordion(this)">💾 File Operations</div>
                         <div class="accordion-content">
-                            <button class="full-width-btn" style="background:#4b6cb7; margin-bottom:10px;" onclick="document.getElementById('load-config-input').click()">📂 Load Project (JSON)</button>
+                            <button class="full-width-btn" style="background:#4b6cb7; margin-bottom:10px;" onclick="document.getElementById('load-config-input').click()">📂 Load Project</button>
                             <div class="row-buttons">
                                 <button class="action-btn primary-btn" onclick="CYOA.editor.exportConfig()">💾 Save JSON</button>
                                 <button class="action-btn" style="background:#444;" onclick="CYOA.editor.exportZip()">📦 Save Zip</button>
@@ -204,12 +211,9 @@ export const EditorUIMixin = {
                             <div style="background:#1a1a1a; padding:8px; border-radius:4px; margin-bottom:10px;">
                                 <label style="font-size:0.7rem; color:#888; display:block; margin-bottom:4px;">Provider</label>
                                 <select id="llm-provider" style="width:100%; padding:8px; background:#111; color:#fff; border:1px solid #333; border-radius:3px; font-size:0.85rem;">
-                                    <option value="google">Google Gemini</option>
-                                    <option value="openai">OpenAI</option>
-                                    <option value="anthropic">Anthropic Claude</option>
-                                    <option value="openrouter">OpenRouter (Multi-model)</option>
-                                    <option value="manual">Manual (Copy/Paste)</option>
+                                    ${providerOptions}
                                 </select>
+                                <div id="llm-provider-hint" style="font-size:0.7rem; color:#4CAF50; margin-top:6px; padding:4px 6px; background:#1a2f1a; border-radius:3px; display:none;"></div>
                             </div>
                             
                             <!-- API Configuration -->
@@ -218,13 +222,20 @@ export const EditorUIMixin = {
                                     <input type="password" id="llm-key" placeholder="sk-... or AIza...">
                                     <span class="input-label">API Key</span>
                                 </div>
+                                <div style="font-size:0.65rem; color:#666; margin-bottom:8px;">
+                                    🔒 API keys are saved locally in your browser
+                                </div>
                                 
                                 <div style="margin-bottom:8px;">
-                                    <label style="font-size:0.7rem; color:#888; display:block; margin-bottom:4px;">Model</label>
+                                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                                        <label style="font-size:0.7rem; color:#888;">Model</label>
+                                        <button id="llm-refresh-models" style="font-size:0.65rem; background:#333; border:none; color:#888; padding:2px 8px; border-radius:2px; cursor:pointer;" title="Refresh available models">🔄 Refresh</button>
+                                    </div>
                                     <select id="llm-model-select" style="width:100%; padding:6px; background:#222; color:#fff; border:1px solid #333; border-radius:3px; font-size:0.8rem;">
-                                        <!-- Populated dynamically -->
+                                        <option value="">Loading models...</option>
                                     </select>
-                                    <input type="text" id="llm-model-custom" placeholder="custom-model-name" style="display:none; margin-top:4px; width:100%; padding:6px; background:#222; color:#fff; border:1px solid #333; border-radius:3px; font-size:0.8rem;">
+                                    <div id="llm-model-status" style="font-size:0.65rem; color:#888; margin-top:4px;"></div>
+                                    <input type="text" id="llm-model-custom" placeholder="Or enter custom model name" style="margin-top:6px; width:100%; padding:6px; background:#222; color:#fff; border:1px solid #333; border-radius:3px; font-size:0.75rem;">
                                 </div>
                                 
                                 <div id="llm-custom-url-group" style="display:none;">
@@ -247,7 +258,7 @@ export const EditorUIMixin = {
                                 </div>
                                 <textarea id="llm-user-prompt" class="code-editor" style="height:100px; font-family:monospace; font-size:0.75rem; color:#ddd; background:#0a0a0a;"></textarea>
                                 <div style="display:flex; justify-content:space-between; margin-top:4px;">
-                                    <span style="font-size:0.65rem; color:#555;">Use {{BOXES_JSON}}, {{CONTEXT_JSON}}, {{CONFIG_JSON}} placeholders</span>
+                                    <span style="font-size:0.65rem; color:#555;">Placeholders: {{LAYOUT_JSON}}, {{CONFIG_JSON}}</span>
                                     <button id="llm-reset-prompts" style="font-size:0.65rem; background:#333; border:none; color:#888; padding:2px 6px; border-radius:2px; cursor:pointer;">Reset</button>
                                 </div>
                             </div>
@@ -279,7 +290,7 @@ export const EditorUIMixin = {
                                 <div style="font-size:0.7rem; color:#888; margin-bottom:8px;">
                                     1. Copy the prompt below<br>
                                     2. Paste into your LLM (ChatGPT, Claude, etc.)<br>
-                                    3. <strong>Upload the page image (use button below)</strong><br>
+                                    3. <strong>Upload the page image</strong> (use button below)<br>
                                     4. Paste the JSON response back here
                                 </div>
                                 <button id="btn-copy-debug-img" class="full-width-btn" style="background: #e65100; margin-bottom:8px; font-size:0.8rem;" onclick="CYOA.editor.copyDebugImageToClipboard()">📸 Copy Layout Image (For LLM)</button>
@@ -361,6 +372,250 @@ export const EditorUIMixin = {
         this.setupContextMenu(); 
         
         this.renderPagesList();
+    },
+
+    // ==================== LLM LISTENERS ====================
+    setupLlmListeners() {
+        const providerSelect = document.getElementById('llm-provider');
+        const keyInput = document.getElementById('llm-key');
+        const modelSelect = document.getElementById('llm-model-select');
+        const modelCustom = document.getElementById('llm-model-custom');
+        const baseUrlInput = document.getElementById('llm-base-url');
+        const refreshBtn = document.getElementById('llm-refresh-models');
+        const hintEl = document.getElementById('llm-provider-hint');
+        const statusEl = document.getElementById('llm-model-status');
+        const manualUI = document.getElementById('llm-manual-ui');
+        const apiFields = document.getElementById('llm-api-fields');
+        const promptSel = document.getElementById('llm-prompt-selector');
+        const promptArea = document.getElementById('llm-user-prompt');
+        const resetPromptsBtn = document.getElementById('llm-reset-prompts');
+
+        // Load saved settings
+        const savedSettings = loadLlmSettings();
+        providerSelect.value = savedSettings.provider;
+        keyInput.value = savedSettings.apiKey;
+        if (baseUrlInput) baseUrlInput.value = savedSettings.baseUrl;
+
+        this._modelCache = {};
+
+        // Update UI based on provider
+        const updateProviderUI = async (provider) => {
+            const config = LLM_PROVIDERS[provider];
+            
+            if (provider === 'manual') {
+                manualUI.style.display = 'block';
+                apiFields.style.display = 'none';
+            } else {
+                manualUI.style.display = 'none';
+                apiFields.style.display = 'block';
+            }
+
+            if (config?.hint) {
+                hintEl.textContent = config.hint;
+                hintEl.style.display = 'block';
+            } else {
+                hintEl.style.display = 'none';
+            }
+
+            const storedKey = getStoredApiKey(provider);
+            keyInput.value = storedKey;
+
+            await this.refreshModelsList(provider, storedKey);
+            
+            if (savedSettings.model && provider === savedSettings.provider) {
+                if ([...modelSelect.options].some(o => o.value === savedSettings.model)) {
+                    modelSelect.value = savedSettings.model;
+                } else {
+                    modelCustom.value = savedSettings.model;
+                }
+            }
+        };
+
+        // Refresh models list
+        this.refreshModelsList = async (provider, apiKey) => {
+            const config = LLM_PROVIDERS[provider];
+            modelSelect.innerHTML = '<option value="">Loading...</option>';
+            
+            if (!config || provider === 'manual') {
+                modelSelect.innerHTML = '<option value="">Manual Mode</option>';
+                return;
+            }
+
+            console.log(`[UI] Refreshing models for ${provider}...`);
+            statusEl.textContent = '⏳ Fetching models...';
+            statusEl.style.color = '#888';
+
+            const cacheKey = `${provider}-${apiKey ? 'auth' : 'noauth'}`;
+            
+            if (this._modelCache[cacheKey] && Date.now() - this._modelCache[cacheKey].time < 300000) {
+                this.populateModelSelect(this._modelCache[cacheKey].models, config.defaultModel);
+                statusEl.textContent = `✓ ${this._modelCache[cacheKey].models.length} models (cached)`;
+                statusEl.style.color = '#4CAF50';
+                return;
+            }
+
+            try {
+                const result = await fetchAvailableModels(provider, apiKey);
+                
+                if (result.error) {
+                    statusEl.textContent = `⚠️ ${result.error} - using defaults`;
+                    statusEl.style.color = '#ff9800';
+                    this.populateModelSelect(result.models || config.fallbackModels || [], config.defaultModel);
+                } else {
+                    statusEl.textContent = `✓ ${result.models.length} models available`;
+                    statusEl.style.color = '#4CAF50';
+                    this._modelCache[cacheKey] = { models: result.models, time: Date.now() };
+                    this.populateModelSelect(result.models, config.defaultModel);
+                }
+            } catch (err) {
+                console.error('[UI] Critical failure in refreshModelsList:', err);
+                statusEl.textContent = '❌ Fetch failed - using defaults';
+                statusEl.style.color = '#f44336';
+                this.populateModelSelect(config.fallbackModels || [], config.defaultModel);
+            }
+        };
+
+        this.populateModelSelect = (models, defaultModel) => {
+            modelSelect.innerHTML = '';
+            
+            if (!models || models.length === 0) {
+                modelSelect.innerHTML = '<option value="">No models available</option>';
+                return;
+            }
+
+            const sortedModels = [...models];
+            if (defaultModel && sortedModels.includes(defaultModel)) {
+                sortedModels.splice(sortedModels.indexOf(defaultModel), 1);
+                sortedModels.unshift(defaultModel);
+            }
+
+            sortedModels.forEach(model => {
+                const option = document.createElement('option');
+                option.value = model;
+                option.textContent = model;
+                if (model === defaultModel) option.textContent += ' ⭐';
+                modelSelect.appendChild(option);
+            });
+            
+            // Custom model option
+            const customOpt = document.createElement('option');
+            customOpt.value = '__custom__';
+            customOpt.textContent = 'Custom...';
+            modelSelect.appendChild(customOpt);
+
+            if (defaultModel && sortedModels.includes(defaultModel)) {
+                modelSelect.value = defaultModel;
+            } else if (sortedModels.length > 0) {
+                modelSelect.value = sortedModels[0];
+            }
+        };
+
+        // --- Event Listeners ---
+        
+        providerSelect.addEventListener('change', async (e) => {
+            const provider = e.target.value;
+            saveLlmSettings({ provider });
+            await updateProviderUI(provider);
+        });
+
+        let keyDebounce = null;
+        keyInput.addEventListener('input', (e) => {
+            clearTimeout(keyDebounce);
+            keyDebounce = setTimeout(async () => {
+                const provider = providerSelect.value;
+                const apiKey = e.target.value;
+                saveLlmSettings({ provider, apiKey });
+                
+                if (LLM_PROVIDERS[provider]?.supportsModelFetch) {
+                    await this.refreshModelsList(provider, apiKey);
+                }
+            }, 500);
+        });
+
+        modelSelect.addEventListener('change', (e) => {
+            if (e.target.value === '__custom__') {
+                modelCustom.style.display = 'block';
+                modelCustom.focus();
+            } else {
+                modelCustom.style.display = 'none';
+                saveLlmSettings({ model: e.target.value });
+            }
+        });
+
+        modelCustom.addEventListener('input', (e) => {
+            if (e.target.value) saveLlmSettings({ model: e.target.value });
+        });
+
+        refreshBtn.addEventListener('click', async () => {
+            const provider = providerSelect.value;
+            const apiKey = keyInput.value;
+            delete this._modelCache[`${provider}-${apiKey ? 'auth' : 'noauth'}`];
+            delete this._modelCache[`${provider}-noauth`];
+            await this.refreshModelsList(provider, apiKey);
+        });
+
+        if (baseUrlInput) {
+            baseUrlInput.addEventListener('change', (e) => {
+                saveLlmSettings({ provider: providerSelect.value, baseUrl: e.target.value });
+            });
+        }
+        
+        // --- Prompt Selector Logic ---
+        if (promptSel && promptArea) {
+            this.currentPromptMode = 'refine';
+            // Set initial value
+            promptArea.value = this.editablePrompts[this.currentPromptMode] || USER_PROMPTS.refine;
+
+            promptSel.addEventListener('change', (e) => {
+                if (this.currentPromptMode) {
+                    this.editablePrompts[this.currentPromptMode] = promptArea.value;
+                }
+                this.currentPromptMode = e.target.value;
+                promptArea.value = this.editablePrompts[this.currentPromptMode];
+            });
+
+            promptArea.addEventListener('input', (e) => {
+                if (this.currentPromptMode) {
+                    this.editablePrompts[this.currentPromptMode] = e.target.value;
+                }
+            });
+        }
+        
+        if (resetPromptsBtn) {
+            resetPromptsBtn.addEventListener('click', () => {
+                if (confirm('Reset all prompts to defaults?')) {
+                    this.editablePrompts = {
+                        refine: USER_PROMPTS.refine,
+                        fill: USER_PROMPTS.fill,
+                        audit: USER_PROMPTS.audit
+                    };
+                    if (promptArea && this.currentPromptMode) {
+                        promptArea.value = this.editablePrompts[this.currentPromptMode];
+                    }
+                }
+            });
+        }
+
+        // Initialize UI
+        updateProviderUI(savedSettings.provider);
+    },
+
+    getLlmConfig() {
+        const provider = document.getElementById('llm-provider').value;
+        const apiKey = document.getElementById('llm-key').value;
+        const modelSelect = document.getElementById('llm-model-select');
+        const modelCustom = document.getElementById('llm-model-custom');
+        const baseUrl = document.getElementById('llm-base-url')?.value;
+        
+        const model = (modelSelect.value === '__custom__' ? modelCustom.value : modelSelect.value) || '';
+        
+        return {
+            provider,
+            apiKey,
+            model,
+            baseUrl,
+            config: LLM_PROVIDERS[provider]
+        };
     },
 
     setupContextMenu() {
@@ -597,7 +852,6 @@ export const EditorUIMixin = {
             </div>
         `).join('');
         
-        // Ensure the new inputs get label hiding logic applied
         if (this.triggerLabelCheck) setTimeout(this.triggerLabelCheck, 100);
     },
 
@@ -651,7 +905,6 @@ export const EditorUIMixin = {
     },
 
     updateChoiceInputs() {
-        // Handle Logic for Single vs Multi view
         if (this.selectedItems.length > 1) {
             document.getElementById('choice-props').style.display = 'none';
             document.getElementById('choice-empty-state').style.display = 'none';
