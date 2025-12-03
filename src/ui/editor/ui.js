@@ -1,3 +1,4 @@
+
 export const EditorUIMixin = {
     // ==================== CREATE UI ====================
     createEditorUI() {
@@ -21,9 +22,6 @@ export const EditorUIMixin = {
         pageImageInput.style.display = 'none';
         sidebar.appendChild(pageImageInput);
 
-        // --- SIDEBAR HTML CONTENT ---
-        // (Truncated for brevity, pasting the huge HTML block from original)
-        // Note: In real usage, this should also probably be in a template file or helper
         sidebar.innerHTML += `
             <div class="editor-tabs">
                 <button class="tab-btn" data-tab="choice" onclick="CYOA.editor.switchTab('choice')">Choice</button>
@@ -34,10 +32,55 @@ export const EditorUIMixin = {
             
             <div class="sidebar-scroll-content">
                 <div id="tab-content-choice" class="tab-content" style="display:none;">
-                    <div id="choice-empty-state" class="info-text">
-                        <p>Select an item on the page to edit, or add a new one.</p>
-                        <p style="font-size:0.8rem; color:#666;">Tip: Right-click on the page to add items quickly.</p>
+                    
+                    <!-- Multi-Select Toolbar (Shown when > 1 items) -->
+                    <div id="multi-props" style="display:none;">
+                        <div class="info-text" style="text-align:center; padding:10px; margin-bottom:5px;">
+                            <strong id="multi-count">0 items</strong> selected
+                        </div>
+                        <div style="text-align:center; font-size:0.75rem; color:#666; margin-bottom:15px; padding:0 10px;">
+                            Hold <strong>Shift + Click</strong> to add/remove items individually.
+                        </div>
+
+                        <div class="editor-section">
+                            <div class="accordion-header" onclick="CYOA.editor.toggleAccordion(this)">📐 Alignment</div>
+                            <div class="accordion-content">
+                                <div class="row-buttons">
+                                    <button class="action-btn" style="background:#444;" onclick="CYOA.editor.alignSelectedItems('top')" title="Align all items to the Y position of the highest item in selection">⬆️ Top</button>
+                                    <button class="action-btn" style="background:#444;" onclick="CYOA.editor.alignSelectedItems('bottom')" title="Align all items to the bottom edge of the lowest item in selection">⬇️ Bottom</button>
+                                </div>
+                                <div class="row-buttons">
+                                    <button class="action-btn" style="background:#444;" onclick="CYOA.editor.alignSelectedItems('left')" title="Align all items to the X position of the leftmost item in selection">⬅️ Left</button>
+                                    <button class="action-btn" style="background:#444;" onclick="CYOA.editor.alignSelectedItems('right')" title="Align all items to the right edge of the rightmost item in selection">➡️ Right</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="editor-section">
+                             <div class="accordion-header" onclick="CYOA.editor.toggleAccordion(this)">📏 Distribution</div>
+                            <div class="accordion-content">
+                                <button class="full-width-btn" onclick="CYOA.editor.distributeSelectedItems('vertical')" title="Space items evenly between the top-most and bottom-most item">↕️ Distribute Vertically</button>
+                                <button class="full-width-btn" onclick="CYOA.editor.distributeSelectedItems('horizontal')" title="Space items evenly between the left-most and right-most item">↔️ Distribute Horizontally</button>
+                            </div>
+                        </div>
+                        <div class="editor-section">
+                             <div class="accordion-header" onclick="CYOA.editor.toggleAccordion(this)">◻️ Sizing</div>
+                            <div class="accordion-content">
+                                <button class="full-width-btn" onclick="CYOA.editor.matchSizeSelectedItems('width')" title="Set all items to the width of the last selected item (Primary)">Match Width</button>
+                                <button class="full-width-btn" onclick="CYOA.editor.matchSizeSelectedItems('height')" title="Set all items to the height of the last selected item (Primary)">Match Height</button>
+                                <button class="full-width-btn" onclick="CYOA.editor.matchSizeSelectedItems('both')" title="Set all items to the size of the last selected item (Primary)">Match Both</button>
+                            </div>
+                        </div>
+                        <div class="editor-section" style="margin-top: 10px; border-top: 1px solid #222;">
+                            <button class="action-btn btn-delete" onclick="CYOA.editor.deleteSelectedItems()">🗑️ Delete All Selected</button>
+                        </div>
                     </div>
+
+                    <!-- Single Item Props -->
+                    <div id="choice-empty-state" class="info-text">
+                        <p>Select an item to edit.</p>
+                        <p style="font-size:0.8rem; color:#666;">Drag on empty space to multi-select.<br>Shift+Click to add/remove.</p>
+                    </div>
+
                     <div id="choice-props" style="display:none;">
                         <div class="editor-section">
                             <div class="row-2">
@@ -365,11 +408,7 @@ export const EditorUIMixin = {
 
         if (tabName === 'choice') {
             document.body.classList.add('edit-mode-choice');
-            if (this.selectedItem) {
-                this.updateChoiceInputs();
-                document.getElementById('choice-empty-state').style.display = 'none';
-                document.getElementById('choice-props').style.display = 'block';
-            }
+            this.updateChoiceInputs(); // Checks count to show multi-edit or single edit
         } else if (tabName === 'group') {
             document.body.classList.add('edit-mode-group');
             if (this.selectedItem) {
@@ -445,21 +484,24 @@ export const EditorUIMixin = {
     // ==================== SELECTION UPDATES ====================
     selectChoice(item, element) {
         this.selectedItem = item;
-        document.querySelectorAll('.editor-selected').forEach(el => el.classList.remove('editor-selected'));
-        if(element) {
-            element.classList.add('editor-selected');
-            element.setAttribute('data-editor-title', item.title || item.id);
-        }
+        this.selectedItems = [item];
+        
+        this.refreshSelectionVisuals();
+
         document.getElementById('choice-empty-state').style.display = 'none';
         document.getElementById('choice-props').style.display = 'block';
+        document.getElementById('multi-props').style.display = 'none';
+
         this.updateChoiceInputs();
         this.ruleBuilder.loadItem(item, this.engine.findGroupForItem(item.id));
     },
 
     deselectChoice() {
         this.selectedItem = null;
+        this.selectedItems = [];
         document.querySelectorAll('.item-zone.editor-selected').forEach(el => el.classList.remove('editor-selected'));
         document.getElementById('choice-props').style.display = 'none';
+        document.getElementById('multi-props').style.display = 'none';
         document.getElementById('choice-empty-state').style.display = 'block';
     },
 
@@ -477,7 +519,26 @@ export const EditorUIMixin = {
     },
 
     updateChoiceInputs() {
-        if (!this.selectedItem) return;
+        // Handle Logic for Single vs Multi view
+        if (this.selectedItems.length > 1) {
+            document.getElementById('choice-props').style.display = 'none';
+            document.getElementById('choice-empty-state').style.display = 'none';
+            document.getElementById('multi-props').style.display = 'block';
+            document.getElementById('multi-count').textContent = `${this.selectedItems.length} items`;
+            return;
+        }
+
+        document.getElementById('multi-props').style.display = 'none';
+
+        if (!this.selectedItem) {
+            document.getElementById('choice-props').style.display = 'none';
+            document.getElementById('choice-empty-state').style.display = 'block';
+            return;
+        }
+        
+        document.getElementById('choice-props').style.display = 'block';
+        document.getElementById('choice-empty-state').style.display = 'none';
+
         const item = this.selectedItem;
         const group = this.engine.findGroupForItem(item.id);
         document.getElementById('edit-id').value = item.id || '';
@@ -515,7 +576,7 @@ export const EditorUIMixin = {
     },
 
     updateCodePreview() {
-        if (this.selectedItem) {
+        if (this.selectedItem && this.selectedItems.length <= 1) {
             const el = document.getElementById('edit-raw-json');
             if (el && document.activeElement !== el) el.value = JSON.stringify(this.selectedItem, null, 2);
         }

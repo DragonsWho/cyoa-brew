@@ -1,3 +1,4 @@
+
 import { ProjectStorage } from '../../utils/storage.js';
 import { CoordHelper } from '../../utils/coords.js';
 
@@ -189,6 +190,92 @@ export const EditorActionsMixin = {
         console.log('📐 Layouts sorted by coordinates');
     },
 
+    // ==================== MULTI-SELECT ALIGNMENT ACTIONS ====================
+    alignSelectedItems(mode) {
+        if (this.selectedItems.length < 2) return;
+        const items = this.selectedItems;
+        let val = 0;
+
+        if (mode === 'top') {
+            val = Math.min(...items.map(i => i.coords.y));
+            items.forEach(i => i.coords.y = val);
+        } else if (mode === 'left') {
+            val = Math.min(...items.map(i => i.coords.x));
+            items.forEach(i => i.coords.x = val);
+        } else if (mode === 'bottom') {
+            val = Math.max(...items.map(i => i.coords.y + i.coords.h));
+            items.forEach(i => i.coords.y = val - i.coords.h);
+        } else if (mode === 'right') {
+            val = Math.max(...items.map(i => i.coords.x + i.coords.w));
+            items.forEach(i => i.coords.x = val - i.coords.w);
+        }
+
+        this.renderer.renderLayout();
+    },
+
+    matchSizeSelectedItems(mode) {
+        if (this.selectedItems.length < 2) return;
+        const items = this.selectedItems;
+        // Use the last selected item (primary selection) as the reference
+        const ref = this.selectedItem || items[0];
+        
+        if (mode === 'width' || mode === 'both') {
+            const w = ref.coords.w;
+            items.forEach(i => i.coords.w = w);
+        }
+        if (mode === 'height' || mode === 'both') {
+            const h = ref.coords.h;
+            items.forEach(i => i.coords.h = h);
+        }
+        
+        this.renderer.renderLayout();
+    },
+
+    distributeSelectedItems(mode) {
+        if (this.selectedItems.length < 3) return;
+        const items = [...this.selectedItems]; // Copy for sorting
+
+        if (mode === 'vertical') {
+            items.sort((a,b) => a.coords.y - b.coords.y);
+            const first = items[0];
+            const last = items[items.length-1];
+            const totalDist = last.coords.y - first.coords.y;
+            const step = totalDist / (items.length - 1);
+            
+            for(let i=1; i<items.length-1; i++) {
+                items[i].coords.y = Math.round(first.coords.y + (step * i));
+            }
+        } else if (mode === 'horizontal') {
+            items.sort((a,b) => a.coords.x - b.coords.x);
+            const first = items[0];
+            const last = items[items.length-1];
+            const totalDist = last.coords.x - first.coords.x;
+            const step = totalDist / (items.length - 1);
+            
+            for(let i=1; i<items.length-1; i++) {
+                items[i].coords.x = Math.round(first.coords.x + (step * i));
+            }
+        }
+        this.renderer.renderLayout();
+    },
+
+    deleteSelectedItems() {
+        if (!this.selectedItems.length) return;
+        if (!confirm(`Delete ${this.selectedItems.length} items?`)) return;
+
+        this.selectedItems.forEach(item => {
+             const parent = this.findItemParent(item.id);
+             if (parent) {
+                 parent.array.splice(parent.index, 1);
+             }
+        });
+        
+        this.engine.buildMaps();
+        this.deselectChoice();
+        this.renderer.renderLayout();
+        this.renderPagesList();
+    },
+
     // ==================== CRUD OPERATIONS ====================
     
     // Accepts optional coords (e.g. from context menu)
@@ -267,6 +354,13 @@ export const EditorActionsMixin = {
 
     deleteSelectedItem() {
         if (!this.selectedItem) return; 
+        
+        // Handle Multi-Select Delete
+        if (this.selectedItems.length > 1) {
+            this.deleteSelectedItems();
+            return;
+        }
+
         if (!confirm('Delete this item?')) return;
         
         const parent = this.findItemParent(this.selectedItem.id);

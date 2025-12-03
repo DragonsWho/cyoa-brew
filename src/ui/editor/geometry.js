@@ -20,6 +20,23 @@ export const EditorGeometryMixin = {
                  r2.y + r2.h <= r1.y);
     },
 
+    // Get bounding box of multiple items
+    getMultiSelectionBounds(items) {
+        if (!items || items.length === 0) return null;
+        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+        
+        items.forEach(item => {
+            if (!item.coords) return;
+            minX = Math.min(minX, item.coords.x);
+            minY = Math.min(minY, item.coords.y);
+            maxX = Math.max(maxX, item.coords.x + (item.coords.w || 0));
+            maxY = Math.max(maxY, item.coords.y + (item.coords.h || 0));
+        });
+
+        if (minX === Infinity) return null;
+        return { x: minX, y: minY, w: maxX - minX, h: maxY - minY };
+    },
+
     // Find all groups colliding with a rect (for dragging/resizing logic)
     getCollidingGroups(rect, ignoreId, pageIndex) {
         const page = this.getPageByIndex(pageIndex);

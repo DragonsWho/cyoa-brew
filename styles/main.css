@@ -125,6 +125,16 @@ body.editor-interacting .info-zone {
     transition: none !important;
 }
 
+/* Marquee Selection Box */
+.selection-marquee {
+    position: fixed;
+    border: 1px dashed #00ff88;
+    background-color: rgba(0, 255, 136, 0.1);
+    z-index: 9999;
+    pointer-events: none;
+    display: none;
+}
+
 /* Base debug style */
 body.show-zones .click-zone { 
     border: 2px solid rgba(255,0,0,0.5) !important; 
@@ -140,9 +150,6 @@ body.edit-mode-choice .item-zone { pointer-events: auto; cursor: move; }
 body.edit-mode-choice .info-zone { pointer-events: none; }
 body.edit-mode-group .info-zone { pointer-events: auto; cursor: move; z-index: 2000; } 
 body.edit-mode-group .item-zone { pointer-events: none; opacity: 0.5; }
-
-
-
 
 /* === SELECTION HIGHLIGHTS (Borders, Shadows, Corners, Notch) === */
 

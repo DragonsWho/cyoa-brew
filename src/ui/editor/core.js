@@ -21,6 +21,7 @@ export class CYOAEditor {
         
         this.selectedItem = null;
         this.selectedGroup = null;
+        this.selectedItems = []; // Array for Multi-Select
         this.activePageIndex = 0;
         this.activeTab = 'choice'; 
         
@@ -36,9 +37,15 @@ export class CYOAEditor {
         this.resizeMode = null; // 'tl', 'tr', 'bl', 'br'
         this.dragStart = { x: 0, y: 0 };
         this.initialRect = {};
+        this.initialRects = []; // Store initial coords for all selected items during drag
         this.handleSize = 15; 
         this.dragContext = null;
         
+        // Marquee Selection State
+        this.isMarqueeSelecting = false;
+        this.marqueeStart = { x: 0, y: 0 };
+        this.marqueeBox = null;
+
         // Context Menu & Clipboard State
         this.contextMenuContext = null; // { x, y, pageIndex, targetType, targetId }
         this.clipboard = null; // { type: 'item'|'group', data: object }
@@ -81,6 +88,8 @@ Return ONLY valid JSON, no explanations.`
         
         const ctxMenu = document.getElementById('editor-context-menu');
         if (ctxMenu) ctxMenu.remove();
+        
+        if (this.marqueeBox) this.marqueeBox.remove();
 
         this.removeEventListeners();
         document.querySelectorAll('.item-zone, .info-zone').forEach(el => {
