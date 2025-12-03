@@ -1,4 +1,5 @@
 /**
+ * src\utils\autodetect.js
  * AutoDetect - SAM3 Integration logic
  * Optimized: Smart Downscaling + Sliding Window Morphology
  */

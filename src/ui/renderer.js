@@ -1,4 +1,5 @@
 /**
+ * src\ui\renderer.js
  * UI Renderer - Handles all visual rendering
  * 
  * Architecture v2: Renders from config.pages[].layout[]

@@ -1,3 +1,8 @@
+/**
+ * src\ui\editor\geometry.js
+ * Editor Geometry Mixin - Provides geometric calculations for the editor
+ */
+
 import { CoordHelper } from '../../utils/coords.js';
 
 export const EditorGeometryMixin = {

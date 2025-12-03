@@ -1,4 +1,5 @@
 /**
+ * src\core\rules.js
  * Rule Evaluator - Handles requirements, costs, and formulas
  */
 

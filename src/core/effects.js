@@ -1,4 +1,5 @@
 /**
+ * src\core\effects.js
  * Effect Processor - Handles active card effects
  */
 

@@ -1,4 +1,5 @@
 /**
+ * src\utils\coords.js
  * Coordinate Helper - Converts between pixels and percentages
  */
 

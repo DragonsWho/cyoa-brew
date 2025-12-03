@@ -1,4 +1,5 @@
 /**
+ * src\ui\editor\integrations.js
  * Editor Integrations Mixin
  * Handles LLM (AI) and SAM (Auto-Detect) integrations
  */

@@ -1,4 +1,5 @@
 /**
+ * src\core\state.js
  * Game State - Manages current selection and currencies
  */
 

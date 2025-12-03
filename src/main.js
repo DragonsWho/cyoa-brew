@@ -1,4 +1,5 @@
 /**
+ * src\main.js
  * CYOA Interactive System - Main Entry Point
  * 
  * This file initializes the entire system:

@@ -1,4 +1,5 @@
 /**
+ * src\core\engine.js
  * Game Engine - Core game logic and state management
  * 
  * Architecture v2 (Pages):

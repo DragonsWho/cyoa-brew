@@ -1,5 +1,6 @@
 
 /**
+ * src\ui\rule-builder.js
  * Rule Builder - Visual rule editor
  */
 

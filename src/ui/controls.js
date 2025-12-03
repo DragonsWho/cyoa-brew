@@ -1,4 +1,5 @@
-/**
+/** 
+ * src\ui\controls.js
  * Control Panel - Handles UI controls (buttons, settings)
  */
 

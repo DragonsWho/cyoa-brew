@@ -1,4 +1,5 @@
 /**
+ * src\ui\tooltip.js
  * Tooltip Manager - Handles hover tooltips
  */
 

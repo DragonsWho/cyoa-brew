@@ -1,3 +1,7 @@
+/**
+ * src\ui\editor\actions.js
+ * Editor Actions Mixin - Provides actions for managing items and groups in the editor
+ */
 
 import { ProjectStorage } from '../../utils/storage.js';
 import { CoordHelper } from '../../utils/coords.js';

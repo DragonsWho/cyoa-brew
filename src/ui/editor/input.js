@@ -1,3 +1,7 @@
+/**
+ * src\ui\editor\input.js
+ * Editor Input Mixin - Handles mouse and keyboard input for the editor
+ */
 
 import { CoordHelper } from '../../utils/coords.js';
 import { ProjectStorage } from '../../utils/storage.js';

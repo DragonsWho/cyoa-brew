@@ -1,3 +1,7 @@
+/**
+ * src\ui\editor\ui.js
+ * Editor UI Mixin - Manages the editor user interface
+ */
 
 export const EditorUIMixin = {
     // ==================== CREATE UI ====================

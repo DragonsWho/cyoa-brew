@@ -1,4 +1,5 @@
 /**
+ * src\ui\editor\core.js
  * CYOA Editor - Visual editing mode
  * Modular Architecture
  */
