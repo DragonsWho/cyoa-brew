@@ -21,26 +21,17 @@ export const EditorUIMixin = {
         sidebar.id = 'editor-sidebar';
         sidebar.className = 'editor-sidebar';
         
-        const fileInput = document.createElement('input');
-        fileInput.type = 'file';
-        fileInput.id = 'load-config-input';
-        fileInput.accept = '.json';
-        fileInput.style.display = 'none';
-        sidebar.appendChild(fileInput);
-
-        const pageImageInput = document.createElement('input');
-        pageImageInput.type = 'file';
-        pageImageInput.id = 'add-page-image-input';
-        pageImageInput.accept = 'image/*';
-        pageImageInput.style.display = 'none';
-        sidebar.appendChild(pageImageInput);
-
         // Build provider options
         const providerOptions = Object.entries(LLM_PROVIDERS)
             .map(([key, config]) => `<option value="${key}">${config.name}</option>`)
             .join('');
 
+        // ВАЖНО: Инпуты для файлов добавлены в начало HTML строки, чтобы они не терялись при рендере
         sidebar.innerHTML = `
+            <!-- Hidden File Inputs -->
+            <input type="file" id="load-config-input" accept=".json" style="display:none;">
+            <input type="file" id="add-page-image-input" accept="image/*" style="display:none;">
+
             <div class="editor-tabs">
                 <button class="tab-btn" data-tab="choice" onclick="CYOA.editor.switchTab('choice')">Choice</button>
                 <button class="tab-btn" data-tab="group" onclick="CYOA.editor.switchTab('group')">Group</button>
