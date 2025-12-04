@@ -1,13 +1,15 @@
 /**
  * src\ui\editor\actions.js
- * Editor Actions Mixin - Provides actions for managing items and groups in the editor
+ * Editor Actions Mixin - Added startDragCreation logic
  */
 
 import { ProjectStorage } from '../../utils/storage.js';
 import { CoordHelper } from '../../utils/coords.js';
 
 export const EditorActionsMixin = {
-    // ==================== HELPER: Get current page ====================
+    // ... [Existing methods: getCurrentPage, countPageElements, findItemParent, findGroupParent, findGroupAtPoint...] ...
+    // ... [Copy all helper methods from previous version until CRUD OPERATIONS] ...
+
     getCurrentPage() {
         const pages = this.engine.config.pages || [];
         return pages[this.activePageIndex] || null;
@@ -88,14 +90,10 @@ export const EditorActionsMixin = {
         return null;
     },
 
-    // ==================== GROUPING LOGIC ====================
     moveItemToGroup(item, targetGroup, page) {
         const parent = this.findItemParent(item.id);
         if (!parent) return false;
-
-        // Remove from current location
         parent.array.splice(parent.index, 1);
-
         if (targetGroup) {
             if (!targetGroup.items) targetGroup.items = [];
             targetGroup.items.push(item);
@@ -110,13 +108,10 @@ export const EditorActionsMixin = {
     updateItemGrouping(item, pageIndex) {
         const page = this.getPageByIndex(pageIndex);
         if (!page) return;
-
         const center = this.getItemCenter(item);
         const currentParent = this.findItemParent(item.id);
         const currentGroup = currentParent?.group || null;
-        
         const targetGroup = this.findGroupAtPoint(center, page);
-
         if (targetGroup !== currentGroup) {
             if (targetGroup && targetGroup.id === item.id) return;
             this.moveItemToGroup(item, targetGroup, page);
@@ -127,7 +122,6 @@ export const EditorActionsMixin = {
     updateGroupMemberships(group, pageIndex) {
         const page = this.getPageByIndex(pageIndex);
         if (!page) return;
-
         const itemsToMove = [];
         for (const element of page.layout) {
             if (element.type === 'item') {
@@ -137,7 +131,6 @@ export const EditorActionsMixin = {
                 }
             }
         }
-
         const itemsToRemove = [];
         if (group.items) {
             for (const item of group.items) {
@@ -147,76 +140,42 @@ export const EditorActionsMixin = {
                 }
             }
         }
-
-        for (const item of itemsToMove) {
-            this.moveItemToGroup(item, group, page);
-        }
-        for (const item of itemsToRemove) {
-            this.moveItemToGroup(item, null, page);
-        }
-
-        if (itemsToMove.length > 0 || itemsToRemove.length > 0) {
-            this.engine.buildMaps();
-        }
+        for (const item of itemsToMove) { this.moveItemToGroup(item, group, page); }
+        for (const item of itemsToRemove) { this.moveItemToGroup(item, null, page); }
+        if (itemsToMove.length > 0 || itemsToRemove.length > 0) { this.engine.buildMaps(); }
     },
 
-    // ==================== SORTING ====================
     sortLayoutByCoords(layout) {
         if (!layout || !Array.isArray(layout)) return;
         const ROW_THRESHOLD = 50;
-        
         layout.sort((a, b) => {
             const aY = a.coords?.y || 0;
             const bY = b.coords?.y || 0;
             const aX = a.coords?.x || 0;
             const bX = b.coords?.x || 0;
-            
-            if (Math.abs(aY - bY) < ROW_THRESHOLD) {
-                return aX - bX;
-            }
+            if (Math.abs(aY - bY) < ROW_THRESHOLD) { return aX - bX; }
             return aY - bY;
         });
-
         for (const element of layout) {
-            if (element.type === 'group' && element.items) {
-                this.sortLayoutByCoords(element.items);
-            }
+            if (element.type === 'group' && element.items) { this.sortLayoutByCoords(element.items); }
         }
     },
 
-    sortCurrentPageLayout() {
-        const page = this.getCurrentPage();
-        if (page) this.sortLayoutByCoords(page.layout);
-    },
-
+    sortCurrentPageLayout() { const page = this.getCurrentPage(); if (page) this.sortLayoutByCoords(page.layout); },
     sortAllLayouts() {
         const pages = this.engine.config.pages || [];
-        for (const page of pages) {
-            this.sortLayoutByCoords(page.layout);
-        }
+        for (const page of pages) { this.sortLayoutByCoords(page.layout); }
     },
 
-    // ==================== MULTI-SELECT ALIGNMENT ACTIONS ====================
     alignSelectedItems(mode) {
         this.history.push('align_items');
         if (this.selectedItems.length < 2) return;
         const items = this.selectedItems;
         let val = 0;
-
-        if (mode === 'top') {
-            val = Math.min(...items.map(i => i.coords.y));
-            items.forEach(i => i.coords.y = val);
-        } else if (mode === 'left') {
-            val = Math.min(...items.map(i => i.coords.x));
-            items.forEach(i => i.coords.x = val);
-        } else if (mode === 'bottom') {
-            val = Math.max(...items.map(i => i.coords.y + i.coords.h));
-            items.forEach(i => i.coords.y = val - i.coords.h);
-        } else if (mode === 'right') {
-            val = Math.max(...items.map(i => i.coords.x + i.coords.w));
-            items.forEach(i => i.coords.x = val - i.coords.w);
-        }
-
+        if (mode === 'top') { val = Math.min(...items.map(i => i.coords.y)); items.forEach(i => i.coords.y = val); }
+        else if (mode === 'left') { val = Math.min(...items.map(i => i.coords.x)); items.forEach(i => i.coords.x = val); }
+        else if (mode === 'bottom') { val = Math.max(...items.map(i => i.coords.y + i.coords.h)); items.forEach(i => i.coords.y = val - i.coords.h); }
+        else if (mode === 'right') { val = Math.max(...items.map(i => i.coords.x + i.coords.w)); items.forEach(i => i.coords.x = val - i.coords.w); }
         this.renderer.renderLayout();
     },
 
@@ -225,16 +184,8 @@ export const EditorActionsMixin = {
         if (this.selectedItems.length < 2) return;
         const items = this.selectedItems;
         const ref = this.selectedItem || items[0];
-        
-        if (mode === 'width' || mode === 'both') {
-            const w = ref.coords.w;
-            items.forEach(i => i.coords.w = w);
-        }
-        if (mode === 'height' || mode === 'both') {
-            const h = ref.coords.h;
-            items.forEach(i => i.coords.h = h);
-        }
-        
+        if (mode === 'width' || mode === 'both') { const w = ref.coords.w; items.forEach(i => i.coords.w = w); }
+        if (mode === 'height' || mode === 'both') { const h = ref.coords.h; items.forEach(i => i.coords.h = h); }
         this.renderer.renderLayout();
     },
 
@@ -242,42 +193,58 @@ export const EditorActionsMixin = {
         this.history.push('delete_multi');
         if (!this.selectedItems.length) return;
         if (!confirm(`Delete ${this.selectedItems.length} items?`)) return;
-
         this.selectedItems.forEach(item => {
              const parent = this.findItemParent(item.id);
-             if (parent) {
-                 parent.array.splice(parent.index, 1);
-             }
+             if (parent) { parent.array.splice(parent.index, 1); }
         });
-        
         this.engine.buildMaps();
         this.deselectChoice();
         this.renderer.renderLayout();
         this.renderPagesList();
     },
 
-    // ==================== CRUD OPERATIONS ====================
+
+    // ==================== NEW: DRAW CREATION LOGIC ====================
+    
+    startDragCreation(type, x, y, pageIndex) {
+        const page = this.getPageByIndex(pageIndex);
+        if (!page) return null;
+
+        // Initialize with 1x1 size at click point
+        const newObj = {
+            id: `${type}_${Date.now()}`,
+            type: type,
+            title: `New ${type === 'item' ? 'Item' : 'Group'}`,
+            description: '',
+            coords: { x: Math.round(x), y: Math.round(y), w: 1, h: 1 }
+        };
+
+        if (type === 'item') {
+            newObj.cost = [];
+        } else {
+            newObj.items = [];
+        }
+
+        // Add to layout immediately so it's rendered
+        page.layout.push(newObj);
+        this.engine.buildMaps();
+        this.renderer.renderLayout(); // Create DOM element
+
+        return newObj;
+    },
+
+    // ==================== STANDARD CRUD ====================
     
     addNewItem(coordsFromContext = null) {
         this.history.push('add_item');
         const page = this.getCurrentPage();
-        if (!page) {
-            alert('No page available. Please add a page image first via Settings tab.');
-            return;
-        }
+        if (!page) { alert('No page available.'); return; }
         
         const defaultW = 200;
         const defaultH = 100;
         const smartCoords = this.getSmartCoords(defaultW, defaultH, coordsFromContext);
 
-        const newItem = { 
-            type: 'item',
-            id: `item_${Date.now()}`, 
-            title: 'New Item', 
-            description: '', 
-            coords: { x: smartCoords.x, y: smartCoords.y, w: defaultW, h: defaultH }, 
-            cost: [] 
-        };
+        const newItem = { type: 'item', id: `item_${Date.now()}`, title: 'New Item', description: '', coords: { x: smartCoords.x, y: smartCoords.y, w: defaultW, h: defaultH }, cost: [] };
         
         if (!coordsFromContext && this.selectedGroup && this.activeTab === 'group') {
             if (!this.selectedGroup.items) this.selectedGroup.items = [];
@@ -289,59 +256,32 @@ export const EditorActionsMixin = {
         this.engine.buildMaps();
         this.renderer.renderLayout();
         this.renderPagesList();
-        
         this.switchTab('choice');
-        setTimeout(() => { 
-            const el = document.getElementById(`btn-${newItem.id}`); 
-            if (el) this.selectChoice(newItem, el); 
-        }, 50);
+        setTimeout(() => { const el = document.getElementById(`btn-${newItem.id}`); if (el) this.selectChoice(newItem, el); }, 50);
     },
     
     addNewGroup(coordsFromContext = null) {
         this.history.push('add_group');
         const page = this.getCurrentPage();
         if (!page) return;
-        
         const defaultW = 300;
         const defaultH = 200;
         const smartCoords = this.getSmartCoords(defaultW, defaultH, coordsFromContext);
-
-        const newGroup = { 
-            type: 'group',
-            id: `group_${Date.now()}`, 
-            title: 'New Group', 
-            description: '', 
-            coords: { x: smartCoords.x, y: smartCoords.y, w: defaultW, h: defaultH }, 
-            items: [] 
-        };
-        
+        const newGroup = { type: 'group', id: `group_${Date.now()}`, title: 'New Group', description: '', coords: { x: smartCoords.x, y: smartCoords.y, w: defaultW, h: defaultH }, items: [] };
         page.layout.push(newGroup);
         this.engine.buildMaps();
         this.renderer.renderLayout();
         this.renderPagesList();
-        
-        setTimeout(() => { 
-            const el = document.getElementById(`group-${newGroup.id}`); 
-            if (el) this.selectGroup(newGroup); 
-        }, 50);
+        setTimeout(() => { const el = document.getElementById(`group-${newGroup.id}`); if (el) this.selectGroup(newGroup); }, 50);
     },
 
     deleteSelectedItem() {
         this.history.push('delete_item');
         if (!this.selectedItem) return; 
-        if (this.selectedItems.length > 1) {
-            this.deleteSelectedItems();
-            return;
-        }
-
+        if (this.selectedItems.length > 1) { this.deleteSelectedItems(); return; }
         if (!confirm('Delete this item?')) return;
-        
         const parent = this.findItemParent(this.selectedItem.id);
-        if (parent) {
-            parent.array.splice(parent.index, 1);
-            this.engine.buildMaps();
-        }
-        
+        if (parent) { parent.array.splice(parent.index, 1); this.engine.buildMaps(); }
         this.deselectChoice(); 
         this.renderer.renderLayout();
         this.renderPagesList();
@@ -350,20 +290,10 @@ export const EditorActionsMixin = {
     deleteSelectedGroup() {
         this.history.push('delete_group');
         if (!this.selectedGroup) return;
-        
         const itemCount = this.selectedGroup.items?.length || 0;
-        if (itemCount > 0) { 
-            if (!confirm(`Group has ${itemCount} items. Delete group and ALL items inside?`)) return; 
-        } else { 
-            if (!confirm('Delete this empty group?')) return; 
-        }
-        
+        if (itemCount > 0) { if (!confirm(`Group has ${itemCount} items. Delete group and ALL items inside?`)) return; } else { if (!confirm('Delete this empty group?')) return; }
         const parent = this.findGroupParent(this.selectedGroup.id);
-        if (parent) {
-            parent.array.splice(parent.index, 1);
-            this.engine.buildMaps();
-        }
-        
+        if (parent) { parent.array.splice(parent.index, 1); this.engine.buildMaps(); }
         this.selectedGroup = null; 
         document.querySelectorAll('.info-zone.editor-selected').forEach(el => el.classList.remove('editor-selected'));
         document.getElementById('group-props').style.display = 'none'; 
@@ -375,40 +305,25 @@ export const EditorActionsMixin = {
     deletePage(index) {
         this.history.push('delete_page');
         const pages = this.engine.config.pages || [];
-        if (pages.length <= 1) {
-            alert('Cannot delete the last page.');
-            return;
-        }
-        
+        if (pages.length <= 1) { alert('Cannot delete the last page.'); return; }
         const counts = this.countPageElements(pages[index]);
         if (!confirm(`Delete page ${index + 1}? (${counts.items} items)`)) return;
-        
         pages.splice(index, 1);
         if (this.activePageIndex >= pages.length) this.activePageIndex = pages.length - 1;
-        
         this.engine.buildMaps();
         this.renderer.renderAll();
         this.renderPagesList();
     },
     
-    // ==================== SPLIT ACTION ====================
+    // ==================== SPLIT, DUPLICATE, COPY, ZOOM, ETC ... (UNCHANGED) ====================
+    
     startSplit(item, axis) {
         this.history.push('split_start');
-        this.splitState = {
-            item: item,
-            axis: axis, 
-            splitVal: (axis === 'vertical' ? item.coords.w : item.coords.h) / 2
-        };
+        this.splitState = { item: item, axis: axis, splitVal: (axis === 'vertical' ? item.coords.w : item.coords.h) / 2 };
         const guide = document.getElementById('editor-split-guide');
         if (guide) {
             guide.style.display = 'block';
-            if (axis === 'vertical') {
-                guide.style.width = '10px';
-                guide.style.height = '0px'; 
-            } else {
-                guide.style.height = '10px';
-                guide.style.width = '0px'; 
-            }
+            if (axis === 'vertical') { guide.style.width = '10px'; guide.style.height = '0px'; } else { guide.style.height = '10px'; guide.style.width = '0px'; }
         }
         document.body.style.cursor = axis === 'vertical' ? 'col-resize' : 'row-resize';
         this.updateSplitGuideVisuals();
@@ -423,15 +338,10 @@ export const EditorActionsMixin = {
 
     commitSplit() {
         if (!this.splitState) return;
-
         const { item, axis, splitVal } = this.splitState;
-        const GAP = 10;
-        const HALF_GAP = GAP / 2;
-
+        const GAP = 10; const HALF_GAP = GAP / 2;
         const parent = this.findItemParent(item.id);
         if (!parent) return;
-
-        // Clone item for the second part
         const newItem = JSON.parse(JSON.stringify(item));
         newItem.id = `item_${Date.now()}`;
         newItem.title += " (Split)";
@@ -440,7 +350,6 @@ export const EditorActionsMixin = {
             const originalW = item.coords.w;
             const w1 = splitVal - HALF_GAP;
             const w2 = originalW - splitVal - HALF_GAP;
-
             item.coords.w = Math.max(10, Math.round(w1));
             newItem.coords.x = Math.round(item.coords.x + splitVal + HALF_GAP);
             newItem.coords.w = Math.max(10, Math.round(w2));
@@ -448,23 +357,17 @@ export const EditorActionsMixin = {
             const originalH = item.coords.h;
             const h1 = splitVal - HALF_GAP;
             const h2 = originalH - splitVal - HALF_GAP;
-
             item.coords.h = Math.max(10, Math.round(h1));
             newItem.coords.y = Math.round(item.coords.y + splitVal + HALF_GAP);
             newItem.coords.h = Math.max(10, Math.round(h2));
         }
 
         parent.array.splice(parent.index + 1, 0, newItem);
-
         this.engine.buildMaps();
         this.renderer.renderLayout();
         this.renderPagesList();
         this.cancelSplit();
-        
-        setTimeout(() => {
-            const el = document.getElementById(`btn-${newItem.id}`);
-            if (el) this.selectChoice(newItem, el);
-        }, 50);
+        setTimeout(() => { const el = document.getElementById(`btn-${newItem.id}`); if (el) this.selectChoice(newItem, el); }, 50);
     },
 
     updateSplitGuideVisuals() {
@@ -473,25 +376,16 @@ export const EditorActionsMixin = {
         const btnId = `btn-${item.id}`;
         const el = document.getElementById(btnId);
         const guide = document.getElementById('editor-split-guide');
-        
         if (el && guide) {
             const rect = el.getBoundingClientRect();
-            // Ratio: ScreenPixels per ModelPixel
             const ratioX = rect.width / item.coords.w;
             const ratioY = rect.height / item.coords.h;
-
             if (axis === 'vertical') {
                 const screenOffset = splitVal * ratioX;
-                guide.style.left = (rect.left + screenOffset - 5) + 'px';
-                guide.style.top = rect.top + 'px';
-                guide.style.height = rect.height + 'px';
-                guide.style.width = '10px';
+                guide.style.left = (rect.left + screenOffset - 5) + 'px'; guide.style.top = rect.top + 'px'; guide.style.height = rect.height + 'px'; guide.style.width = '10px';
             } else {
                 const screenOffset = splitVal * ratioY;
-                guide.style.top = (rect.top + screenOffset - 5) + 'px';
-                guide.style.left = rect.left + 'px';
-                guide.style.width = rect.width + 'px';
-                guide.style.height = '10px';
+                guide.style.top = (rect.top + screenOffset - 5) + 'px'; guide.style.left = rect.left + 'px'; guide.style.width = rect.width + 'px'; guide.style.height = '10px';
             }
             guide.style.display = 'block';
         }
@@ -503,36 +397,21 @@ export const EditorActionsMixin = {
         const btnId = `btn-${item.id}`;
         const el = document.getElementById(btnId);
         if (!el) return;
-        
         const rect = el.getBoundingClientRect();
         let relX = e.clientX - rect.left;
         let relY = e.clientY - rect.top;
-        
-        // Clamp
         relX = Math.max(0, Math.min(relX, rect.width));
         relY = Math.max(0, Math.min(relY, rect.height));
-
-        if (axis === 'vertical') {
-            const ratio = item.coords.w / rect.width;
-            this.splitState.splitVal = relX * ratio;
-        } else {
-            const ratio = item.coords.h / rect.height;
-            this.splitState.splitVal = relY * ratio;
-        }
-        
+        if (axis === 'vertical') { const ratio = item.coords.w / rect.width; this.splitState.splitVal = relX * ratio; } 
+        else { const ratio = item.coords.h / rect.height; this.splitState.splitVal = relY * ratio; }
         this.updateSplitGuideVisuals();
     },
 
-    // ==================== CLIPBOARD ====================
     actionCopy(type, id) {
         let data = null;
         if (type === 'item') data = this.engine.findItem(id);
         else if (type === 'group') data = this.engine.findGroup(id);
-
-        if (data) {
-            this.clipboard = { type, data: JSON.parse(JSON.stringify(data)) };
-            console.log(`📋 Copied ${type}`);
-        }
+        if (data) { this.clipboard = { type, data: JSON.parse(JSON.stringify(data)) }; console.log(`📋 Copied ${type}`); }
     },
 
     actionPaste() {
@@ -541,39 +420,23 @@ export const EditorActionsMixin = {
         const { type, data } = this.clipboard;
         const page = this.getCurrentPage();
         if (!page) return;
-
         const newData = JSON.parse(JSON.stringify(data));
         newData.id = `${type}_${Date.now()}`;
         if (newData.title) newData.title += " (Copy)";
-
         if (newData.coords) {
             const newCoords = this.getSmartCoords(newData.coords.w, newData.coords.h, this.contextMenuContext);
-            newData.coords.x = newCoords.x;
-            newData.coords.y = newCoords.y;
+            newData.coords.x = newCoords.x; newData.coords.y = newCoords.y;
         }
-
-        if (type === 'group' && newData.items) {
-            newData.items.forEach(subItem => {
-                subItem.id = `item_${Math.floor(Math.random() * 1000000)}`;
-            });
-        }
-
+        if (type === 'group' && newData.items) { newData.items.forEach(subItem => { subItem.id = `item_${Math.floor(Math.random() * 1000000)}`; }); }
         page.layout.push(newData);
         this.engine.buildMaps();
         this.renderer.renderLayout();
-        
         if (type === 'item') {
             this.switchTab('choice');
-            setTimeout(() => {
-                const el = document.getElementById(`btn-${newData.id}`);
-                if (el) this.selectChoice(newData, el);
-            }, 50);
+            setTimeout(() => { const el = document.getElementById(`btn-${newData.id}`); if (el) this.selectChoice(newData, el); }, 50);
         } else {
             this.switchTab('group');
-            setTimeout(() => {
-                const el = document.getElementById(`group-${newData.id}`);
-                if (el) this.selectGroup(newData);
-            }, 50);
+            setTimeout(() => { const el = document.getElementById(`group-${newData.id}`); if (el) this.selectGroup(newData); }, 50);
         }
         this.renderPagesList();
     },
@@ -583,17 +446,10 @@ export const EditorActionsMixin = {
         let original = null;
         if (type === 'item') original = this.engine.findItem(id);
         else if (type === 'group') original = this.engine.findGroup(id);
-
         if (!original) return;
-
         const clone = JSON.parse(JSON.stringify(original));
         clone.id = `${type}_${Date.now()}`;
-        
-        if (clone.coords) {
-            clone.coords.x += 20;
-            clone.coords.y += 20;
-        }
-
+        if (clone.coords) { clone.coords.x += 20; clone.coords.y += 20; }
         if (type === 'item') {
             const parent = this.findItemParent(id);
             if (parent) {
@@ -608,28 +464,18 @@ export const EditorActionsMixin = {
                 if (clone.items) clone.items.forEach(it => it.id = `item_${Math.floor(Math.random()*10000000)}`);
             }
         }
-
         this.engine.buildMaps();
         this.renderer.renderLayout();
         this.renderPagesList();
-        
         setTimeout(() => {
-            if (type === 'item') {
-                this.switchTab('choice');
-                this.selectChoice(clone, document.getElementById(`btn-${clone.id}`));
-            } else {
-                this.switchTab('group');
-                this.selectGroup(clone);
-            }
+            if (type === 'item') { this.switchTab('choice'); this.selectChoice(clone, document.getElementById(`btn-${clone.id}`)); } 
+            else { this.switchTab('group'); this.selectGroup(clone); }
         }, 50);
     },
 
-    // ==================== NEW FEATURES (ZOOM/TRANSFORM/CYCLE) ====================
-    
     cycleSelection(direction) {
         const page = this.getCurrentPage();
         if (!page || !page.layout) return;
-
         let allItems = [];
         const traverse = (list) => {
             list.forEach(el => {
@@ -639,21 +485,14 @@ export const EditorActionsMixin = {
         };
         traverse(page.layout);
         this.sortLayoutByCoords(allItems);
-
         if (allItems.length === 0) return;
-
         let currentIndex = -1;
-        if (this.selectedItem) {
-            currentIndex = allItems.findIndex(i => i.id === this.selectedItem.id);
-        }
-
+        if (this.selectedItem) { currentIndex = allItems.findIndex(i => i.id === this.selectedItem.id); }
         let nextIndex = currentIndex + direction;
         if (nextIndex >= allItems.length) nextIndex = 0;
         if (nextIndex < 0) nextIndex = allItems.length - 1;
-
         const nextItem = allItems[nextIndex];
         this.selectChoice(nextItem, document.getElementById(`btn-${nextItem.id}`));
-        
         if (this.zoomLevel > 1) this.updateZoomFocus();
     },
 
@@ -671,11 +510,9 @@ export const EditorActionsMixin = {
             toast.style.cssText = 'position:fixed; top:70px; left:50%; transform:translateX(-50%); background:rgba(0,0,0,0.8); padding:5px 15px; border-radius:20px; color:#fff; pointer-events:none; font-weight:bold; z-index:9999; transition: opacity 0.5s; opacity:0;';
             document.body.appendChild(toast);
         }
-        
         let text = "Move (WASD)";
         if (this.transformMode === 'shrink') text = "Shrink Size (WASD)";
         if (this.transformMode === 'grow') text = "Grow Size (WASD)";
-        
         toast.textContent = text;
         toast.style.opacity = '1';
         clearTimeout(this._toastTimer);
@@ -691,9 +528,6 @@ export const EditorActionsMixin = {
     setZoom(level) {
         this.zoomLevel = level;
         this.updateZoomFocus();
-        
-        // Удалили код, который менял wrapper.style.padding и сжимал картинку
-        
         const toast = document.getElementById('mode-toast');
         if (toast) {
             toast.textContent = `Zoom x${level}`;
@@ -711,7 +545,7 @@ export const EditorActionsMixin = {
         if (this.zoomLevel === 1) {
             pageEl.style.transform = '';
             pageEl.style.transformOrigin = '';
-            pageEl.style.margin = ''; // Сброс отступов
+            pageEl.style.margin = ''; 
             return;
         }
 
@@ -728,19 +562,13 @@ export const EditorActionsMixin = {
              }
         }
 
-        // 1. Transform
         pageEl.style.transition = 'transform 0.2s';
         pageEl.style.transformOrigin = `${focusX}% ${focusY}%`;
         pageEl.style.transform = `scale(${this.zoomLevel})`;
         
-        // 2. Добавляем вертикальный отступ (Margin), чтобы при увеличении
-        // края картинки не обрезались экраном, и можно было скроллить.
-        // Чем больше зум, тем больше запас места сверху и снизу.
-        const vMargin = (this.zoomLevel - 1) * 30; // 30vh на каждый уровень зума
+        const vMargin = (this.zoomLevel - 1) * 30; 
         pageEl.style.margin = `${vMargin}vh 0`;
 
-        // 3. Подкручиваем скролл к элементу с небольшой задержкой, 
-        // чтобы браузер успел применить трансформацию
         if (this.selectedItem) {
             setTimeout(() => {
                 const btn = document.getElementById(`btn-${this.selectedItem.id}`);
@@ -751,7 +579,6 @@ export const EditorActionsMixin = {
         }
     },
 
-    // Points/Currency CRUD
     addNewPointSystem() {
         this.history.push('add_currency');
         if (!this.engine.config.points) this.engine.config.points = [];
@@ -772,8 +599,6 @@ export const EditorActionsMixin = {
     },
 
     updatePointSystem(index, field, value) {
-        // Debounce history push or handle on blur for optimization? For now, push on change is okay.
-        // this.history.push('update_currency'); // Might be too frequent on input change
         if (!this.engine.config.points || !this.engine.config.points[index]) return;
         const pt = this.engine.config.points[index];
         if (field === 'start') value = parseInt(value) || 0;
@@ -782,7 +607,6 @@ export const EditorActionsMixin = {
         this.renderer.renderAll();
     },
 
-    // Export helpers
     exportConfig() {
         this.sortAllLayouts();
         ProjectStorage.save(this.engine.config);
@@ -799,133 +623,71 @@ export const EditorActionsMixin = {
     
     async copyDebugImageToClipboard() {
         const page = this.getCurrentPage();
-        if (!page || !page.image) {
-            alert("No image on this page.");
-            return;
-        }
-
+        if (!page || !page.image) { alert("No image on this page."); return; }
         const btn = document.getElementById('btn-copy-debug-img');
-        if(btn) { 
-            btn.disabled = true; 
-            btn.textContent = "⏳ Generating..."; 
-            btn.style.opacity = "0.7";
-        }
-
+        if(btn) { btn.disabled = true; btn.textContent = "⏳ Generating..."; btn.style.opacity = "0.7"; }
         try {
-            // 1. Load Image
             const img = new Image();
             img.crossOrigin = "Anonymous";
-            await new Promise((resolve, reject) => {
-                img.onload = resolve;
-                img.onerror = reject;
-                img.src = page.image;
-            });
-
-            // 2. Setup Canvas
+            await new Promise((resolve, reject) => { img.onload = resolve; img.onerror = reject; img.src = page.image; });
             const canvas = document.createElement('canvas');
             canvas.width = img.naturalWidth;
             canvas.height = img.naturalHeight;
             const ctx = canvas.getContext('2d');
-
-            // 3. Draw Original Image
             ctx.drawImage(img, 0, 0);
-
-            // 4. Calculate Font Size
             const fontSize = Math.max(16, Math.min(48, Math.floor(canvas.width / 60)));
             const lineWidth = Math.max(3, Math.floor(fontSize / 5));
-
-            // 5. Helper to draw boxes
             const drawBox = (obj, isGroup) => {
                 if (!obj.coords) return;
-                
-                // Convert coords to pixels
                 const c = CoordHelper.toPixels(obj.coords, { w: canvas.width, h: canvas.height });
-
-                // Draw Rect
                 ctx.lineWidth = lineWidth;
-                ctx.strokeStyle = isGroup ? '#FFD700' : '#00FF00'; // Gold for Group, Green for Item
+                ctx.strokeStyle = isGroup ? '#FFD700' : '#00FF00'; 
                 ctx.strokeRect(c.x, c.y, c.w, c.h);
-
-                // Draw Label
                 ctx.font = `bold ${fontSize}px sans-serif`;
                 ctx.textAlign = 'center';
-                ctx.textBaseline = 'top'; // Draw text INSIDE the box (downwards from top edge)
-                
+                ctx.textBaseline = 'top'; 
                 let text = obj.id;
                 if (isGroup) text = `[Group] ${text}`;
-                
-                // Truncate overly long IDs
                 if (text.length > 30) text = text.substring(0, 27) + '...';
-
                 const tx = c.x + c.w / 2;
-                const ty = c.y + lineWidth + 5; // Padding from top border inside
-
-                // Black stroke (halo)
+                const ty = c.y + lineWidth + 5; 
                 ctx.lineJoin = 'round';
                 ctx.lineWidth = lineWidth + 2;
                 ctx.strokeStyle = '#000000';
                 ctx.strokeText(text, tx, ty);
-                
-                // White/Gold fill
                 ctx.fillStyle = isGroup ? '#FFD700' : '#FFFFFF';
                 ctx.fillText(text, tx, ty);
             };
-
-            // 6. Flatten layout for drawing
             const groupsToDraw = [];
             const itemsToDraw = [];
-
             const traverse = (list) => {
                 list.forEach(el => {
-                    if (el.type === 'group') {
-                        groupsToDraw.push(el);
-                        if (el.items) traverse(el.items);
-                    } else {
-                        itemsToDraw.push(el);
-                    }
+                    if (el.type === 'group') { groupsToDraw.push(el); if (el.items) traverse(el.items); } 
+                    else { itemsToDraw.push(el); }
                 });
             };
             traverse(page.layout);
-
             groupsToDraw.forEach(g => drawBox(g, true));
             itemsToDraw.forEach(i => drawBox(i, false));
-
-            // 7. Copy to Clipboard
             canvas.toBlob(async (blob) => {
-                if (!blob) {
-                    throw new Error("Canvas failed to blob");
-                }
+                if (!blob) throw new Error("Canvas failed to blob");
                 try {
                     const item = new ClipboardItem({ "image/png": blob });
                     await navigator.clipboard.write([item]);
-                    
                     if(btn) { 
                         btn.textContent = "✅ Copied!"; 
-                        setTimeout(() => {
-                            btn.disabled = false;
-                            btn.textContent = "📸 Copy Layout Image (For LLM)";
-                            btn.style.opacity = "1";
-                        }, 2000);
+                        setTimeout(() => { btn.disabled = false; btn.textContent = "📸 Copy Layout Image (For LLM)"; btn.style.opacity = "1"; }, 2000);
                     }
                 } catch (err) {
                     console.error("Clipboard Error:", err);
-                    alert("Failed to copy image to clipboard. See console for details.\nNote: This feature requires a secure context (HTTPS or localhost).");
-                    if(btn) { 
-                        btn.disabled = false; 
-                        btn.textContent = "📸 Copy Layout Image (For LLM)";
-                        btn.style.opacity = "1";
-                    }
+                    alert("Failed to copy image to clipboard.\nNote: This feature requires HTTPS or localhost.");
+                    if(btn) { btn.disabled = false; btn.textContent = "📸 Copy Layout Image (For LLM)"; btn.style.opacity = "1"; }
                 }
             }, 'image/png');
-
         } catch (e) {
             console.error("Image Gen Error:", e);
             alert("Error generating debug image: " + e.message);
-            if(btn) { 
-                btn.disabled = false; 
-                btn.textContent = "📸 Copy Layout Image (For LLM)";
-                btn.style.opacity = "1";
-            }
+            if(btn) { btn.disabled = false; btn.textContent = "📸 Copy Layout Image (For LLM)"; btn.style.opacity = "1"; }
         }
     },
 };

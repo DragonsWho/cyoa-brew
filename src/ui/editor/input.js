@@ -1,7 +1,7 @@
 /**
  * src\ui\editor\input.js
  * Editor Input Mixin - Handles mouse and keyboard input
- * Updated: Physical Key Codes (WASD/ЦФЫВ support) & Smooth transform
+ * Updated: Drag-to-Create Logic for Z/X
  */
 
 import { CoordHelper } from '../../utils/coords.js';
@@ -35,7 +35,6 @@ export const EditorInputMixin = {
         if (!this.enabled) return;
         if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
 
-        // Use e.code for layout-independent bindings (WASD = ЦФЫВ)
         const code = e.code;
         const ctrl = e.ctrlKey || e.metaKey;
         const shift = e.shiftKey;
@@ -43,45 +42,34 @@ export const EditorInputMixin = {
         if (code === 'KeyZ') this.isHoldingZ = true;
         if (code === 'KeyX') this.isHoldingX = true;
 
-        // Undo (Ctrl+Z)
-        if (ctrl && code === 'KeyZ') {
-            e.preventDefault();
-            this.history.undo();
-            return;
-        }
-
-        // Escape
+        if (ctrl && code === 'KeyZ') { e.preventDefault(); this.history.undo(); return; }
         if (code === 'Escape') {
             if (this.splitState) this.cancelSplit();
+            if (this.creationState) {
+                // Cancel creation if drawing
+                const { obj, pageIndex } = this.creationState;
+                const page = this.getPageByIndex(pageIndex);
+                if (page) {
+                     const idx = page.layout.indexOf(obj);
+                     if (idx > -1) page.layout.splice(idx, 1);
+                }
+                this.creationState = null;
+                this.renderer.renderLayout();
+            }
             this.setZoom(1); 
             return;
         }
 
-        // Delete
         if (code === 'Delete' || code === 'Backspace') {
             this.history.push('delete');
-            if (this.activeTab === 'choice' && this.selectedItems.length > 0) {
-                this.deleteSelectedItem(); 
-            } else if (this.activeTab === 'group' && this.selectedGroup) {
-                this.deleteSelectedGroup();
-            }
+            if (this.activeTab === 'choice' && this.selectedItems.length > 0) { this.deleteSelectedItem(); } 
+            else if (this.activeTab === 'group' && this.selectedGroup) { this.deleteSelectedGroup(); }
             return;
         }
 
-        // F - Focus/Zoom
-        if (code === 'KeyF') {
-            this.toggleZoom();
-            return;
-        }
+        if (code === 'KeyF') { this.toggleZoom(); return; }
+        if (code === 'Tab') { e.preventDefault(); this.cycleSelection(shift ? -1 : 1); return; }
 
-        // Tab - Cycle
-        if (code === 'Tab') {
-            e.preventDefault();
-            this.cycleSelection(shift ? -1 : 1);
-            return;
-        }
-
-        // Q - Duplicate
         if (code === 'KeyQ') {
             this.history.push('duplicate');
             if (this.activeTab === 'choice' && this.selectedItem) this.actionDuplicate('item', this.selectedItem.id);
@@ -89,57 +77,35 @@ export const EditorInputMixin = {
             return;
         }
 
-        // R - Split Horizontal
         if (code === 'KeyR') {
-            if (this.splitState) {
-                this.commitSplit();
-            } else if (this.selectedItem) {
-                this.startSplit(this.selectedItem, 'horizontal');
-            }
+            if (this.splitState) { this.commitSplit(); } 
+            else if (this.selectedItem) { this.startSplit(this.selectedItem, 'horizontal'); }
             return;
         }
 
-        // T - Split Vertical
         if (code === 'KeyT') {
-            if (this.splitState) {
-                 this.cancelSplit();
-                 this.startSplit(this.selectedItem, 'vertical');
-            } else if (this.selectedItem) {
-                this.startSplit(this.selectedItem, 'vertical');
-            }
+            if (this.splitState) { this.cancelSplit(); this.startSplit(this.selectedItem, 'vertical'); } 
+            else if (this.selectedItem) { this.startSplit(this.selectedItem, 'vertical'); }
             return;
         }
 
-        // E - Transform Mode
-        if (code === 'KeyE') {
-            this.toggleTransformMode();
-            this.showModeToast();
-            return;
-        }
+        if (code === 'KeyE') { this.toggleTransformMode(); this.showModeToast(); return; }
 
-        // Movement (WASD + Arrows)
         const moveKeys = ['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
         if (moveKeys.includes(code)) {
-            if (this.splitState) {
-                this.handleSplitKeyboard(e);
-            } else {
-                this.handleWasd(e);
-            }
+            if (this.splitState) { this.handleSplitKeyboard(e); } 
+            else { this.handleWasd(e); }
         }
     },
 
     handleKeyUp(e) {
         if (!this.enabled) return;
         const code = e.code;
-        
         if (code === 'KeyZ') this.isHoldingZ = false;
         if (code === 'KeyX') this.isHoldingX = false;
         
         const moveKeys = ['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
-        if (moveKeys.includes(code)) {
-            this.history.endBatch();
-            // Optional: Snap/Cleanup if needed, currently direct DOM update handles visuals
-        }
+        if (moveKeys.includes(code)) { this.history.endBatch(); }
     },
 
     handleWasd(e) {
@@ -149,7 +115,6 @@ export const EditorInputMixin = {
         const targets = this.activeTab === 'choice' ? this.selectedItems : [this.selectedGroup];
         if (targets.length === 0 || !targets[0]) return;
 
-        // Ensure we have dimensions for visual update
         const pageIndex = this.activePageIndex;
         const dim = this.renderer.pageDimensions[pageIndex];
         if (!dim) return;
@@ -184,25 +149,18 @@ export const EditorInputMixin = {
                 if (isRight) { item.coords.w += step; }
             }
 
-            // Min size check
             if (item.coords.w < 5) item.coords.w = 5;
             if (item.coords.h < 5) item.coords.h = 5;
 
-            // Direct DOM update instead of full renderLayout()
-            // This prevents selection flicker/jumping
             const domId = (item.type === 'group' || this.activeTab === 'group') ? `group-${item.id}` : `btn-${item.id}`;
             const el = document.getElementById(domId);
             if (el) {
-                // Calculate new styles
                 const styles = CoordHelper.toPercent(item.coords, dim);
                 Object.assign(el.style, styles);
-                
-                // Ensure selection class persists visually if something else touched it
                 el.classList.add('editor-selected');
             }
         });
 
-        // Update side panel inputs without full re-render
         if (this.activeTab === 'choice') this.updateChoiceInputs();
         else this.updateGroupInputs();
         
@@ -213,8 +171,6 @@ export const EditorInputMixin = {
         const code = e.code;
         const step = e.shiftKey ? 10 : 1;
         const { axis } = this.splitState;
-
-        // WASD controls for Split Line
         const isUp = code === 'KeyW';
         const isDown = code === 'KeyS';
         const isLeft = code === 'KeyA';
@@ -235,21 +191,52 @@ export const EditorInputMixin = {
     handleMouseDown(e) {
         if (!this.enabled) return;
         
-        // Z/X Creation Shortcuts
+        // Check for Creation Mode (Z / X)
         if (e.button === 0 && !e.target.closest('#editor-sidebar') && !e.target.closest('#editor-context-menu')) {
-            if (this.isHoldingZ) {
+            const isZ = this.isHoldingZ;
+            const isX = this.isHoldingX;
+
+            if (isZ || isX) {
                 e.preventDefault();
-                this.history.push('create_item');
-                this.switchTab('choice');
-                this.addNewItem({ x: e.clientX, y: e.clientY });
-                return;
-            }
-            if (this.isHoldingX) {
-                e.preventDefault();
-                this.history.push('create_group');
-                this.switchTab('group');
-                this.addNewGroup({ x: e.clientX, y: e.clientY });
-                return;
+                
+                // 1. Calculate Start Coords
+                const pageIndex = this.activePageIndex;
+                const pageEl = document.getElementById(`page-${pageIndex}`);
+                const dim = this.renderer.pageDimensions[pageIndex];
+                
+                if (pageEl && dim) {
+                    const rect = pageEl.getBoundingClientRect();
+                    // RelX in Image Pixels
+                    const scaleX = dim.w / rect.width;
+                    const scaleY = dim.h / rect.height;
+                    
+                    const relX = (e.clientX - rect.left) * scaleX;
+                    const relY = (e.clientY - rect.top) * scaleY;
+
+                    // 2. Start Creation
+                    const type = isX ? 'group' : 'item';
+                    if (isX) this.switchTab('group');
+                    else this.switchTab('choice');
+
+                    const newObj = this.startDragCreation(type, relX, relY, pageIndex);
+                    
+                    if (newObj) {
+                        this.creationState = {
+                            active: true,
+                            type: type,
+                            startX: relX,
+                            startY: relY,
+                            obj: newObj,
+                            pageIndex: pageIndex,
+                            scaleX: scaleX,
+                            scaleY: scaleY,
+                            containerRect: rect,
+                            dim: dim
+                        };
+                        document.body.style.cursor = 'crosshair';
+                    }
+                    return;
+                }
             }
         }
         
@@ -294,41 +281,29 @@ export const EditorInputMixin = {
             }
         } else {
             const target = e.target.closest('.item-zone');
-            
             if (target) {
                 const itemId = target.dataset.itemId;
                 const item = this.engine.findItem(itemId);
-
                 if (item) {
                     objectToEdit = item;
-                    
                     if (e.shiftKey) {
                         if (this.selectedItems.includes(item)) {
                             this.selectedItems = this.selectedItems.filter(i => i !== item);
-                            if (this.selectedItem === item) {
-                                this.selectedItem = this.selectedItems[this.selectedItems.length - 1] || null;
-                            }
+                            if (this.selectedItem === item) { this.selectedItem = this.selectedItems[this.selectedItems.length - 1] || null; }
                         } else {
                             this.selectedItems.push(item);
                             this.selectedItem = item; 
                         }
                     } else {
-                        if (!this.selectedItems.includes(item)) {
-                             this.selectChoice(item, target);
-                        } else {
-                             this.selectedItem = item; 
-                        }
+                        if (!this.selectedItems.includes(item)) { this.selectChoice(item, target); } 
+                        else { this.selectedItem = item; }
                     }
                     this.refreshSelectionVisuals();
                     this.switchTab('choice');
-                    
                     if (this.zoomLevel > 1) this.updateZoomFocus();
                 }
             } else {
-                if (!e.shiftKey) {
-                    this.deselectChoice();
-                }
-                
+                if (!e.shiftKey) { this.deselectChoice(); }
                 this.isMarqueeSelecting = true;
                 this.marqueeStart = { x: e.clientX, y: e.clientY };
                 if (!this.marqueeBox) {
@@ -355,33 +330,16 @@ export const EditorInputMixin = {
             if (!targetEl) return;
 
             const rect = targetEl.getBoundingClientRect();
-            
             this.resizeMode = (this.selectedItems.length <= 1) ? this.getResizeHandle(e.clientX, e.clientY, rect) : null;
-            
-            if (this.resizeMode) {
-                this.isResizing = true;
-            } else {
-                this.isDragging = true;
-            }
-            
+            if (this.resizeMode) { this.isResizing = true; } else { this.isDragging = true; }
             targetEl.classList.add('dragging');
             this.dragStart = { x: e.clientX, y: e.clientY };
-            
-            this.initialRects = this.selectedItems.map(it => ({
-                id: it.id,
-                x: it.coords.x,
-                y: it.coords.y,
-                w: it.coords.w,
-                h: it.coords.h
-            }));
-
+            this.initialRects = this.selectedItems.map(it => ({ id: it.id, x: it.coords.x, y: it.coords.y, w: it.coords.w, h: it.coords.h }));
             if (objectToEdit.type === 'group') {
                  if (!objectToEdit.coords) objectToEdit.coords = {x:0,y:0,w:100,h:100};
                  this.initialRect = { ...objectToEdit.coords };
                  this.initialRects = [{ id: objectToEdit.id, ...objectToEdit.coords }];
-            } else {
-                 this.initialRect = { ...objectToEdit.coords };
-            }
+            } else { this.initialRect = { ...objectToEdit.coords }; }
 
             const dim = this.renderer.pageDimensions[pageIndex];
             const container = document.querySelector(`#page-${pageIndex}`);
@@ -390,10 +348,7 @@ export const EditorInputMixin = {
                 this.dragContext = { 
                     scaleX: dim.w / containerRect.width, 
                     scaleY: dim.h / containerRect.height, 
-                    dim: dim, 
-                    targetObj: objectToEdit,
-                    pageIndex: pageIndex,
-                    isGroup: objectToEdit.type === 'group'
+                    dim: dim, targetObj: objectToEdit, pageIndex: pageIndex, isGroup: objectToEdit.type === 'group'
                 };
             }
             e.preventDefault(); 
@@ -405,6 +360,41 @@ export const EditorInputMixin = {
         
         if (this.splitState) {
             this.updateSplitGuideFromMouse(e);
+            return;
+        }
+
+        // === DRAG TO CREATE LOGIC ===
+        if (this.creationState && this.creationState.active) {
+            const { startX, startY, obj, containerRect, scaleX, scaleY, dim } = this.creationState;
+            
+            // Calculate current coords relative to start
+            // Need to update containerRect occasionally if scrolling? 
+            // For now assume static drag or small scroll. Better: recalc relative to page.
+            const pageEl = document.getElementById(`page-${this.creationState.pageIndex}`);
+            const rect = pageEl.getBoundingClientRect();
+            
+            const currentX = (e.clientX - rect.left) * scaleX;
+            const currentY = (e.clientY - rect.top) * scaleY;
+
+            let x = Math.min(startX, currentX);
+            let y = Math.min(startY, currentY);
+            let w = Math.abs(currentX - startX);
+            let h = Math.abs(currentY - startY);
+
+            // Update Model
+            obj.coords.x = Math.round(x);
+            obj.coords.y = Math.round(y);
+            obj.coords.w = Math.max(1, Math.round(w)); // Min 1px while dragging
+            obj.coords.h = Math.max(1, Math.round(h));
+
+            // Direct DOM Update
+            const domId = (obj.type === 'group') ? `group-${obj.id}` : `btn-${obj.id}`;
+            const el = document.getElementById(domId);
+            if (el) {
+                const styles = CoordHelper.toPercent(obj.coords, dim);
+                Object.assign(el.style, styles);
+                el.classList.add('editor-selected'); // Keep highlight
+            }
             return;
         }
 
@@ -492,6 +482,38 @@ export const EditorInputMixin = {
 
     handleMouseUp(e) {
         if (!this.enabled) return;
+
+        // === FINISH CREATION ===
+        if (this.creationState && this.creationState.active) {
+            const { obj, type } = this.creationState;
+            
+            // If dragging was tiny (simple click), set default size
+            if (obj.coords.w < 10 || obj.coords.h < 10) {
+                 const defW = type === 'group' ? 300 : 200;
+                 const defH = type === 'group' ? 200 : 100;
+                 obj.coords.w = defW;
+                 obj.coords.h = defH;
+                 // Recenter logic optional, currently expands top-left
+            }
+
+            this.history.push(`create_${type}`);
+            
+            this.creationState = null;
+            document.body.style.cursor = '';
+            
+            // Finalize UI
+            this.renderer.renderLayout();
+            this.renderPagesList();
+            
+            if (type === 'item') {
+                const el = document.getElementById(`btn-${obj.id}`);
+                this.selectChoice(obj, el);
+            } else {
+                const el = document.getElementById(`group-${obj.id}`);
+                this.selectGroup(obj);
+            }
+            return;
+        }
 
         this.history.endBatch();
         document.body.classList.remove('editor-interacting');

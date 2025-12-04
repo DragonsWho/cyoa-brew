@@ -6,7 +6,7 @@
 
 import { RuleBuilder } from '../rule-builder.js';
 import { AutoDetector } from '../../utils/autodetect.js';
-import { HistoryManager } from './history.js'; // IMPORT ADDED
+import { HistoryManager } from './history.js';
 
 import { EditorGeometryMixin } from './geometry.js';
 import { EditorInputMixin } from './input.js';
@@ -20,7 +20,7 @@ export class CYOAEditor {
         this.renderer = renderer;
         this.ruleBuilder = new RuleBuilder(engine);
         this.autoDetector = new AutoDetector(); 
-        this.history = new HistoryManager(this); // HISTORY ADDED
+        this.history = new HistoryManager(this);
         
         this.selectedItem = null;
         this.selectedGroup = null;
@@ -37,10 +37,10 @@ export class CYOAEditor {
         // Drag & Resize State
         this.isDragging = false;
         this.isResizing = false;
-        this.resizeMode = null; // 'tl', 'tr', 'bl', 'br'
+        this.resizeMode = null; 
         this.dragStart = { x: 0, y: 0 };
         this.initialRect = {};
-        this.initialRects = []; // Store initial coords for all selected items during drag
+        this.initialRects = []; 
         this.handleSize = 15; 
         this.dragContext = null;
         
@@ -49,16 +49,19 @@ export class CYOAEditor {
         this.marqueeStart = { x: 0, y: 0 };
         this.marqueeBox = null;
 
+        // NEW: Creation Drag State (Z/X drawing)
+        this.creationState = null; // { active: bool, type: 'item'|'group', startX, startY, obj, pageIndex }
+
         // Split State
-        this.splitState = null; // { item, axis: 'vertical'|'horizontal', splitVal: 0 }
+        this.splitState = null;
 
         // Context Menu & Clipboard State
-        this.contextMenuContext = null; // { x, y, pageIndex, targetType, targetId }
-        this.clipboard = null; // { type: 'item'|'group', data: object }
+        this.contextMenuContext = null; 
+        this.clipboard = null;
         
-        // NEW STATE FLAGS
-        this.transformMode = 'move'; // 'move', 'shrink', 'grow'
-        this.zoomLevel = 1; // 1, 2, 3, 4
+        // Input Flags
+        this.transformMode = 'move'; 
+        this.zoomLevel = 1; 
         this.isHoldingZ = false;
         this.isHoldingX = false;
         
@@ -103,11 +106,9 @@ Return ONLY valid JSON, no explanations.`
         
         if (this.marqueeBox) this.marqueeBox.remove();
         
-        // Remove split guide if exists
         const splitGuide = document.getElementById('editor-split-guide');
         if (splitGuide) splitGuide.remove();
 
-        // Reset zoom
         this.setZoom(1);
 
         this.removeEventListeners();
