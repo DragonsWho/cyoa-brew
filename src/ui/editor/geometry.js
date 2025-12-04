@@ -1,12 +1,12 @@
 /**
  * src\ui\editor\geometry.js
  * Editor Geometry Mixin - Provides geometric calculations for the editor
+ * Cleaned up: Removed unused collision detection logic
  */
-
-import { CoordHelper } from '../../utils/coords.js';
 
 export const EditorGeometryMixin = {
     // ==================== HELPER: Check if point is inside rect ====================
+    // Used for clicking groups and drag-and-drop grouping logic
     isInsideRect(point, rect) {
         if (!rect) return false;
         return (
@@ -17,15 +17,8 @@ export const EditorGeometryMixin = {
         );
     },
     
-    // Check intersection of two rectangles
-    checkRectIntersection(r1, r2) {
-        return !(r2.x >= r1.x + r1.w || 
-                 r2.x + r2.w <= r1.x || 
-                 r2.y >= r1.y + r1.h || 
-                 r2.y + r2.h <= r1.y);
-    },
-
-    // Get bounding box of multiple items
+    // ==================== HELPER: Get bounding box of multiple items ====================
+    // Used when calculating group selections
     getMultiSelectionBounds(items) {
         if (!items || items.length === 0) return null;
         let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
@@ -42,23 +35,8 @@ export const EditorGeometryMixin = {
         return { x: minX, y: minY, w: maxX - minX, h: maxY - minY };
     },
 
-    // Find all groups colliding with a rect (for dragging/resizing logic)
-    getCollidingGroups(rect, ignoreId, pageIndex) {
-        const page = this.getPageByIndex(pageIndex);
-        if (!page || !page.layout) return [];
-        
-        const collisions = [];
-        for (const element of page.layout) {
-            if (element.type === 'group' && element.id !== ignoreId) {
-                if (this.checkRectIntersection(rect, element.coords)) {
-                    collisions.push(element);
-                }
-            }
-        }
-        return collisions;
-    },
-
     // ==================== HELPER: Get item center ====================
+    // Used for determining which group an item is dropped into
     getItemCenter(item) {
         if (!item.coords) return { x: 0, y: 0 };
         return {
@@ -68,6 +46,7 @@ export const EditorGeometryMixin = {
     },
 
     // ==================== HELPER: Resize Detection ====================
+    // Determines if mouse is hovering over a resize handle
     getResizeHandle(x, y, rect) {
         const hs = this.handleSize;
         const dist = (x1, y1, x2, y2) => Math.sqrt((x2-x1)**2 + (y2-y1)**2);
@@ -84,7 +63,8 @@ export const EditorGeometryMixin = {
         return null;
     },
 
-    // ==================== HELPER: Smart Coordinates (Center or Mouse) ====================
+    // ==================== HELPER: Smart Coordinates ====================
+    // Calculates position relative to the scaled image/page
     getSmartCoords(objWidth, objHeight, mouseEvent = null) {
         const pageIndex = this.activePageIndex;
         const pageEl = document.getElementById(`page-${pageIndex}`);

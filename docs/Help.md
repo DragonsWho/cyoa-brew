@@ -17,7 +17,7 @@
 ### ✂️ Tools & Actions
 *   **Q**: **Duplicate** selected item/group.
 *   **R**: **Split Horizontal** (Use WASD to position line, **R** again to cut).
-*   **T**: **Split Vertical** (Use WASD to position line, **T** again to cut).
+*   **T**: **Split Vertical** (Use WASD to position line, **R** to cut(Yes, it's a little strange... but that way you won't have to stretch your finger too far.)).
 *   **Delete / Backspace**: Remove selected element.
 *   **Ctrl + Z**: Undo last action.
 
