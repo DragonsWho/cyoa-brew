@@ -1,3 +1,5 @@
+
+
 /**
  * src\ui\editor\core.js
  * CYOA Editor - Visual editing mode
@@ -47,6 +49,9 @@ export class CYOAEditor {
         this.marqueeStart = { x: 0, y: 0 };
         this.marqueeBox = null;
 
+        // Split State
+        this.splitState = null; // { item, axis: 'vertical'|'horizontal', splitVal: 0 }
+
         // Context Menu & Clipboard State
         this.contextMenuContext = null; // { x, y, pageIndex, targetType, targetId }
         this.clipboard = null; // { type: 'item'|'group', data: object }
@@ -91,6 +96,10 @@ Return ONLY valid JSON, no explanations.`
         if (ctxMenu) ctxMenu.remove();
         
         if (this.marqueeBox) this.marqueeBox.remove();
+        
+        // Remove split guide if exists
+        const splitGuide = document.getElementById('editor-split-guide');
+        if (splitGuide) splitGuide.remove();
 
         this.removeEventListeners();
         document.querySelectorAll('.item-zone, .info-zone').forEach(el => {

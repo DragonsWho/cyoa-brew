@@ -24,6 +24,20 @@ export const EditorInputMixin = {
     // ==================== DRAG & DROP & SELECTION LOGIC ====================
     handleMouseDown(e) {
         if (!this.enabled) return;
+        
+        // --- SPLIT MODE CLICK ---
+        if (this.splitState && e.button === 0) {
+            e.preventDefault();
+            this.commitSplit();
+            return;
+        }
+        // Cancel split on right click
+        if (this.splitState && e.button === 2) {
+             e.preventDefault();
+             this.cancelSplit();
+             return;
+        }
+
         if (e.target.closest('#editor-sidebar')) return;
         if (e.target.closest('.modal-content')) return;
         if (e.target.closest('#editor-context-menu')) return;
@@ -179,6 +193,75 @@ export const EditorInputMixin = {
     handleMouseMove(e) {
         if (!this.enabled) return;
 
+        // --- SPLIT GUIDE UPDATE ---
+        if (this.splitState) {
+            const { item, axis } = this.splitState;
+            const btnId = `btn-${item.id}`;
+            const el = document.getElementById(btnId);
+            const guide = document.getElementById('editor-split-guide');
+            
+            if (el && guide) {
+                const rect = el.getBoundingClientRect();
+                const GAP = 10;
+                const PADDING = 10; // Minimum size for split items
+                
+                let valid = true;
+
+                // Mouse relative to the element
+                let relX = e.clientX - rect.left;
+                let relY = e.clientY - rect.top;
+
+                if (axis === 'vertical') {
+                    // Moving Left/Right inside the box
+                    // Clamp visual position
+                    const minX = PADDING + GAP/2;
+                    const maxX = rect.width - PADDING - GAP/2;
+                    
+                    if (relX < minX) relX = minX;
+                    if (relX > maxX) relX = maxX;
+                    
+                    // Check if mouse is wildly outside
+                    if (e.clientY < rect.top - 50 || e.clientY > rect.bottom + 50 || 
+                        e.clientX < rect.left - 50 || e.clientX > rect.right + 50) {
+                        valid = false;
+                    }
+
+                    // Update DOM Guide
+                    guide.style.left = (rect.left + relX - 5) + 'px'; // Center 10px line
+                    guide.style.top = rect.top + 'px';
+                    guide.style.height = rect.height + 'px';
+                    
+                    // Convert visual X back to model coordinate for split value
+                    // Model Width / DOM Width ratio
+                    const ratio = item.coords.w / rect.width;
+                    this.splitState.splitVal = relX * ratio;
+
+                } else {
+                    // Moving Up/Down inside the box
+                    const minY = PADDING + GAP/2;
+                    const maxY = rect.height - PADDING - GAP/2;
+
+                    if (relY < minY) relY = minY;
+                    if (relY > maxY) relY = maxY;
+
+                    if (e.clientY < rect.top - 50 || e.clientY > rect.bottom + 50 || 
+                        e.clientX < rect.left - 50 || e.clientX > rect.right + 50) {
+                        valid = false;
+                    }
+
+                    guide.style.top = (rect.top + relY - 5) + 'px';
+                    guide.style.left = rect.left + 'px';
+                    guide.style.width = rect.width + 'px';
+
+                    const ratio = item.coords.h / rect.height;
+                    this.splitState.splitVal = relY * ratio;
+                }
+
+                guide.style.display = valid ? 'block' : 'none';
+            }
+            return;
+        }
+
         // --- MARQUEE UPDATE ---
         if (this.isMarqueeSelecting) {
             const x = Math.min(e.clientX, this.marqueeStart.x);
@@ -295,8 +378,6 @@ export const EditorInputMixin = {
         // ========== RESIZING LOGIC (Single Item Only) ==========
         else if (this.isResizing && this.resizeMode) {
             // (Use original logic, resizing implies single selection here)
-            // ... [Previous Resize Logic Omitted for brevity, it's identical to original file] ...
-            // Simplified copy for context completeness:
             
             const start = this.initialRect;
             const deltaX = dx * scaleX;
@@ -307,11 +388,6 @@ export const EditorInputMixin = {
             let finalY = start.y;
             let finalW = start.w;
             let finalH = start.h;
-
-            // Simplified: No neighbor push logic for brevity in this multiselect update, 
-            // assuming user wants just the resize. 
-            // To restore full push logic, copy from original.
-            // Here is basic resize:
 
             if (this.resizeMode.includes('r')) finalW = Math.max(MIN_SIZE, start.w + deltaX);
             if (this.resizeMode.includes('l')) {
@@ -444,6 +520,14 @@ export const EditorInputMixin = {
 
     handleKeyDown(e) {
         if (!this.enabled) return;
+        
+        if (e.key === 'Escape') {
+            if (this.splitState) {
+                this.cancelSplit();
+                return;
+            }
+        }
+
         if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
         
         if (e.key === 'Delete') {

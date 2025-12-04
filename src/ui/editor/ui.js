@@ -17,6 +17,22 @@ export const EditorUIMixin = {
     createEditorUI() {
         if (document.getElementById('editor-sidebar')) return;
         
+        // --- Add visual guide for split tool ---
+        if (!document.getElementById('editor-split-guide')) {
+            const guide = document.createElement('div');
+            guide.id = 'editor-split-guide';
+            guide.style.cssText = `
+                position: fixed; 
+                background: rgba(0, 255, 255, 0.8); 
+                border: 1px solid white; 
+                box-shadow: 0 0 5px cyan; 
+                pointer-events: none; 
+                z-index: 10000; 
+                display: none;
+            `;
+            document.body.appendChild(guide);
+        }
+
         const sidebar = document.createElement('div');
         sidebar.id = 'editor-sidebar';
         sidebar.className = 'editor-sidebar';
@@ -631,6 +647,9 @@ export const EditorUIMixin = {
             <div class="menu-item ctx-obj" onclick="CYOA.editor.handleContextAction('duplicate')">📄 Duplicate</div>
             <div class="menu-item ctx-obj" onclick="CYOA.editor.handleContextAction('copy')">📋 Copy</div>
             <div class="menu-item ctx-obj" style="color:#ff6b6b;" onclick="CYOA.editor.handleContextAction('delete')">🗑️ Delete</div>
+            <div class="menu-divider ctx-obj"></div>
+            <div class="menu-item ctx-obj" onclick="CYOA.editor.handleContextAction('split-v')">✂️ Рассечь по вертикали</div>
+            <div class="menu-item ctx-obj" onclick="CYOA.editor.handleContextAction('split-h')">✂️ Рассечь по горизонтали</div>
             <div class="menu-divider ctx-paste"></div>
             <div class="menu-item ctx-paste" id="ctx-paste-btn" onclick="CYOA.editor.handleContextAction('paste')">📌 Paste</div>
             <div class="menu-divider"></div>
@@ -730,6 +749,30 @@ export const EditorUIMixin = {
             case 'delete':
                 if (targetType === 'item') this.deleteSelectedItem();
                 if (targetType === 'group') this.deleteSelectedGroup();
+                break;
+            case 'split-v':
+                if (targetType === 'item') {
+                    const item = this.engine.findItem(targetId);
+                    if (item) {
+                        if (this.selectedItem !== item) {
+                            this.switchTab('choice');
+                            this.selectChoice(item, document.getElementById(`btn-${item.id}`));
+                        }
+                        this.startSplit(item, 'vertical');
+                    }
+                }
+                break;
+            case 'split-h':
+                if (targetType === 'item') {
+                    const item = this.engine.findItem(targetId);
+                    if (item) {
+                        if (this.selectedItem !== item) {
+                            this.switchTab('choice');
+                            this.selectChoice(item, document.getElementById(`btn-${item.id}`));
+                        }
+                        this.startSplit(item, 'horizontal');
+                    }
+                }
                 break;
             case 'auto-detect':
                 this.switchTab('settings');

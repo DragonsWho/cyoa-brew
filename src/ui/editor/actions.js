@@ -463,6 +463,111 @@ export const EditorActionsMixin = {
         this.renderer.renderAll();
     },
 
+    // ==================== SPLIT ACTION ====================
+    startSplit(item, axis) {
+        this.splitState = {
+            item: item,
+            axis: axis, // 'vertical' (split X axis) or 'horizontal' (split Y axis)
+            splitVal: 0
+        };
+
+        const guide = document.getElementById('editor-split-guide');
+        if (guide) {
+            guide.style.display = 'block';
+            // Set guide style based on axis
+            if (axis === 'vertical') {
+                guide.style.width = '10px';
+                guide.style.height = '0px'; // Set dynamically in mousemove
+            } else {
+                guide.style.height = '10px';
+                guide.style.width = '0px'; // Set dynamically in mousemove
+            }
+        }
+
+        document.body.style.cursor = axis === 'vertical' ? 'col-resize' : 'row-resize';
+    },
+
+    cancelSplit() {
+        this.splitState = null;
+        const guide = document.getElementById('editor-split-guide');
+        if (guide) guide.style.display = 'none';
+        document.body.style.cursor = '';
+    },
+
+    commitSplit() {
+        if (!this.splitState) return;
+
+        const { item, axis, splitVal } = this.splitState;
+        const GAP = 10;
+        const HALF_GAP = GAP / 2;
+
+        const parent = this.findItemParent(item.id);
+        if (!parent) return;
+
+        // Clone item for the second part
+        const newItem = JSON.parse(JSON.stringify(item));
+        newItem.id = `item_${Date.now()}`;
+        
+        // Naming Logic: "Old s1" or "Old s2"
+        let newTitle = item.title;
+        const match = newTitle.match(/ s(\d+)$/);
+        if (match) {
+            const num = parseInt(match[1]) + 1;
+            newTitle = newTitle.replace(/ s(\d+)$/, ` s${num}`);
+        } else {
+            newTitle = newTitle + " s1";
+        }
+        newItem.title = newTitle;
+
+        if (axis === 'vertical') {
+            // Split X axis (Vertical line moves left/right)
+            // item.coords.x ... splitVal ... item.coords.x + w
+            
+            const originalW = item.coords.w;
+            // Split val is relative to item start
+            const splitPoint = splitVal; 
+
+            const w1 = splitPoint - HALF_GAP;
+            const w2 = originalW - splitPoint - HALF_GAP;
+
+            // Update Item 1 (Left)
+            item.coords.w = Math.max(10, Math.round(w1));
+
+            // Update Item 2 (Right)
+            newItem.coords.x = Math.round(item.coords.x + splitPoint + HALF_GAP);
+            newItem.coords.w = Math.max(10, Math.round(w2));
+            
+        } else {
+            // Split Y axis (Horizontal line moves up/down)
+            const originalH = item.coords.h;
+            const splitPoint = splitVal;
+
+            const h1 = splitPoint - HALF_GAP;
+            const h2 = originalH - splitPoint - HALF_GAP;
+
+            // Update Item 1 (Top)
+            item.coords.h = Math.max(10, Math.round(h1));
+
+            // Update Item 2 (Bottom)
+            newItem.coords.y = Math.round(item.coords.y + splitPoint + HALF_GAP);
+            newItem.coords.h = Math.max(10, Math.round(h2));
+        }
+
+        // Insert new item after original
+        parent.array.splice(parent.index + 1, 0, newItem);
+
+        this.engine.buildMaps();
+        this.renderer.renderLayout();
+        this.renderPagesList();
+        this.cancelSplit();
+        
+        // Select new item
+        setTimeout(() => {
+            const el = document.getElementById(`btn-${newItem.id}`);
+            if (el) this.selectChoice(newItem, el);
+        }, 50);
+    },
+
     // ==================== CLIPBOARD ACTIONS ====================
     actionCopy(type, id) {
         let data = null;
