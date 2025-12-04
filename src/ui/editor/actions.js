@@ -691,6 +691,9 @@ export const EditorActionsMixin = {
     setZoom(level) {
         this.zoomLevel = level;
         this.updateZoomFocus();
+        
+        // Удалили код, который менял wrapper.style.padding и сжимал картинку
+        
         const toast = document.getElementById('mode-toast');
         if (toast) {
             toast.textContent = `Zoom x${level}`;
@@ -708,6 +711,7 @@ export const EditorActionsMixin = {
         if (this.zoomLevel === 1) {
             pageEl.style.transform = '';
             pageEl.style.transformOrigin = '';
+            pageEl.style.margin = ''; // Сброс отступов
             return;
         }
 
@@ -724,9 +728,27 @@ export const EditorActionsMixin = {
              }
         }
 
+        // 1. Transform
         pageEl.style.transition = 'transform 0.2s';
         pageEl.style.transformOrigin = `${focusX}% ${focusY}%`;
         pageEl.style.transform = `scale(${this.zoomLevel})`;
+        
+        // 2. Добавляем вертикальный отступ (Margin), чтобы при увеличении
+        // края картинки не обрезались экраном, и можно было скроллить.
+        // Чем больше зум, тем больше запас места сверху и снизу.
+        const vMargin = (this.zoomLevel - 1) * 30; // 30vh на каждый уровень зума
+        pageEl.style.margin = `${vMargin}vh 0`;
+
+        // 3. Подкручиваем скролл к элементу с небольшой задержкой, 
+        // чтобы браузер успел применить трансформацию
+        if (this.selectedItem) {
+            setTimeout(() => {
+                const btn = document.getElementById(`btn-${this.selectedItem.id}`);
+                if (btn) {
+                    btn.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+                }
+            }, 100);
+        }
     },
 
     // Points/Currency CRUD
@@ -775,12 +797,6 @@ export const EditorActionsMixin = {
         }
     },
     
-
-    
-
-
-
-
     async copyDebugImageToClipboard() {
         const page = this.getCurrentPage();
         if (!page || !page.image) {

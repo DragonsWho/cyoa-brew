@@ -1,6 +1,7 @@
 /**
  * src\ui\editor\input.js
  * Editor Input Mixin - Handles mouse and keyboard input
+ * Updated: Physical Key Codes (WASD/ЦФЫВ support) & Smooth transform
  */
 
 import { CoordHelper } from '../../utils/coords.js';
@@ -34,25 +35,30 @@ export const EditorInputMixin = {
         if (!this.enabled) return;
         if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
 
-        if (e.key.toLowerCase() === 'z') this.isHoldingZ = true;
-        if (e.key.toLowerCase() === 'x') this.isHoldingX = true;
+        // Use e.code for layout-independent bindings (WASD = ЦФЫВ)
+        const code = e.code;
+        const ctrl = e.ctrlKey || e.metaKey;
+        const shift = e.shiftKey;
+
+        if (code === 'KeyZ') this.isHoldingZ = true;
+        if (code === 'KeyX') this.isHoldingX = true;
 
         // Undo (Ctrl+Z)
-        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+        if (ctrl && code === 'KeyZ') {
             e.preventDefault();
             this.history.undo();
             return;
         }
 
         // Escape
-        if (e.key === 'Escape') {
+        if (code === 'Escape') {
             if (this.splitState) this.cancelSplit();
             this.setZoom(1); 
             return;
         }
 
         // Delete
-        if (e.key === 'Delete') {
+        if (code === 'Delete' || code === 'Backspace') {
             this.history.push('delete');
             if (this.activeTab === 'choice' && this.selectedItems.length > 0) {
                 this.deleteSelectedItem(); 
@@ -63,20 +69,20 @@ export const EditorInputMixin = {
         }
 
         // F - Focus/Zoom
-        if (e.key.toLowerCase() === 'f') {
+        if (code === 'KeyF') {
             this.toggleZoom();
             return;
         }
 
         // Tab - Cycle
-        if (e.key === 'Tab') {
+        if (code === 'Tab') {
             e.preventDefault();
-            this.cycleSelection(e.shiftKey ? -1 : 1);
+            this.cycleSelection(shift ? -1 : 1);
             return;
         }
 
         // Q - Duplicate
-        if (e.key.toLowerCase() === 'q') {
+        if (code === 'KeyQ') {
             this.history.push('duplicate');
             if (this.activeTab === 'choice' && this.selectedItem) this.actionDuplicate('item', this.selectedItem.id);
             else if (this.activeTab === 'group' && this.selectedGroup) this.actionDuplicate('group', this.selectedGroup.id);
@@ -84,7 +90,7 @@ export const EditorInputMixin = {
         }
 
         // R - Split Horizontal
-        if (e.key.toLowerCase() === 'r') {
+        if (code === 'KeyR') {
             if (this.splitState) {
                 this.commitSplit();
             } else if (this.selectedItem) {
@@ -94,7 +100,7 @@ export const EditorInputMixin = {
         }
 
         // T - Split Vertical
-        if (e.key.toLowerCase() === 't') {
+        if (code === 'KeyT') {
             if (this.splitState) {
                  this.cancelSplit();
                  this.startSplit(this.selectedItem, 'vertical');
@@ -105,14 +111,15 @@ export const EditorInputMixin = {
         }
 
         // E - Transform Mode
-        if (e.key.toLowerCase() === 'e') {
+        if (code === 'KeyE') {
             this.toggleTransformMode();
             this.showModeToast();
             return;
         }
 
-        // WASD
-        if (['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(e.key.toLowerCase())) {
+        // Movement (WASD + Arrows)
+        const moveKeys = ['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
+        if (moveKeys.includes(code)) {
             if (this.splitState) {
                 this.handleSplitKeyboard(e);
             } else {
@@ -123,11 +130,15 @@ export const EditorInputMixin = {
 
     handleKeyUp(e) {
         if (!this.enabled) return;
-        if (e.key.toLowerCase() === 'z') this.isHoldingZ = false;
-        if (e.key.toLowerCase() === 'x') this.isHoldingX = false;
+        const code = e.code;
         
-        if (['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(e.key.toLowerCase())) {
+        if (code === 'KeyZ') this.isHoldingZ = false;
+        if (code === 'KeyX') this.isHoldingX = false;
+        
+        const moveKeys = ['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
+        if (moveKeys.includes(code)) {
             this.history.endBatch();
+            // Optional: Snap/Cleanup if needed, currently direct DOM update handles visuals
         }
     },
 
@@ -138,13 +149,18 @@ export const EditorInputMixin = {
         const targets = this.activeTab === 'choice' ? this.selectedItems : [this.selectedGroup];
         if (targets.length === 0 || !targets[0]) return;
 
+        // Ensure we have dimensions for visual update
+        const pageIndex = this.activePageIndex;
+        const dim = this.renderer.pageDimensions[pageIndex];
+        if (!dim) return;
+
         const step = e.shiftKey ? 10 : 1; 
-        const key = e.key.toLowerCase();
+        const code = e.code;
         
-        const isUp = key === 'w' || key === 'arrowup';
-        const isDown = key === 's' || key === 'arrowdown';
-        const isLeft = key === 'a' || key === 'arrowleft';
-        const isRight = key === 'd' || key === 'arrowright';
+        const isUp = code === 'KeyW' || code === 'ArrowUp';
+        const isDown = code === 'KeyS' || code === 'ArrowDown';
+        const isLeft = code === 'KeyA' || code === 'ArrowLeft';
+        const isRight = code === 'KeyD' || code === 'ArrowRight';
 
         targets.forEach(item => {
             if (!item.coords) return;
@@ -168,12 +184,25 @@ export const EditorInputMixin = {
                 if (isRight) { item.coords.w += step; }
             }
 
+            // Min size check
             if (item.coords.w < 5) item.coords.w = 5;
             if (item.coords.h < 5) item.coords.h = 5;
+
+            // Direct DOM update instead of full renderLayout()
+            // This prevents selection flicker/jumping
+            const domId = (item.type === 'group' || this.activeTab === 'group') ? `group-${item.id}` : `btn-${item.id}`;
+            const el = document.getElementById(domId);
+            if (el) {
+                // Calculate new styles
+                const styles = CoordHelper.toPercent(item.coords, dim);
+                Object.assign(el.style, styles);
+                
+                // Ensure selection class persists visually if something else touched it
+                el.classList.add('editor-selected');
+            }
         });
 
-        this.renderer.renderLayout();
-        
+        // Update side panel inputs without full re-render
         if (this.activeTab === 'choice') this.updateChoiceInputs();
         else this.updateGroupInputs();
         
@@ -181,20 +210,24 @@ export const EditorInputMixin = {
     },
 
     handleSplitKeyboard(e) {
-        const key = e.key.toLowerCase();
+        const code = e.code;
         const step = e.shiftKey ? 10 : 1;
+        const { axis } = this.splitState;
 
-        if (['w', 'a', 's', 'd'].includes(key)) {
-            const { axis } = this.splitState;
-            if (axis === 'vertical') {
-                if (key === 'a') this.splitState.splitVal -= step;
-                if (key === 'd') this.splitState.splitVal += step;
-            } else {
-                if (key === 'w') this.splitState.splitVal -= step;
-                if (key === 's') this.splitState.splitVal += step;
-            }
-            this.updateSplitGuideVisuals(); 
+        // WASD controls for Split Line
+        const isUp = code === 'KeyW';
+        const isDown = code === 'KeyS';
+        const isLeft = code === 'KeyA';
+        const isRight = code === 'KeyD';
+
+        if (axis === 'vertical') {
+            if (isLeft) this.splitState.splitVal -= step;
+            if (isRight) this.splitState.splitVal += step;
+        } else {
+            if (isUp) this.splitState.splitVal -= step;
+            if (isDown) this.splitState.splitVal += step;
         }
+        this.updateSplitGuideVisuals(); 
     },
 
     // ==================== MOUSE HANDLING ====================
@@ -286,7 +319,7 @@ export const EditorInputMixin = {
                              this.selectedItem = item; 
                         }
                     }
-                    this.refreshSelectionVisuals(); // FIXED: Now defined below
+                    this.refreshSelectionVisuals();
                     this.switchTab('choice');
                     
                     if (this.zoomLevel > 1) this.updateZoomFocus();
@@ -505,7 +538,7 @@ export const EditorInputMixin = {
         this.dragContext = null;
     },
 
-    // ==================== SELECTION HELPERS (RESTORED) ====================
+    // ==================== SELECTION HELPERS ====================
 
     performMarqueeSelection(marqueeRect) {
         const page = this.getCurrentPage();
@@ -550,7 +583,7 @@ export const EditorInputMixin = {
         });
 
         if (this.activeTab === 'choice') {
-            this.updateChoiceInputs(); // Refreshes the sidebar UI based on count
+            this.updateChoiceInputs();
         }
     }
 };

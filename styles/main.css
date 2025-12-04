@@ -38,8 +38,25 @@ body { margin: 0; padding: 0 0 120px 0; background: #1a1a1a; color: #eee; font-f
 .ctrl-btn:hover { color: #eee; background: rgba(255,255,255,0.1); transform: translateY(-1px); }
 .ctrl-btn.active { color: #4CAF50; background: rgba(76, 175, 80, 0.1); opacity: 1; }
 
-/* === GAME WRAPPER & PAGE === */
-#game-wrapper { position: relative; max-width: 100%; margin: 0 auto; display: flex; flex-direction: column; align-items: center; }
+/* === GAME WRAPPER & PAGE === */ 
+#game-wrapper { 
+    position: relative; 
+    max-width: 100%; 
+    margin: 0 auto; 
+    display: flex; 
+    flex-direction: column; 
+    align-items: center;
+    
+    /* Возвращаем статический паддинг. 
+       100px достаточно для x1, а для x2+ мы добавляем margin через JS */
+    padding: 100px; 
+    
+    min-height: 100vh;
+    justify-content: flex-start;
+    /* Убедимся, что ничего не скрывается */
+    overflow: visible; 
+}
+
 .page-container { position: relative; margin-bottom: 0; line-height: 0; box-shadow: 0 0 30px rgba(0,0,0,0.5); max-width: 100%; }
 .page-image { display: block; max-width: 100%; height: auto; user-select: none; }
 .page-layer { position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 10; pointer-events: none; }
@@ -156,13 +173,13 @@ body.edit-mode-group .item-zone { pointer-events: none; opacity: 0.5; }
 /* 1. Basic Colored Borders */
 .item-zone.editor-selected { 
     border: 2px solid #FFD700 !important; 
-    z-index: 3000;
+    z-index: 3000 !important;
     color: #FFD700; /* Used for corners */
 }
 .info-zone.editor-selected { 
     border: 2px solid #4CAF50 !important; 
     background-color: rgba(76,175,80,0.1) !important; 
-    z-index: 3000; 
+    z-index: 3000 !important; 
     color: #FFD700; /* Used for corners */
 }
 
@@ -182,6 +199,22 @@ body.edit-mode-group .item-zone { pointer-events: none; opacity: 0.5; }
     background-position: top left, top right, bottom right, bottom left !important;
     background-size: 14px 14px !important;
     background-repeat: no-repeat !important;
+    
+    /* Ensure selection follows transforms smoothly */
+    transform-origin: center;
+    will-change: top, left, width, height;
+}
+
+/* FIX: Kill transitions on selected items so dragging/WASD is instant */
+.click-zone.editor-selected,
+.info-zone.editor-selected {
+    transition: none !important;
+}
+
+/* FIX: Also kill transitions on pseudo-elements (the Notch) */
+.click-zone.editor-selected::before,
+.info-zone.editor-selected::before {
+    transition: none !important;
 }
 
 /* 3. The "Notch" showing Title */
