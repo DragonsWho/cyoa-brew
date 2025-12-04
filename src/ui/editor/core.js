@@ -1,5 +1,3 @@
-
-
 /**
  * src\ui\editor\core.js
  * CYOA Editor - Visual editing mode
@@ -8,6 +6,7 @@
 
 import { RuleBuilder } from '../rule-builder.js';
 import { AutoDetector } from '../../utils/autodetect.js';
+import { HistoryManager } from './history.js'; // IMPORT ADDED
 
 import { EditorGeometryMixin } from './geometry.js';
 import { EditorInputMixin } from './input.js';
@@ -21,6 +20,7 @@ export class CYOAEditor {
         this.renderer = renderer;
         this.ruleBuilder = new RuleBuilder(engine);
         this.autoDetector = new AutoDetector(); 
+        this.history = new HistoryManager(this); // HISTORY ADDED
         
         this.selectedItem = null;
         this.selectedGroup = null;
@@ -55,6 +55,12 @@ export class CYOAEditor {
         // Context Menu & Clipboard State
         this.contextMenuContext = null; // { x, y, pageIndex, targetType, targetId }
         this.clipboard = null; // { type: 'item'|'group', data: object }
+        
+        // NEW STATE FLAGS
+        this.transformMode = 'move'; // 'move', 'shrink', 'grow'
+        this.zoomLevel = 1; // 1, 2, 3, 4
+        this.isHoldingZ = false;
+        this.isHoldingX = false;
         
         this.enabled = false;
         this.triggerLabelCheck = null;
@@ -100,6 +106,9 @@ Return ONLY valid JSON, no explanations.`
         // Remove split guide if exists
         const splitGuide = document.getElementById('editor-split-guide');
         if (splitGuide) splitGuide.remove();
+
+        // Reset zoom
+        this.setZoom(1);
 
         this.removeEventListeners();
         document.querySelectorAll('.item-zone, .info-zone').forEach(el => {

@@ -25,14 +25,17 @@ export const EditorActionsMixin = {
         
         if (!page || !page.layout) return { groups: 0, items: 0 };
         
-        for (const element of page.layout) {
-            if (element.type === 'group') {
-                groups++;
-                items += element.items?.length || 0;
-            } else if (element.type === 'item') {
-                items++;
-            }
-        }
+        const traverse = (list) => {
+            list.forEach(el => {
+                if (el.type === 'group') {
+                    groups++;
+                    if (el.items) traverse(el.items);
+                } else if (el.type === 'item') {
+                    items++;
+                }
+            });
+        };
+        traverse(page.layout);
         
         return { groups, items };
     },
@@ -191,11 +194,11 @@ export const EditorActionsMixin = {
         for (const page of pages) {
             this.sortLayoutByCoords(page.layout);
         }
-        console.log('📐 Layouts sorted by coordinates');
     },
 
     // ==================== MULTI-SELECT ALIGNMENT ACTIONS ====================
     alignSelectedItems(mode) {
+        this.history.push('align_items');
         if (this.selectedItems.length < 2) return;
         const items = this.selectedItems;
         let val = 0;
@@ -218,9 +221,9 @@ export const EditorActionsMixin = {
     },
 
     matchSizeSelectedItems(mode) {
+        this.history.push('resize_match');
         if (this.selectedItems.length < 2) return;
         const items = this.selectedItems;
-        // Use the last selected item (primary selection) as the reference
         const ref = this.selectedItem || items[0];
         
         if (mode === 'width' || mode === 'both') {
@@ -235,35 +238,8 @@ export const EditorActionsMixin = {
         this.renderer.renderLayout();
     },
 
-    distributeSelectedItems(mode) {
-        if (this.selectedItems.length < 3) return;
-        const items = [...this.selectedItems]; // Copy for sorting
-
-        if (mode === 'vertical') {
-            items.sort((a,b) => a.coords.y - b.coords.y);
-            const first = items[0];
-            const last = items[items.length-1];
-            const totalDist = last.coords.y - first.coords.y;
-            const step = totalDist / (items.length - 1);
-            
-            for(let i=1; i<items.length-1; i++) {
-                items[i].coords.y = Math.round(first.coords.y + (step * i));
-            }
-        } else if (mode === 'horizontal') {
-            items.sort((a,b) => a.coords.x - b.coords.x);
-            const first = items[0];
-            const last = items[items.length-1];
-            const totalDist = last.coords.x - first.coords.x;
-            const step = totalDist / (items.length - 1);
-            
-            for(let i=1; i<items.length-1; i++) {
-                items[i].coords.x = Math.round(first.coords.x + (step * i));
-            }
-        }
-        this.renderer.renderLayout();
-    },
-
     deleteSelectedItems() {
+        this.history.push('delete_multi');
         if (!this.selectedItems.length) return;
         if (!confirm(`Delete ${this.selectedItems.length} items?`)) return;
 
@@ -282,8 +258,8 @@ export const EditorActionsMixin = {
 
     // ==================== CRUD OPERATIONS ====================
     
-    // Accepts optional coords (e.g. from context menu)
     addNewItem(coordsFromContext = null) {
+        this.history.push('add_item');
         const page = this.getCurrentPage();
         if (!page) {
             alert('No page available. Please add a page image first via Settings tab.');
@@ -292,8 +268,6 @@ export const EditorActionsMixin = {
         
         const defaultW = 200;
         const defaultH = 100;
-        
-        // Use smart coordinates logic
         const smartCoords = this.getSmartCoords(defaultW, defaultH, coordsFromContext);
 
         const newItem = { 
@@ -305,7 +279,6 @@ export const EditorActionsMixin = {
             cost: [] 
         };
         
-        // If adding via button (coordsFromContext is null), check if selectedGroup is active
         if (!coordsFromContext && this.selectedGroup && this.activeTab === 'group') {
             if (!this.selectedGroup.items) this.selectedGroup.items = [];
             this.selectedGroup.items.push(newItem);
@@ -325,11 +298,9 @@ export const EditorActionsMixin = {
     },
     
     addNewGroup(coordsFromContext = null) {
+        this.history.push('add_group');
         const page = this.getCurrentPage();
-        if (!page) {
-            alert('No page available. Please add a page image first via Settings tab.');
-            return;
-        }
+        if (!page) return;
         
         const defaultW = 300;
         const defaultH = 200;
@@ -345,7 +316,6 @@ export const EditorActionsMixin = {
         };
         
         page.layout.push(newGroup);
-        
         this.engine.buildMaps();
         this.renderer.renderLayout();
         this.renderPagesList();
@@ -357,9 +327,8 @@ export const EditorActionsMixin = {
     },
 
     deleteSelectedItem() {
+        this.history.push('delete_item');
         if (!this.selectedItem) return; 
-        
-        // Handle Multi-Select Delete
         if (this.selectedItems.length > 1) {
             this.deleteSelectedItems();
             return;
@@ -379,6 +348,7 @@ export const EditorActionsMixin = {
     },
 
     deleteSelectedGroup() {
+        this.history.push('delete_group');
         if (!this.selectedGroup) return;
         
         const itemCount = this.selectedGroup.items?.length || 0;
@@ -403,6 +373,7 @@ export const EditorActionsMixin = {
     },
 
     deletePage(index) {
+        this.history.push('delete_page');
         const pages = this.engine.config.pages || [];
         if (pages.length <= 1) {
             alert('Cannot delete the last page.');
@@ -410,81 +381,37 @@ export const EditorActionsMixin = {
         }
         
         const counts = this.countPageElements(pages[index]);
-        const msg = counts.items > 0 || counts.groups > 0 
-            ? `Delete page ${index + 1}? This will remove ${counts.groups} groups and ${counts.items} items.`
-            : `Delete page ${index + 1}?`;
-            
-        if (!confirm(msg)) return;
+        if (!confirm(`Delete page ${index + 1}? (${counts.items} items)`)) return;
         
         pages.splice(index, 1);
-        
-        if (this.activePageIndex >= pages.length) {
-            this.activePageIndex = pages.length - 1;
-        }
+        if (this.activePageIndex >= pages.length) this.activePageIndex = pages.length - 1;
         
         this.engine.buildMaps();
         this.renderer.renderAll();
         this.renderPagesList();
     },
     
-    // ==================== POINTS / CURRENCY MANAGEMENT ====================
-    addNewPointSystem() {
-        if (!this.engine.config.points) this.engine.config.points = [];
-        this.engine.config.points.push({
-            id: `pts_${Date.now()}`,
-            name: "New Currency",
-            start: 10
-        });
-        this.engine.state.resetCurrencies(); // Update state to reflect new currency
-        this.renderPointsList(); // UI Update
-        this.renderer.renderAll(); // Rerender in case UI depends on it (e.g. points bar)
-    },
-
-    deletePointSystem(index) {
-        if (!this.engine.config.points) return;
-        if (!confirm("Delete this currency? Any rules referring to this ID will break.")) return;
-        
-        this.engine.config.points.splice(index, 1);
-        
-        this.engine.state.resetCurrencies();
-        this.renderPointsList();
-        this.renderer.renderAll();
-    },
-
-    updatePointSystem(index, field, value) {
-        if (!this.engine.config.points || !this.engine.config.points[index]) return;
-        const pt = this.engine.config.points[index];
-        
-        if (field === 'start') value = parseInt(value) || 0;
-        pt[field] = value;
-        
-        // Update state and re-render
-        this.engine.state.resetCurrencies(); 
-        this.renderer.renderAll();
-    },
-
     // ==================== SPLIT ACTION ====================
     startSplit(item, axis) {
+        this.history.push('split_start');
         this.splitState = {
             item: item,
-            axis: axis, // 'vertical' (split X axis) or 'horizontal' (split Y axis)
-            splitVal: 0
+            axis: axis, 
+            splitVal: (axis === 'vertical' ? item.coords.w : item.coords.h) / 2
         };
-
         const guide = document.getElementById('editor-split-guide');
         if (guide) {
             guide.style.display = 'block';
-            // Set guide style based on axis
             if (axis === 'vertical') {
                 guide.style.width = '10px';
-                guide.style.height = '0px'; // Set dynamically in mousemove
+                guide.style.height = '0px'; 
             } else {
                 guide.style.height = '10px';
-                guide.style.width = '0px'; // Set dynamically in mousemove
+                guide.style.width = '0px'; 
             }
         }
-
         document.body.style.cursor = axis === 'vertical' ? 'col-resize' : 'row-resize';
+        this.updateSplitGuideVisuals();
     },
 
     cancelSplit() {
@@ -507,53 +434,26 @@ export const EditorActionsMixin = {
         // Clone item for the second part
         const newItem = JSON.parse(JSON.stringify(item));
         newItem.id = `item_${Date.now()}`;
-        
-        // Naming Logic: "Old s1" or "Old s2"
-        let newTitle = item.title;
-        const match = newTitle.match(/ s(\d+)$/);
-        if (match) {
-            const num = parseInt(match[1]) + 1;
-            newTitle = newTitle.replace(/ s(\d+)$/, ` s${num}`);
-        } else {
-            newTitle = newTitle + " s1";
-        }
-        newItem.title = newTitle;
+        newItem.title += " (Split)";
 
         if (axis === 'vertical') {
-            // Split X axis (Vertical line moves left/right)
-            // item.coords.x ... splitVal ... item.coords.x + w
-            
             const originalW = item.coords.w;
-            // Split val is relative to item start
-            const splitPoint = splitVal; 
+            const w1 = splitVal - HALF_GAP;
+            const w2 = originalW - splitVal - HALF_GAP;
 
-            const w1 = splitPoint - HALF_GAP;
-            const w2 = originalW - splitPoint - HALF_GAP;
-
-            // Update Item 1 (Left)
             item.coords.w = Math.max(10, Math.round(w1));
-
-            // Update Item 2 (Right)
-            newItem.coords.x = Math.round(item.coords.x + splitPoint + HALF_GAP);
+            newItem.coords.x = Math.round(item.coords.x + splitVal + HALF_GAP);
             newItem.coords.w = Math.max(10, Math.round(w2));
-            
         } else {
-            // Split Y axis (Horizontal line moves up/down)
             const originalH = item.coords.h;
-            const splitPoint = splitVal;
+            const h1 = splitVal - HALF_GAP;
+            const h2 = originalH - splitVal - HALF_GAP;
 
-            const h1 = splitPoint - HALF_GAP;
-            const h2 = originalH - splitPoint - HALF_GAP;
-
-            // Update Item 1 (Top)
             item.coords.h = Math.max(10, Math.round(h1));
-
-            // Update Item 2 (Bottom)
-            newItem.coords.y = Math.round(item.coords.y + splitPoint + HALF_GAP);
+            newItem.coords.y = Math.round(item.coords.y + splitVal + HALF_GAP);
             newItem.coords.h = Math.max(10, Math.round(h2));
         }
 
-        // Insert new item after original
         parent.array.splice(parent.index + 1, 0, newItem);
 
         this.engine.buildMaps();
@@ -561,35 +461,88 @@ export const EditorActionsMixin = {
         this.renderPagesList();
         this.cancelSplit();
         
-        // Select new item
         setTimeout(() => {
             const el = document.getElementById(`btn-${newItem.id}`);
             if (el) this.selectChoice(newItem, el);
         }, 50);
     },
 
-    // ==================== CLIPBOARD ACTIONS ====================
+    updateSplitGuideVisuals() {
+        if (!this.splitState) return;
+        const { item, axis, splitVal } = this.splitState;
+        const btnId = `btn-${item.id}`;
+        const el = document.getElementById(btnId);
+        const guide = document.getElementById('editor-split-guide');
+        
+        if (el && guide) {
+            const rect = el.getBoundingClientRect();
+            // Ratio: ScreenPixels per ModelPixel
+            const ratioX = rect.width / item.coords.w;
+            const ratioY = rect.height / item.coords.h;
+
+            if (axis === 'vertical') {
+                const screenOffset = splitVal * ratioX;
+                guide.style.left = (rect.left + screenOffset - 5) + 'px';
+                guide.style.top = rect.top + 'px';
+                guide.style.height = rect.height + 'px';
+                guide.style.width = '10px';
+            } else {
+                const screenOffset = splitVal * ratioY;
+                guide.style.top = (rect.top + screenOffset - 5) + 'px';
+                guide.style.left = rect.left + 'px';
+                guide.style.width = rect.width + 'px';
+                guide.style.height = '10px';
+            }
+            guide.style.display = 'block';
+        }
+    },
+    
+    updateSplitGuideFromMouse(e) {
+        if (!this.splitState) return;
+        const { item, axis } = this.splitState;
+        const btnId = `btn-${item.id}`;
+        const el = document.getElementById(btnId);
+        if (!el) return;
+        
+        const rect = el.getBoundingClientRect();
+        let relX = e.clientX - rect.left;
+        let relY = e.clientY - rect.top;
+        
+        // Clamp
+        relX = Math.max(0, Math.min(relX, rect.width));
+        relY = Math.max(0, Math.min(relY, rect.height));
+
+        if (axis === 'vertical') {
+            const ratio = item.coords.w / rect.width;
+            this.splitState.splitVal = relX * ratio;
+        } else {
+            const ratio = item.coords.h / rect.height;
+            this.splitState.splitVal = relY * ratio;
+        }
+        
+        this.updateSplitGuideVisuals();
+    },
+
+    // ==================== CLIPBOARD ====================
     actionCopy(type, id) {
         let data = null;
         if (type === 'item') data = this.engine.findItem(id);
         else if (type === 'group') data = this.engine.findGroup(id);
 
         if (data) {
-            // Deep copy to clipboard
             this.clipboard = { type, data: JSON.parse(JSON.stringify(data)) };
-            console.log(`📋 Copied ${type} to clipboard`);
+            console.log(`📋 Copied ${type}`);
         }
     },
 
     actionPaste() {
         if (!this.clipboard) return;
-        
+        this.history.push('paste');
         const { type, data } = this.clipboard;
         const page = this.getCurrentPage();
         if (!page) return;
 
         const newData = JSON.parse(JSON.stringify(data));
-        
         newData.id = `${type}_${Date.now()}`;
         if (newData.title) newData.title += " (Copy)";
 
@@ -606,7 +559,6 @@ export const EditorActionsMixin = {
         }
 
         page.layout.push(newData);
-        
         this.engine.buildMaps();
         this.renderer.renderLayout();
         
@@ -627,6 +579,7 @@ export const EditorActionsMixin = {
     },
 
     actionDuplicate(type, id) {
+        this.history.push('duplicate');
         let original = null;
         if (type === 'item') original = this.engine.findItem(id);
         else if (type === 'group') original = this.engine.findGroup(id);
@@ -644,44 +597,190 @@ export const EditorActionsMixin = {
         if (type === 'item') {
             const parent = this.findItemParent(id);
             if (parent) {
-                if (parent.group) {
-                    parent.group.items.splice(parent.index + 1, 0, clone);
-                } else {
-                    parent.page.layout.splice(parent.index + 1, 0, clone);
-                }
+                if (parent.group) parent.group.items.splice(parent.index + 1, 0, clone);
+                else parent.page.layout.splice(parent.index + 1, 0, clone);
             }
         } 
         else if (type === 'group') {
             const parent = this.findGroupParent(id);
             if (parent) {
                 parent.page.layout.push(clone);
-                if (clone.items) {
-                    clone.items.forEach(it => it.id = `item_${Math.floor(Math.random()*10000000)}`);
-                }
+                if (clone.items) clone.items.forEach(it => it.id = `item_${Math.floor(Math.random()*10000000)}`);
             }
         }
 
         this.engine.buildMaps();
         this.renderer.renderLayout();
-        
-        if (type === 'item') {
-            this.switchTab('choice');
-            setTimeout(() => {
-                const el = document.getElementById(`btn-${clone.id}`);
-                if (el) this.selectChoice(clone, el);
-            }, 50);
-        } else {
-             this.switchTab('group');
-            setTimeout(() => {
-                const el = document.getElementById(`group-${clone.id}`);
-                if (el) this.selectGroup(clone);
-            }, 50);
-        }
         this.renderPagesList();
+        
+        setTimeout(() => {
+            if (type === 'item') {
+                this.switchTab('choice');
+                this.selectChoice(clone, document.getElementById(`btn-${clone.id}`));
+            } else {
+                this.switchTab('group');
+                this.selectGroup(clone);
+            }
+        }, 50);
     },
 
-    // ==================== VISUAL HELPERS (LLM SUPPORT) ====================
+    // ==================== NEW FEATURES (ZOOM/TRANSFORM/CYCLE) ====================
     
+    cycleSelection(direction) {
+        const page = this.getCurrentPage();
+        if (!page || !page.layout) return;
+
+        let allItems = [];
+        const traverse = (list) => {
+            list.forEach(el => {
+                if (el.type === 'item') allItems.push(el);
+                if (el.type === 'group' && el.items) traverse(el.items);
+            });
+        };
+        traverse(page.layout);
+        this.sortLayoutByCoords(allItems);
+
+        if (allItems.length === 0) return;
+
+        let currentIndex = -1;
+        if (this.selectedItem) {
+            currentIndex = allItems.findIndex(i => i.id === this.selectedItem.id);
+        }
+
+        let nextIndex = currentIndex + direction;
+        if (nextIndex >= allItems.length) nextIndex = 0;
+        if (nextIndex < 0) nextIndex = allItems.length - 1;
+
+        const nextItem = allItems[nextIndex];
+        this.selectChoice(nextItem, document.getElementById(`btn-${nextItem.id}`));
+        
+        if (this.zoomLevel > 1) this.updateZoomFocus();
+    },
+
+    toggleTransformMode() {
+        if (this.transformMode === 'move') this.transformMode = 'shrink';
+        else if (this.transformMode === 'shrink') this.transformMode = 'grow';
+        else this.transformMode = 'move';
+    },
+
+    showModeToast() {
+        let toast = document.getElementById('mode-toast');
+        if (!toast) {
+            toast = document.createElement('div');
+            toast.id = 'mode-toast';
+            toast.style.cssText = 'position:fixed; top:70px; left:50%; transform:translateX(-50%); background:rgba(0,0,0,0.8); padding:5px 15px; border-radius:20px; color:#fff; pointer-events:none; font-weight:bold; z-index:9999; transition: opacity 0.5s; opacity:0;';
+            document.body.appendChild(toast);
+        }
+        
+        let text = "Move (WASD)";
+        if (this.transformMode === 'shrink') text = "Shrink Size (WASD)";
+        if (this.transformMode === 'grow') text = "Grow Size (WASD)";
+        
+        toast.textContent = text;
+        toast.style.opacity = '1';
+        clearTimeout(this._toastTimer);
+        this._toastTimer = setTimeout(() => toast.style.opacity = '0', 1500);
+    },
+
+    toggleZoom() {
+        this.zoomLevel++;
+        if (this.zoomLevel > 4) this.zoomLevel = 1;
+        this.setZoom(this.zoomLevel);
+    },
+
+    setZoom(level) {
+        this.zoomLevel = level;
+        this.updateZoomFocus();
+        const toast = document.getElementById('mode-toast');
+        if (toast) {
+            toast.textContent = `Zoom x${level}`;
+            toast.style.opacity = '1';
+            clearTimeout(this._toastTimer);
+            this._toastTimer = setTimeout(() => toast.style.opacity = '0', 1000);
+        }
+    },
+
+    updateZoomFocus() {
+        const pageId = `page-${this.activePageIndex}`;
+        const pageEl = document.getElementById(pageId);
+        if (!pageEl) return;
+
+        if (this.zoomLevel === 1) {
+            pageEl.style.transform = '';
+            pageEl.style.transformOrigin = '';
+            return;
+        }
+
+        let focusX = 50;
+        let focusY = 50;
+
+        if (this.selectedItem && this.selectedItem.coords) {
+             const dim = this.renderer.pageDimensions[this.activePageIndex];
+             if (dim) {
+                 const cx = this.selectedItem.coords.x + (this.selectedItem.coords.w/2);
+                 const cy = this.selectedItem.coords.y + (this.selectedItem.coords.h/2);
+                 focusX = (cx / dim.w) * 100;
+                 focusY = (cy / dim.h) * 100;
+             }
+        }
+
+        pageEl.style.transition = 'transform 0.2s';
+        pageEl.style.transformOrigin = `${focusX}% ${focusY}%`;
+        pageEl.style.transform = `scale(${this.zoomLevel})`;
+    },
+
+    // Points/Currency CRUD
+    addNewPointSystem() {
+        this.history.push('add_currency');
+        if (!this.engine.config.points) this.engine.config.points = [];
+        this.engine.config.points.push({ id: `pts_${Date.now()}`, name: "New Currency", start: 10 });
+        this.engine.state.resetCurrencies();
+        this.renderPointsList();
+        this.renderer.renderAll();
+    },
+
+    deletePointSystem(index) {
+        this.history.push('delete_currency');
+        if (!this.engine.config.points) return;
+        if (!confirm("Delete this currency?")) return;
+        this.engine.config.points.splice(index, 1);
+        this.engine.state.resetCurrencies();
+        this.renderPointsList();
+        this.renderer.renderAll();
+    },
+
+    updatePointSystem(index, field, value) {
+        // Debounce history push or handle on blur for optimization? For now, push on change is okay.
+        // this.history.push('update_currency'); // Might be too frequent on input change
+        if (!this.engine.config.points || !this.engine.config.points[index]) return;
+        const pt = this.engine.config.points[index];
+        if (field === 'start') value = parseInt(value) || 0;
+        pt[field] = value;
+        this.engine.state.resetCurrencies(); 
+        this.renderer.renderAll();
+    },
+
+    // Export helpers
+    exportConfig() {
+        this.sortAllLayouts();
+        ProjectStorage.save(this.engine.config);
+    },
+
+    async exportZip() {
+        try {
+            this.sortAllLayouts();
+            await ProjectStorage.saveZip(this.engine.config);
+        } catch (e) {
+            alert(e.message);
+        }
+    },
+    
+
+    
+
+
+
+
     async copyDebugImageToClipboard() {
         const page = this.getCurrentPage();
         if (!page || !page.image) {
@@ -813,19 +912,4 @@ export const EditorActionsMixin = {
             }
         }
     },
-
-    // ==================== EXPORT ====================
-    exportConfig() {
-        this.sortAllLayouts();
-        ProjectStorage.save(this.engine.config);
-    },
-
-    async exportZip() {
-        try {
-            this.sortAllLayouts();
-            await ProjectStorage.saveZip(this.engine.config);
-        } catch (e) {
-            alert(e.message);
-        }
-    }
 };
