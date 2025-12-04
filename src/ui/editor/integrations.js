@@ -1,6 +1,7 @@
 /**
  * src/ui/editor/integrations.js
  * Editor Integrations Mixin
+ * Fixed: Robust DOM access in runSamDetection to prevent crashes on missing inputs
  */
 
 import { LLM_PROVIDERS, USER_PROMPTS, buildMessages, addImageToMessages, extractJsonFromResponse } from '../../config/llm-config.js';
@@ -339,12 +340,21 @@ export const EditorIntegrationsMixin = {
     },
 
     async runSamDetection() {
-        const apiKey = document.getElementById('roboflow-api-key').value;
-        const workspace = document.getElementById('roboflow-workspace').value;
-        const workflowId = document.getElementById('roboflow-workflow').value;
-        const prompt = document.getElementById('sam-prompt').value;
-        const shaveRatio = parseFloat(document.getElementById('sam-shave').value);
-        const debugIndexRaw = document.getElementById('sam-debug-index').value;
+        // SAFE DOM ACCESS
+        const apiKeyEl = document.getElementById('roboflow-api-key');
+        const workspaceEl = document.getElementById('roboflow-workspace');
+        const workflowEl = document.getElementById('roboflow-workflow');
+        const promptEl = document.getElementById('sam-prompt');
+        const shaveEl = document.getElementById('sam-shave');
+        const debugIndexEl = document.getElementById('sam-debug-index');
+
+        const apiKey = apiKeyEl ? apiKeyEl.value : '';
+        const workspace = workspaceEl ? workspaceEl.value : '1-wnpqj';
+        const workflowId = workflowEl ? workflowEl.value : 'sam3-with-prompts';
+        const prompt = promptEl ? promptEl.value : 'game card';
+        const shaveRatio = shaveEl ? parseFloat(shaveEl.value) : 0.02;
+        const debugIndexRaw = debugIndexEl ? debugIndexEl.value : '-1';
+        
         const debugIdx = debugIndexRaw ? parseInt(debugIndexRaw) : -1;
 
         const statusEl = document.getElementById('sam-status');
@@ -355,14 +365,17 @@ export const EditorIntegrationsMixin = {
         if (!apiKey) return alert("Please enter your Roboflow API Key!"); 
 
         const btn = document.getElementById('btn-run-sam');
-        btn.disabled = true;
-        btn.style.opacity = 0.5;
-        galleryEl.innerHTML = '';
-        statusEl.textContent = "🚀 Starting...";
+        if(btn) {
+            btn.disabled = true;
+            btn.style.opacity = 0.5;
+        }
+        if(galleryEl) galleryEl.innerHTML = '';
+        if(statusEl) statusEl.textContent = "🚀 Starting...";
 
         // Callbacks for AutoDetector
-        this.autoDetector.statusCallback = (msg) => { statusEl.textContent = msg; };
+        this.autoDetector.statusCallback = (msg) => { if(statusEl) statusEl.textContent = msg; };
         this.autoDetector.debugCallback = (title, dataUrl) => {
+            if(!galleryEl) return;
             const wrapper = document.createElement('div');
             wrapper.style.marginBottom = "15px";
             wrapper.style.borderBottom = "1px solid #333";
@@ -399,26 +412,32 @@ export const EditorIntegrationsMixin = {
             );
 
             if (detectedItems.length > 0) {
+                // Add to layout (ID uniqueness handled inside AutoDetector now)
                 for (const item of detectedItems) {
                     item.type = 'item';
                     page.layout.push(item);
                 }
-                this.sortAndRenameLayout(page.layout);
+                
+                // We do NOT call sortAndRenameLayout here anymore because 
+                // AutoDetector handles sorting and stable IDs internally.
+                
                 this.engine.buildMaps();
                 this.engine.recalculate();
                 this.renderer.renderLayout();
-                statusEl.textContent = `✅ Done! Added ${detectedItems.length} items.`;
+                if(statusEl) statusEl.textContent = `✅ Done! Added ${detectedItems.length} items.`;
                 this.renderPagesList();
             } else {
-                statusEl.textContent = "⚠️ No items found.";
+                if(statusEl) statusEl.textContent = "⚠️ No items found.";
             }
 
         } catch (e) {
-            statusEl.textContent = `❌ Error: ${e.message}`;
+            if(statusEl) statusEl.textContent = `❌ Error: ${e.message}`;
             console.error('SAM Error:', e);
         } finally {
-            btn.disabled = false;
-            btn.style.opacity = 1;
+            if(btn) {
+                btn.disabled = false;
+                btn.style.opacity = 1;
+            }
         }
     }
 };

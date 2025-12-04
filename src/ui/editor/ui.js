@@ -2,7 +2,7 @@
  * src/ui/editor/ui.js
  * Editor UI Mixin - Manages the editor user interface and sidebar logic
  */
-
+import { ProjectStorage } from '../../utils/storage.js';
 import { 
     LLM_PROVIDERS, 
     fetchAvailableModels, 

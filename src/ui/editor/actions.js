@@ -1,6 +1,6 @@
 /**
  * src\ui\editor\actions.js
- * Editor Actions Mixin - Added startDragCreation logic
+ * Editor Actions Mixin - Added robust ID generation to prevent duplicates
  */
 
 import { ProjectStorage } from '../../utils/storage.js';
@@ -203,6 +203,11 @@ export const EditorActionsMixin = {
         this.renderPagesList();
     },
 
+    // ==================== HELPER: Unique ID Generator ====================
+    generateId(prefix) {
+        return `${prefix}_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
+    },
+
 
     // ==================== NEW: DRAW CREATION LOGIC ====================
     
@@ -212,7 +217,7 @@ export const EditorActionsMixin = {
 
         // Initialize with 1x1 size at click point
         const newObj = {
-            id: `${type}_${Date.now()}`,
+            id: this.generateId(type),
             type: type,
             title: `New ${type === 'item' ? 'Item' : 'Group'}`,
             description: '',
@@ -244,7 +249,14 @@ export const EditorActionsMixin = {
         const defaultH = 100;
         const smartCoords = this.getSmartCoords(defaultW, defaultH, coordsFromContext);
 
-        const newItem = { type: 'item', id: `item_${Date.now()}`, title: 'New Item', description: '', coords: { x: smartCoords.x, y: smartCoords.y, w: defaultW, h: defaultH }, cost: [] };
+        const newItem = { 
+            type: 'item', 
+            id: this.generateId('item'), 
+            title: 'New Item', 
+            description: '', 
+            coords: { x: smartCoords.x, y: smartCoords.y, w: defaultW, h: defaultH }, 
+            cost: [] 
+        };
         
         if (!coordsFromContext && this.selectedGroup && this.activeTab === 'group') {
             if (!this.selectedGroup.items) this.selectedGroup.items = [];
@@ -267,7 +279,16 @@ export const EditorActionsMixin = {
         const defaultW = 300;
         const defaultH = 200;
         const smartCoords = this.getSmartCoords(defaultW, defaultH, coordsFromContext);
-        const newGroup = { type: 'group', id: `group_${Date.now()}`, title: 'New Group', description: '', coords: { x: smartCoords.x, y: smartCoords.y, w: defaultW, h: defaultH }, items: [] };
+        
+        const newGroup = { 
+            type: 'group', 
+            id: this.generateId('group'), 
+            title: 'New Group', 
+            description: '', 
+            coords: { x: smartCoords.x, y: smartCoords.y, w: defaultW, h: defaultH }, 
+            items: [] 
+        };
+        
         page.layout.push(newGroup);
         this.engine.buildMaps();
         this.renderer.renderLayout();
@@ -315,7 +336,7 @@ export const EditorActionsMixin = {
         this.renderPagesList();
     },
     
-    // ==================== SPLIT, DUPLICATE, COPY, ZOOM, ETC ... (UNCHANGED) ====================
+    // ==================== SPLIT, DUPLICATE, COPY, ZOOM, ETC ... ====================
     
     startSplit(item, axis) {
         this.history.push('split_start');
@@ -343,7 +364,9 @@ export const EditorActionsMixin = {
         const parent = this.findItemParent(item.id);
         if (!parent) return;
         const newItem = JSON.parse(JSON.stringify(item));
-        newItem.id = `item_${Date.now()}`;
+        
+        // FIXED: Robust ID gen
+        newItem.id = this.generateId('item');
         newItem.title += " (Split)";
 
         if (axis === 'vertical') {
@@ -421,13 +444,16 @@ export const EditorActionsMixin = {
         const page = this.getCurrentPage();
         if (!page) return;
         const newData = JSON.parse(JSON.stringify(data));
-        newData.id = `${type}_${Date.now()}`;
+        
+        // FIXED: Robust ID gen
+        newData.id = this.generateId(type);
+        
         if (newData.title) newData.title += " (Copy)";
         if (newData.coords) {
             const newCoords = this.getSmartCoords(newData.coords.w, newData.coords.h, this.contextMenuContext);
             newData.coords.x = newCoords.x; newData.coords.y = newCoords.y;
         }
-        if (type === 'group' && newData.items) { newData.items.forEach(subItem => { subItem.id = `item_${Math.floor(Math.random() * 1000000)}`; }); }
+        if (type === 'group' && newData.items) { newData.items.forEach(subItem => { subItem.id = this.generateId('item'); }); }
         page.layout.push(newData);
         this.engine.buildMaps();
         this.renderer.renderLayout();
@@ -448,7 +474,10 @@ export const EditorActionsMixin = {
         else if (type === 'group') original = this.engine.findGroup(id);
         if (!original) return;
         const clone = JSON.parse(JSON.stringify(original));
-        clone.id = `${type}_${Date.now()}`;
+        
+        // FIXED: Robust ID gen
+        clone.id = this.generateId(type);
+        
         if (clone.coords) { clone.coords.x += 20; clone.coords.y += 20; }
         if (type === 'item') {
             const parent = this.findItemParent(id);
@@ -461,7 +490,7 @@ export const EditorActionsMixin = {
             const parent = this.findGroupParent(id);
             if (parent) {
                 parent.page.layout.push(clone);
-                if (clone.items) clone.items.forEach(it => it.id = `item_${Math.floor(Math.random()*10000000)}`);
+                if (clone.items) clone.items.forEach(it => it.id = this.generateId('item'));
             }
         }
         this.engine.buildMaps();
@@ -476,6 +505,7 @@ export const EditorActionsMixin = {
     cycleSelection(direction) {
         const page = this.getCurrentPage();
         if (!page || !page.layout) return;
+        
         let allItems = [];
         const traverse = (list) => {
             list.forEach(el => {
@@ -484,15 +514,36 @@ export const EditorActionsMixin = {
             });
         };
         traverse(page.layout);
+        
+        // Ensure sorting so cycling is logical (Left -> Right, Top -> Bottom)
         this.sortLayoutByCoords(allItems);
+        
         if (allItems.length === 0) return;
+        
         let currentIndex = -1;
-        if (this.selectedItem) { currentIndex = allItems.findIndex(i => i.id === this.selectedItem.id); }
-        let nextIndex = currentIndex + direction;
-        if (nextIndex >= allItems.length) nextIndex = 0;
-        if (nextIndex < 0) nextIndex = allItems.length - 1;
-        const nextItem = allItems[nextIndex];
-        this.selectChoice(nextItem, document.getElementById(`btn-${nextItem.id}`));
+        if (this.selectedItem) { 
+            currentIndex = allItems.findIndex(i => i.id === this.selectedItem.id); 
+        }
+        
+        // If current not found (e.g. deleted or reference mismatch), start from 0
+        if (currentIndex === -1) currentIndex = 0;
+        else currentIndex += direction;
+
+        // Wrap around
+        if (currentIndex >= allItems.length) currentIndex = 0;
+        if (currentIndex < 0) currentIndex = allItems.length - 1;
+        
+        const nextItem = allItems[currentIndex];
+        
+        // Important: Update selection
+        const btnEl = document.getElementById(`btn-${nextItem.id}`);
+        this.selectChoice(nextItem, btnEl);
+        
+        // If element exists, scroll to it (nice UX improvement)
+        if (btnEl) {
+             btnEl.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+        }
+
         if (this.zoomLevel > 1) this.updateZoomFocus();
     },
 
@@ -582,7 +633,7 @@ export const EditorActionsMixin = {
     addNewPointSystem() {
         this.history.push('add_currency');
         if (!this.engine.config.points) this.engine.config.points = [];
-        this.engine.config.points.push({ id: `pts_${Date.now()}`, name: "New Currency", start: 10 });
+        this.engine.config.points.push({ id: this.generateId('pts'), name: "New Currency", start: 10 });
         this.engine.state.resetCurrencies();
         this.renderPointsList();
         this.renderer.renderAll();

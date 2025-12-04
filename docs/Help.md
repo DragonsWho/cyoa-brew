@@ -20,6 +20,7 @@
 *   **T**: **Split Vertical** (Use WASD to position line, **R** to cut(Yes, it's a little strange... but that way you won't have to stretch your finger too far.)).
 *   **Delete / Backspace**: Remove selected element.
 *   **Ctrl + Z**: Undo last action.
+*   **Ctrl + Shift + Z**: Redo last action.
 
 ### 🔍 View & Selection
 *   **F**: **Zoom/Focus** (Cycle x1 -> x2 -> x3 -> x4).

@@ -136,8 +136,9 @@ export class AutoDetector {
                 );
                 
                 if (bbox) {
+                    // Temporary ID, will be fixed in step 8
                     detectedItems.push({
-                        id: `item_${String(i + 1).padStart(3, '0')}`,
+                        id: `temp_${i}`, 
                         title: pred.class || `Item ${i + 1}`,
                         coords: bbox,
                         confidence: pred.confidence
@@ -154,9 +155,12 @@ export class AutoDetector {
                 return a.coords.x - b.coords.x;
             });
 
+            // FIXED: Use Timestamp + Index to guarantee global uniqueness across pages
+            const batchId = Date.now(); 
             detectedItems.forEach((item, idx) => {
-                item.id = `item_${String(idx + 1).padStart(3, '0')}`;
-                // Keep class name if available
+                item.id = `item_${batchId}_${idx + 1}`;
+                
+                // Keep class name if available, otherwise generic
                 if (item.title.startsWith("Item ")) item.title = `Item ${idx + 1}`;
             });
 

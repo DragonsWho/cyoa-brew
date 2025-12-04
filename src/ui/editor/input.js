@@ -1,7 +1,7 @@
 /**
  * src\ui\editor\input.js
  * Editor Input Mixin - Handles mouse and keyboard input
- * Updated: Drag-to-Create Logic for Z/X
+ * Updated: Drag-to-Create Logic for Z/X + Redo Support
  */
 
 import { CoordHelper } from '../../utils/coords.js';
@@ -42,7 +42,22 @@ export const EditorInputMixin = {
         if (code === 'KeyZ') this.isHoldingZ = true;
         if (code === 'KeyX') this.isHoldingX = true;
 
-        if (ctrl && code === 'KeyZ') { e.preventDefault(); this.history.undo(); return; }
+        // HISTORY: Undo (Ctrl+Z) and Redo (Ctrl+Y or Ctrl+Shift+Z)
+        if (ctrl) {
+            // Undo: Ctrl+Z (without shift)
+            if (code === 'KeyZ' && !shift) {
+                e.preventDefault();
+                this.history.undo();
+                return;
+            }
+            // Redo: Ctrl+Y OR Ctrl+Shift+Z
+            if (code === 'KeyY' || (code === 'KeyZ' && shift)) {
+                e.preventDefault();
+                this.history.redo();
+                return;
+            }
+        }
+
         if (code === 'Escape') {
             if (this.splitState) this.cancelSplit();
             if (this.creationState) {

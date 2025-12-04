@@ -1,3 +1,4 @@
+
 /**
  * src/ui/editor/history.js
  * History Manager - Handles Undo/Redo functionality for the Editor
@@ -87,7 +88,14 @@ export class HistoryManager {
         }
 
         const nextState = this.redoStack.pop();
+        
+        // Save current state to undo stack before restoring next
         this.undoStack.push(this.createSnapshot());
+        // Maintain stack limit logic during redo as well
+        if (this.undoStack.length > this.maxHistory) {
+            this.undoStack.shift();
+        }
+
         this.restore(nextState);
         console.log('↪️ Redo');
     }
