@@ -26,7 +26,6 @@ export const EditorUIMixin = {
             .map(([key, config]) => `<option value="${key}">${config.name}</option>`)
             .join('');
 
-        // ВАЖНО: Инпуты для файлов добавлены в начало HTML строки, чтобы они не терялись при рендере
         sidebar.innerHTML = `
             <!-- Hidden File Inputs -->
             <input type="file" id="load-config-input" accept=".json" style="display:none;">
@@ -301,20 +300,29 @@ export const EditorUIMixin = {
                     </div>
 
                     <div class="editor-section">
-                        <div class="accordion-header collapsed" onclick="CYOA.editor.toggleAccordion(this)">🤖 Auto-Detect (SAM3)</div>
+                        <div class="accordion-header collapsed" onclick="CYOA.editor.toggleAccordion(this)">🤖 Auto-Detect (Roboflow SAM)</div>
                         <div class="accordion-content collapsed">
-                            <div class="input-group"><input type="password" id="sam-token" placeholder="hf_..."><span class="input-label">Hugging Face Token</span></div>
-                            <div class="input-group" style="margin-top:10px;"><input type="text" id="sam-prompt" value="content block, game card, description panel"><span class="input-label">Search Prompt</span></div>
+                            <div class="input-group"><input type="password" id="roboflow-api-key" placeholder="Private Key..."><span class="input-label">Roboflow API Key</span></div>
+                            <div style="display:flex; gap:5px; margin-top:10px;">
+                                <div class="input-group"><input type="text" id="roboflow-workspace" value="1-wnpqj"><span class="input-label">Workspace</span></div>
+                                <div class="input-group"><input type="text" id="roboflow-workflow" value="sam3-with-prompts"><span class="input-label">Workflow ID</span></div>
+                            </div>
+                            <div class="input-group" style="margin-top:10px;"><input type="text" id="sam-prompt" value="game card, rectangles"><span class="input-label">Prompts (comma separated)</span></div>
+                            
+                            <!-- Morph Settings restored -->
                             <div style="margin-top:10px;">
                                 <div style="display:flex; justify-content:space-between; font-size:0.8rem; color:#888;"><span>Shave (Tightness)</span><span id="shave-val">2.0%</span></div>
                                 <input type="range" id="sam-shave" min="0.005" max="0.05" step="0.005" value="0.02" style="width:100%;" oninput="document.getElementById('shave-val').textContent = (this.value*100).toFixed(1)+'%'">
                             </div>
-                            <div style="margin-top:10px;">
-                                <div style="display:flex; justify-content:space-between; font-size:0.8rem; color:#888;"><span>Confidence</span><span id="conf-val">0.3</span></div>
-                                <input type="range" id="sam-confidence" min="0.05" max="1.0" step="0.05" value="0.3" style="width:100%;" oninput="document.getElementById('conf-val').textContent = this.value">
+                            
+                            <!-- Debug Index restored -->
+                            <div class="input-group" style="margin-top:10px;">
+                                <input type="number" id="sam-debug-index" placeholder="None" min="1">
+                                <span class="input-label">Debug Item Index (Optional)</span>
                             </div>
-                             <div class="input-group" style="margin-top:10px;"><input type="number" id="sam-debug-index" placeholder="None"><span class="input-label">Debug Item Index (Optional)</span></div>
-                            <button id="btn-run-sam" class="full-width-btn primary-btn" style="margin-top:15px; background: linear-gradient(45deg, #4b6cb7, #182848);">🚀 Run Auto-Detect on Current Page</button>
+
+                            <button id="btn-run-sam" class="full-width-btn primary-btn" style="margin-top:15px; background: linear-gradient(45deg, #6c5ce7, #a29bfe);">🚀 Run Inference</button>
+                            
                             <div id="sam-status" style="margin-top:10px; font-size:0.75rem; color:#ffd700; min-height:1.2em;"></div>
                              <div class="editor-section" style="margin-top:15px; border:1px solid #333; padding:0;">
                                 <div class="accordion-header collapsed" onclick="CYOA.editor.toggleAccordion(this)" style="padding:5px 10px; font-size:0.8rem;">🐞 Debug Gallery</div>

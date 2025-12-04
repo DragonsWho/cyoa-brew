@@ -1,20 +1,9 @@
 /**
  * src/ui/editor/integrations.js
  * Editor Integrations Mixin
- * Handles LLM (AI) and SAM (Auto-Detect) integrations logic.
- * 
- * NOTE: Setup of UI listeners for LLM is handled in ui.js to prevent Mixin override conflicts.
  */
 
-import { Client } from "@gradio/client";
-import { 
-    LLM_PROVIDERS, 
-    SYSTEM_PROMPTS, 
-    USER_PROMPTS,
-    buildMessages, 
-    addImageToMessages, 
-    extractJsonFromResponse 
-} from '../../config/llm-config.js';
+import { LLM_PROVIDERS, USER_PROMPTS, buildMessages, addImageToMessages, extractJsonFromResponse } from '../../config/llm-config.js';
 
 export const EditorIntegrationsMixin = {
     
@@ -52,17 +41,13 @@ export const EditorIntegrationsMixin = {
     getCleanConfig() {
         const configStr = JSON.stringify(this.engine.config);
         const cleanConfig = JSON.parse(configStr);
-        
         if (cleanConfig.pages) {
             cleanConfig.pages.forEach(p => {
                 if (p.image) p.image = "<IMAGE_PLACEHOLDER>";
             });
         }
-        
         return cleanConfig;
     },
-
-    // ==================== HELPER: LOAD STATIC FILE ====================
 
     async loadStaticFile(path) {
         try {
@@ -75,7 +60,7 @@ export const EditorIntegrationsMixin = {
         }
     },
 
-    // ==================== MAIN ACTION RUNNER ====================
+    // ==================== LLM ACTION RUNNER ====================
 
     async runLlmAction(mode) {
         const promptArea = document.getElementById('llm-user-prompt');
@@ -83,11 +68,8 @@ export const EditorIntegrationsMixin = {
             this.editablePrompts[mode] = promptArea.value;
         }
 
-        // --- FIX: Sync Provider from DOM before checking keys ---
         const providerSel = document.getElementById('llm-provider');
-        if (providerSel) {
-            this.llmConfig.provider = providerSel.value;
-        }
+        if (providerSel) this.llmConfig.provider = providerSel.value;
 
         this.llmConfig.apiKey = document.getElementById('llm-key')?.value;
         this.llmConfig.baseUrl = document.getElementById('llm-base-url')?.value;
@@ -111,7 +93,6 @@ export const EditorIntegrationsMixin = {
             return;
         }
 
-        // --- BUTTON STATE ---
         const btn = document.activeElement;
         const originalText = btn ? btn.innerHTML : '';
         if (btn) { 
@@ -120,19 +101,14 @@ export const EditorIntegrationsMixin = {
         }
 
         try {
-            // 1. Prepare Data
             let dataForPrompt = {};
             let imageToSend = null;
 
             if (mode === 'refine') {
                 this.sortAndRenameLayout(page.layout);
                 this.renderer.renderLayout();
-
                 dataForPrompt.layout = page.layout.map(item => ({
-                    type: item.type,
-                    id: item.id,
-                    coords: item.coords,
-                    cost: []
+                    type: item.type, id: item.id, coords: item.coords, cost: []
                 }));
                 imageToSend = page.image;
             } 
@@ -141,36 +117,29 @@ export const EditorIntegrationsMixin = {
                     this.loadStaticFile('/docs/llm-tools-reference.md'),
                     this.loadStaticFile('/config/test_config.json')
                 ]);
-
                 dataForPrompt.layout = page.layout;
                 dataForPrompt.toolsMd = toolsMd;
                 dataForPrompt.exampleJson = exampleJson;
                 dataForPrompt.fullConfig = this.getCleanConfig();
-                
                 const pageIndex = this.engine.config.pages.indexOf(page);
                 dataForPrompt.pageNum = pageIndex !== -1 ? pageIndex + 1 : "?";
-
                 imageToSend = page.image;
             } 
             else if (mode === 'audit') {
                 dataForPrompt.config = this.engine.config;
             }
 
-            // 2. Build messages
             let messages = this.buildMessagesForMode(mode, dataForPrompt);
 
-            // 3. Add image if needed
             if (imageToSend) {
                 messages = addImageToMessages(messages, imageToSend, this.llmConfig.provider);
             }
 
-            // --- MANUAL MODE ---
             if (this.llmConfig.provider === 'manual') {
                 this.showManualMode(mode, messages, imageToSend);
                 return;
             }
 
-            // --- API MODE ---
             const responseText = await this.callLlmApi(messages);
             this.processLlmResponse(responseText, mode);
 
@@ -216,15 +185,11 @@ export const EditorIntegrationsMixin = {
         return providerConfig.parseResponse(data);
     },
 
-    // ==================== MANUAL MODE ====================
-
     showManualMode(mode, messages, imageToSend) {
         const manualOut = document.getElementById('llm-manual-out');
         const manualUi = document.getElementById('llm-manual-ui');
-        
         let pasteText = `=== SYSTEM PROMPT ===\n${messages[0].content}\n\n`;
         pasteText += `=== USER MESSAGE ===\n`;
-        
         const userContent = messages[1].content;
         if (Array.isArray(userContent)) {
             const textPart = userContent.find(p => p.type === 'text');
@@ -232,16 +197,12 @@ export const EditorIntegrationsMixin = {
         } else {
             pasteText += userContent;
         }
-        
         if (imageToSend) {
             pasteText = `⚠️ IMAGE REQUIRED: Upload the page image to your LLM.\n\n` + pasteText;
         }
-
         manualOut.value = pasteText;
         if (manualUi) manualUi.style.display = 'block';
-        
         this.pendingLlmMode = mode;
-
         const btn = document.querySelector(`button[onclick*="runLlmAction('${mode}')"]`);
         if (btn) {
             btn.disabled = false;
@@ -251,10 +212,7 @@ export const EditorIntegrationsMixin = {
 
     applyManualResponse() {
         const text = document.getElementById('llm-manual-in')?.value;
-        if (!text) {
-            alert('Please paste the LLM response first');
-            return;
-        }
+        if (!text) return alert('Please paste the LLM response first');
         const mode = this.pendingLlmMode || this.currentPromptMode || 'refine';
         this.processLlmResponse(text, mode);
     },
@@ -273,8 +231,6 @@ export const EditorIntegrationsMixin = {
         }
     },
 
-    // ==================== RESPONSE HANDLING ====================
-
     processLlmResponse(text, mode) {
         try {
             const resultObj = extractJsonFromResponse(text);
@@ -288,32 +244,13 @@ export const EditorIntegrationsMixin = {
             let summary = '';
             
             if (mode === 'audit') {
-                if (resultObj.changes && Array.isArray(resultObj.changes)) {
-                    summary = `Found ${resultObj.changes.length} changes`;
-                }
+                if (resultObj.changes) summary = `Found ${resultObj.changes.length} changes`;
                 displayData = resultObj.fixed_config || resultObj;
             } else if (mode === 'refine') {
                 const items = Array.isArray(resultObj) ? resultObj : (resultObj.layout || []);
-                let groupsCount = 0;
-                let itemsCount = 0;
-                const countRecursive = (arr) => {
-                    for (const el of arr) {
-                        if (el.type === 'group') {
-                            groupsCount++;
-                            if (el.items) countRecursive(el.items);
-                        } else {
-                            itemsCount++;
-                        }
-                    }
-                };
-                countRecursive(items);
-                summary = `Refined: ${groupsCount} Groups, ${itemsCount} Cards detected`;
+                summary = `Refined: ${items.length} top-level elements`;
             } else if (mode === 'fill') {
-                const layout = resultObj.layout || (Array.isArray(resultObj) ? resultObj : []);
-                let count = 0;
-                const countR = (arr) => arr.forEach(i => { count++; if(i.items) countR(i.items); });
-                countR(layout);
-                summary = `Extracted data for ${count} elements (groups + items)`;
+                summary = `Extracted data`;
             }
 
             if (textArea) textArea.value = JSON.stringify(displayData, null, 2);
@@ -324,16 +261,14 @@ export const EditorIntegrationsMixin = {
             if (modal) modal.style.display = 'flex';
 
         } catch (e) {
-            alert(`Failed to parse JSON response: ${e.message}\n\nCheck console for raw output.`);
+            alert(`Failed to parse JSON response: ${e.message}`);
             console.error('Parse Error:', e);
-            console.log('Raw LLM Output:', text);
         }
     },
 
     applyLlmChanges() {
         if (!this.pendingLlmResult) return;
         const { mode, data } = this.pendingLlmResult;
-
         try {
             if (mode === 'refine') this.applyRefineResult(data);
             else if (mode === 'fill') this.applyFillResult(data);
@@ -345,25 +280,18 @@ export const EditorIntegrationsMixin = {
             this.renderer.renderAll();
             this.renderPagesList();
             this.deselectChoice();
-            
             document.getElementById('llm-preview-modal').style.display = 'none';
             this.pendingLlmResult = null;
-            
             alert("✅ Changes applied successfully!");
-
         } catch (e) {
             alert(`Error applying changes: ${e.message}`);
-            console.error('Apply Error:', e);
         }
     },
 
     applyRefineResult(data) {
         const page = this.getCurrentPage();
         const newLayout = Array.isArray(data) ? data : (data.layout || []);
-        if (newLayout.length === 0) {
-            console.warn("LLM returned empty layout");
-            return;
-        }
+        if (newLayout.length === 0) { console.warn("LLM returned empty layout"); return; }
         page.layout = newLayout;
     },
 
@@ -371,105 +299,103 @@ export const EditorIntegrationsMixin = {
         const page = this.getCurrentPage();
         const newLayout = data.layout || (Array.isArray(data) ? data : []);
         if (!newLayout.length) throw new Error("No layout data in response");
-        
-        page.layout = newLayout.map(item => ({
-            type: item.type || 'item',
-            ...item
-        }));
-        
-        if (data.inferred_currencies && Array.isArray(data.inferred_currencies)) {
+        page.layout = newLayout.map(item => ({ type: item.type || 'item', ...item }));
+        if (data.inferred_currencies) {
             const existingIds = new Set((this.engine.config.points || []).map(p => p.id));
-            for (const currency of data.inferred_currencies) {
-                if (!existingIds.has(currency.id)) {
+            data.inferred_currencies.forEach(c => {
+                if (!existingIds.has(c.id)) {
                     this.engine.config.points = this.engine.config.points || [];
-                    this.engine.config.points.push(currency);
+                    this.engine.config.points.push(c);
                 }
-            }
+            });
         }
     },
 
     applyAuditResult(data) {
         const newConfig = data.fixed_config || data;
-        if (newConfig.pages && Array.isArray(newConfig.pages)) {
+        if (newConfig.pages) {
             newConfig.pages.forEach((p, i) => {
-                const originalPage = this.engine.config.pages?.[i];
-                if (originalPage?.image) {
-                    if (!p.image || p.image === "<IMAGE_PLACEHOLDER>" || !p.image.includes('.')) {
-                        p.image = originalPage.image;
-                    }
-                }
+                const orig = this.engine.config.pages?.[i];
+                if (orig?.image && (!p.image || p.image.includes('PLACEHOLDER'))) p.image = orig.image;
             });
         }
         this.engine.config = newConfig;
     },
 
-    // ==================== SAM (AUTO-DETECT) LOGIC ====================
+    // ==================== ROBOFLOW SAM (AUTO-DETECT) LOGIC ====================
 
     setupSamListeners() {
         const runBtn = document.getElementById('btn-run-sam');
         if (runBtn) {
             runBtn.addEventListener('click', () => this.runSamDetection());
         }
+        
+        const keyInput = document.getElementById('roboflow-api-key');
+        if (keyInput) {
+            const storedKey = localStorage.getItem('roboflow_api_key');
+            if (storedKey) keyInput.value = storedKey;
+            keyInput.addEventListener('input', (e) => localStorage.setItem('roboflow_api_key', e.target.value));
+        }
     },
 
     async runSamDetection() {
-        const tokenInput = document.getElementById('sam-token');
-        const promptInput = document.getElementById('sam-prompt');
-        const shaveInput = document.getElementById('sam-shave');
-        const confInput = document.getElementById('sam-confidence');
-        const debugIdxInput = document.getElementById('sam-debug-index');
+        const apiKey = document.getElementById('roboflow-api-key').value;
+        const workspace = document.getElementById('roboflow-workspace').value;
+        const workflowId = document.getElementById('roboflow-workflow').value;
+        const prompt = document.getElementById('sam-prompt').value;
+        const shaveRatio = parseFloat(document.getElementById('sam-shave').value);
+        const debugIndexRaw = document.getElementById('sam-debug-index').value;
+        const debugIdx = debugIndexRaw ? parseInt(debugIndexRaw) : -1;
+
         const statusEl = document.getElementById('sam-status');
         const galleryEl = document.getElementById('sam-debug-gallery');
 
         const page = this.getCurrentPage();
-        if (!page || !page.image) { 
-            alert("Please add a page with an image first!"); 
-            return; 
-        }
-        if (!tokenInput.value) { 
-            alert("Please enter your Hugging Face Token!"); 
-            return; 
-        }
+        if (!page || !page.image) return alert("Please add a page with an image first!"); 
+        if (!apiKey) return alert("Please enter your Roboflow API Key!"); 
 
         const btn = document.getElementById('btn-run-sam');
         btn.disabled = true;
         btn.style.opacity = 0.5;
         galleryEl.innerHTML = '';
-        
-        let debugIdx = -1;
-        if (debugIdxInput.value) {
-            debugIdx = parseInt(debugIdxInput.value) - 1;
-        }
+        statusEl.textContent = "🚀 Starting...";
 
+        // Callbacks for AutoDetector
         this.autoDetector.statusCallback = (msg) => { statusEl.textContent = msg; };
         this.autoDetector.debugCallback = (title, dataUrl) => {
             const wrapper = document.createElement('div');
             wrapper.style.marginBottom = "15px";
+            wrapper.style.borderBottom = "1px solid #333";
+            wrapper.style.paddingBottom = "10px";
+            
             const label = document.createElement('div');
             label.textContent = title;
             label.style.color = "#4CAF50";
             label.style.fontSize = "0.75rem";
+            label.style.marginBottom = "5px";
+            
             const img = document.createElement('img');
             img.src = dataUrl;
             img.style.maxWidth = "100%";
             img.style.border = "1px solid #444";
+            
             wrapper.appendChild(label);
             wrapper.appendChild(img);
             galleryEl.appendChild(wrapper);
         };
 
         try {
-            const response = await fetch(page.image);
-            const blob = await response.blob();
-            const file = new File([blob], "page.png", { type: blob.type });
+            // Get Image File
+            const imgRes = await fetch(page.image);
+            const blob = await imgRes.blob();
+            const file = new File([blob], "page_image.png", { type: blob.type });
 
             const detectedItems = await this.autoDetector.processImage(
-                file,
-                promptInput.value,
-                parseFloat(shaveInput.value),
-                tokenInput.value,
-                debugIdx,
-                parseFloat(confInput.value)
+                file, 
+                prompt, 
+                shaveRatio, 
+                { apiKey, workspace, workflowId },
+                debugIdx
             );
 
             if (detectedItems.length > 0) {
@@ -486,11 +412,13 @@ export const EditorIntegrationsMixin = {
             } else {
                 statusEl.textContent = "⚠️ No items found.";
             }
+
         } catch (e) {
             statusEl.textContent = `❌ Error: ${e.message}`;
             console.error('SAM Error:', e);
+        } finally {
+            btn.disabled = false;
+            btn.style.opacity = 1;
         }
-        btn.disabled = false;
-        btn.style.opacity = 1;
     }
 };

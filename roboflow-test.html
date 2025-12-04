@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Roboflow SAM3 Debugger</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background-color: #121212;
+            color: #e0e0e0;
+            margin: 0;
+            padding: 20px;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        h2 { margin: 0 0 20px 0; color: #bb86fc; }
+
+        .layout {
+            display: flex;
+            gap: 20px;
+            flex: 1;
+            min-height: 0; /* Fix for nested flex scrolling */
+        }
+
+        /* Sidebar Settings */
+        .sidebar {
+            width: 300px;
+            background: #1e1e1e;
+            padding: 20px;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            overflow-y: auto;
+        }
+
+        .input-group label {
+            display: block;
+            font-size: 0.8em;
+            color: #aaa;
+            margin-bottom: 5px;
+        }
+
+        .input-group input, .input-group textarea {
+            width: 100%;
+            background: #2d2d2d;
+            border: 1px solid #444;
+            color: white;
+            padding: 8px;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+
+        button.primary {
+            background: #bb86fc;
+            color: #000;
+            border: none;
+            padding: 12px;
+            border-radius: 4px;
+            font-weight: bold;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 10px;
+        }
+        button.primary:hover { background: #9965f4; }
+        button:disabled { opacity: 0.5; cursor: wait; }
+
+        /* Main View */
+        .main-view {
+            flex: 1;
+            background: #1e1e1e;
+            border-radius: 8px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            overflow: auto;
+            position: relative;
+        }
+
+        canvas {
+            max-width: 100%;
+            max-height: 100%;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+        }
+
+        /* Items List (Gallery) */
+        .items-list {
+            width: 250px;
+            background: #1e1e1e;
+            border-radius: 8px;
+            overflow-y: auto;
+            border-left: 1px solid #333;
+        }
+
+        .list-item {
+            padding: 10px;
+            border-bottom: 1px solid #333;
+            cursor: pointer;
+            transition: background 0.2s;
+            font-size: 0.9em;
+        }
+
+        .list-item:hover { background: #333; }
+        .list-item.active { background: #3700b3; border-left: 4px solid #bb86fc; }
+        
+        .badge {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.7em;
+            background: #444;
+            margin-right: 5px;
+        }
+
+        #status { font-size: 0.9em; text-align: center; margin-top: 10px; color: #03dac6; }
+    </style>
+</head>
+<body>
+
+    <h2>🕵️ SAM3 Mask Debugger</h2>
+
+    <div class="layout">
+        <!-- 1. SETTINGS -->
+        <div class="sidebar">
+            <div class="input-group">
+                <label>API Key</label>
+                <input type="password" id="api-key" placeholder="Paste jsLWam..." value="">
+            </div>
+            
+            <div class="input-group">
+                <label>Workspace / Workflow</label>
+                <div style="display:flex; gap:5px;">
+                    <input type="text" id="workspace" value="1-wnpqj" title="Workspace">
+                    <input type="text" id="workflow-id" value="sam3-with-prompts" title="Workflow ID">
+                </div>
+            </div>
+
+            <div class="input-group">
+                <label>Prompts (comma separated)</label>
+                <input type="text" id="prompts" value="game card, rectangles">
+            </div>
+
+            <div class="input-group">
+                <label>Image</label>
+                <input type="file" id="file-input" accept="image/*">
+            </div>
+
+            <button class="primary" id="run-btn" onclick="runInference()">🚀 Run Inference</button>
+            <div id="status">Ready</div>
+
+            <div class="input-group" style="margin-top:auto;">
+                <label>Raw JSON Output</label>
+                <textarea id="json-output" rows="10" style="font-size:0.7em; color:#0f0; font-family:monospace;"></textarea>
+            </div>
+        </div>
+
+        <!-- 2. CANVAS VIEW -->
+        <div class="main-view" id="canvas-container">
+            <div style="color:#666;">Upload an image to start...</div>
+        </div>
+
+        <!-- 3. ITEMS LIST -->
+        <div class="items-list" id="gallery">
+            <div style="padding:15px; color:#666; font-size:0.8em; text-align:center;">
+                Items will appear here.<br>Hover to highlight.
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- STATE ---
+        let currentItems = [];
+        let currentImage = null;
+
+        // --- PRE-FILL KEY ---
+        const storedKey = localStorage.getItem('roboflow_api_key');
+        if (storedKey) document.getElementById('api-key').value = storedKey;
+
+        document.getElementById('api-key').addEventListener('input', (e) => {
+            localStorage.setItem('roboflow_api_key', e.target.value);
+        });
+
+        // --- MAIN FUNCTION ---
+        async function runInference() {
+            const apiKey = document.getElementById('api-key').value;
+            const workspace = document.getElementById('workspace').value;
+            const workflowId = document.getElementById('workflow-id').value;
+            const promptsRaw = document.getElementById('prompts').value;
+            const fileInput = document.getElementById('file-input');
+            const statusEl = document.getElementById('status');
+            const btn = document.getElementById('run-btn');
+
+            if (!apiKey) return alert("Missing API Key");
+            if (!fileInput.files[0]) return alert("Select an image");
+
+            btn.disabled = true;
+            statusEl.textContent = "⏳ Processing image...";
+            document.getElementById('gallery').innerHTML = '';
+
+            try {
+                // 1. Prepare Image (Resize to 1024px max to fit payload)
+                const file = fileInput.files[0];
+                const base64 = await resizeAndToBase64(file, 1024);
+
+                // 2. Prepare Prompts (Array of strings)
+                const promptsArray = promptsRaw.split(',').map(s => s.trim()).filter(s => s);
+
+                statusEl.textContent = "🚀 Sending to Roboflow...";
+
+                // 3. API Call
+                const url = `https://serverless.roboflow.com/${workspace}/workflows/${workflowId}`;
+                
+                // IMPORTANT: Payload matches the snippet provided
+                const payload = {
+                    api_key: apiKey,
+                    inputs: {
+                        image: { type: "base64", value: base64 },
+                        prompts: promptsArray // Sending array directly
+                    }
+                };
+
+                const response = await fetch(url, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload)
+                });
+
+                const result = await response.json();
+                
+                // Show raw JSON
+                document.getElementById('json-output').value = JSON.stringify(result, null, 2);
+
+                if (result.error) throw new Error(JSON.stringify(result.error));
+
+                statusEl.textContent = "✅ Done!";
+                
+                // 4. Parse & Render
+                processResults(result, file);
+
+            } catch (e) {
+                console.error(e);
+                statusEl.textContent = "❌ Error";
+                alert(e.message);
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        // --- PARSING ---
+        function processResults(data, file) {
+            if (!data.outputs || !data.outputs[0]) return alert("No output data");
+
+            // Find predictions regardless of key name
+            const outputBlock = data.outputs[0];
+            let rawPreds = [];
+
+            // Try direct key 'sam_1' first
+            if (outputBlock.sam_1 && outputBlock.sam_1.predictions) {
+                rawPreds = outputBlock.sam_1.predictions;
+            } else {
+                // Search for any key with 'predictions'
+                for (let key in outputBlock) {
+                    if (outputBlock[key]?.predictions) {
+                        rawPreds = outputBlock[key].predictions;
+                        break;
+                    }
+                }
+            }
+
+            // Normalize data
+            currentItems = rawPreds.map((p, index) => ({
+                id: index,
+                class: p.class || "item",
+                confidence: p.confidence,
+                // Ensure points exist
+                points: p.points || [],
+                bbox: { x: p.x, y: p.y, w: p.width, h: p.height }
+            }));
+
+            // Load Image & Draw
+            const img = new Image();
+            img.src = URL.createObjectURL(file);
+            img.onload = () => {
+                currentImage = img;
+                renderGallery();
+                drawCanvas(-1); // Draw all
+            };
+        }
+
+        // --- RENDERING ---
+        function drawCanvas(highlightIndex) {
+            const container = document.getElementById('canvas-container');
+            container.innerHTML = '';
+            
+            const canvas = document.createElement('canvas');
+            canvas.width = currentImage.width;
+            canvas.height = currentImage.height;
+            const ctx = canvas.getContext('2d');
+
+            // 1. Draw Original Image
+            ctx.drawImage(currentImage, 0, 0);
+
+            // 2. Draw Masks
+            currentItems.forEach((item, idx) => {
+                if (item.points.length === 0) return;
+
+                const isHighlight = (idx === highlightIndex);
+                const isDimmed = (highlightIndex !== -1 && !isHighlight);
+
+                ctx.beginPath();
+                ctx.moveTo(item.points[0].x, item.points[0].y);
+                for (let i = 1; i < item.points.length; i++) {
+                    ctx.lineTo(item.points[i].x, item.points[i].y);
+                }
+                ctx.closePath();
+
+                if (isHighlight) {
+                    // Bright highlight
+                    ctx.fillStyle = 'rgba(187, 134, 252, 0.6)';
+                    ctx.strokeStyle = '#fff';
+                    ctx.lineWidth = 3;
+                } else if (isDimmed) {
+                    // Faded background masks
+                    ctx.fillStyle = 'rgba(187, 134, 252, 0.1)';
+                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+                    ctx.lineWidth = 1;
+                } else {
+                    // Normal state
+                    ctx.fillStyle = 'rgba(187, 134, 252, 0.3)';
+                    ctx.strokeStyle = '#BB86FC';
+                    ctx.lineWidth = 2;
+                }
+
+                ctx.fill();
+                ctx.stroke();
+
+                // Draw Label only if highlighted or no highlight active
+                if (!isDimmed) {
+                    const firstPt = item.points[0];
+                    ctx.fillStyle = '#fff';
+                    ctx.font = "bold 16px sans-serif";
+                    ctx.shadowColor="black";
+                    ctx.shadowBlur=4;
+                    ctx.fillText(`${item.class} ${Math.round(item.confidence*100)}%`, firstPt.x, firstPt.y - 10);
+                    ctx.shadowBlur=0;
+                }
+            });
+
+            // Fit to screen
+            const scale = Math.min(
+                container.clientWidth / canvas.width,
+                container.clientHeight / canvas.height
+            );
+            if (scale < 1) {
+                canvas.style.width = (canvas.width * scale) + "px";
+                canvas.style.height = (canvas.height * scale) + "px";
+            }
+            
+            container.appendChild(canvas);
+        }
+
+        function renderGallery() {
+            const gallery = document.getElementById('gallery');
+            gallery.innerHTML = '';
+
+            currentItems.forEach((item, idx) => {
+                const el = document.createElement('div');
+                el.className = 'list-item';
+                el.innerHTML = `
+                    <div><span class="badge">${idx+1}</span> <strong>${item.class}</strong></div>
+                    <div style="color:#888; margin-top:4px;">Conf: ${(item.confidence*100).toFixed(1)}%</div>
+                    <div style="color:#666; font-size:0.8em;">Points: ${item.points.length}</div>
+                `;
+                
+                // Hover Effects
+                el.addEventListener('mouseenter', () => {
+                    drawCanvas(idx);
+                    el.classList.add('active');
+                });
+                el.addEventListener('mouseleave', () => {
+                    drawCanvas(-1);
+                    el.classList.remove('active');
+                });
+
+                gallery.appendChild(el);
+            });
+        }
+
+        // --- UTILS ---
+        function resizeAndToBase64(file, maxWidth) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = (e) => {
+                    const img = new Image();
+                    img.src = e.target.result;
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        let w = img.width;
+                        let h = img.height;
+                        if (w > maxWidth) {
+                            h = Math.round(h * (maxWidth / w));
+                            w = maxWidth;
+                        }
+                        canvas.width = w;
+                        canvas.height = h;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, w, h);
+                        const data = canvas.toDataURL('image/jpeg', 0.85); // JPEG 85%
+                        resolve(data.split(',')[1]);
+                    };
+                };
+                reader.onerror = reject;
+            });
+        }
+    </script>
+</body>
+</html> 

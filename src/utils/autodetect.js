@@ -1,21 +1,18 @@
 /**
  * src\utils\autodetect.js
- * AutoDetect - SAM3 Integration logic
- * Optimized: Smart Downscaling + Sliding Window Morphology
+ * AutoDetect - Roboflow Integration logic
+ * Optimized: Smart Downscaling + Sliding Window Morphology + Roboflow Points Conversion
  */
-
-import { Client } from "@gradio/client";
 
 export class AutoDetector {
     constructor() {
-        this.client = null;
         this.statusCallback = null;
         this.debugCallback = null;
         
-        // Увеличили лимит до 2000px. 
-        // Это дает высокую точность, а алгоритм "скользящего окна" 
-        // справится с такой скоростью без проблем.
+        // Лимит для оптимизации морфологии
         this.MAX_PROCESSING_SIZE = 2000;
+        // Лимит для отправки в API (для экономии трафика/скорости)
+        this.API_UPLOAD_SIZE = 1024;
     }
 
     setStatus(msg) {
@@ -30,78 +27,125 @@ export class AutoDetector {
     }
 
     /**
-     * Main function to process image
+     * Main function to process image using Roboflow
      */
-    async processImage(imageFile, prompt, shaveRatio, hfToken, targetDebugIndex = -1) {
-        if (!this.client) {
-            try {
-                this.setStatus("Connecting to SAM3...");
-                this.client = await Client.connect("akhaliq/sam3", { hf_token: hfToken });
-            } catch (e) {
-                this.setStatus(`Connection Failed: ${e.message}`);
-                return [];
-            }
+    async processImage(imageFile, prompt, shaveRatio, roboflowConfig, targetDebugIndex = -1) {
+        const { apiKey, workspace, workflowId } = roboflowConfig;
+        
+        if (!apiKey || !workspace || !workflowId) {
+            this.setStatus("Missing Roboflow credentials");
+            return [];
         }
 
-        this.setStatus("Sending image to SAM3...");
-        
         try {
-            const result = await this.client.predict("/segment", { 
-                image: imageFile, 
-                text: prompt,
-                threshold: 0.3, 
-                mask_threshold: 0.5 
+            // 1. Prepare Image for API (Resize & Base64)
+            this.setStatus("Preparing image...");
+            const base64 = await this.resizeAndToBase64(imageFile, this.API_UPLOAD_SIZE);
+
+            // 2. Prepare Prompts
+            const promptsArray = prompt.split(',').map(s => s.trim()).filter(s => s);
+
+            this.setStatus("Sending to Roboflow...");
+            
+            // 3. API Call
+            const url = `https://serverless.roboflow.com/${workspace}/workflows/${workflowId}`;
+            const payload = {
+                api_key: apiKey,
+                inputs: {
+                    image: { type: "base64", value: base64 },
+                    prompts: promptsArray
+                }
+            };
+
+            const response = await fetch(url, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
             });
 
-            const rawAnnotations = result.data[0].annotations;
-            if (!rawAnnotations || rawAnnotations.length === 0) {
+            const result = await response.json();
+            
+            if (result.error) throw new Error(JSON.stringify(result.error));
+            if (!result.outputs || !result.outputs[0]) throw new Error("No output data from API");
+
+            // 4. Extract Predictions
+            const outputBlock = result.outputs[0];
+            let rawPreds = [];
+            
+            // Try standard key 'sam_1', else search
+            if (outputBlock.sam_1 && outputBlock.sam_1.predictions) {
+                rawPreds = outputBlock.sam_1.predictions;
+            } else {
+                for (let key in outputBlock) {
+                    if (outputBlock[key]?.predictions) {
+                        rawPreds = outputBlock[key].predictions;
+                        break;
+                    }
+                }
+            }
+
+            if (!rawPreds || rawPreds.length === 0) {
                 this.setStatus("No elements found.");
                 return [];
             }
 
-            // Подготовка битмапа оригинала для размеров
+            // 5. Setup Morphology Processing
+            // We need original dimensions to map back correctly
             const imgBitmap = await createImageBitmap(imageFile);
             const originalW = imgBitmap.width;
             const originalH = imgBitmap.height;
 
-            // Вычисляем масштаб для уменьшения
-            const scale = this.calculateScale(originalW, originalH);
-            const processW = Math.round(originalW * scale);
-            const processH = Math.round(originalH * scale);
+            // Roboflow returns coords relative to the *sent* image size (API_UPLOAD_SIZE)
+            // But we want to process morphology on a decent size (MAX_PROCESSING_SIZE)
+            const sentW = Math.min(originalW, this.API_UPLOAD_SIZE);
+            const sentH = Math.round(originalH * (sentW / originalW));
+            
+            // Morphology Scale Calculation
+            const morphScale = this.calculateScale(originalW, originalH);
+            const processW = Math.round(originalW * morphScale);
+            const processH = Math.round(originalH * morphScale);
 
-            this.setStatus(`Processing ${rawAnnotations.length} masks. Scale: ${scale.toFixed(3)} (${processW}x${processH})`);
+            this.setStatus(`Processing ${rawPreds.length} masks. Morph Scale: ${morphScale.toFixed(3)} (${processW}x${processH})`);
 
             const detectedItems = [];
 
-            for (let i = 0; i < rawAnnotations.length; i++) {
-                this.setStatus(`Processing mask ${i+1}/${rawAnnotations.length}...`);
-                
-                const isDebugItem = (targetDebugIndex >= 0 && i === targetDebugIndex);
+            for (let i = 0; i < rawPreds.length; i++) {
+                const pred = rawPreds[i];
+                if (!pred.points || pred.points.length === 0) continue;
 
-                // Даём браузеру "вздохнуть" каждые 3 маски, чтобы интерфейс не фризился
-                if (i > 0 && i % 3 === 0) {
-                    await this.yieldToMain();
-                }
+                this.setStatus(`Processing mask ${i+1}/${rawPreds.length}...`);
+                const isDebugItem = (targetDebugIndex >= 0 && (i === targetDebugIndex || i === targetDebugIndex - 1)); // -1 offset fix in UI
 
+                // UI Yield
+                if (i > 0 && i % 3 === 0) await this.yieldToMain();
+
+                // 6. Convert Points (Polygon) to Mask Image (DataURL)
+                // Roboflow sends points relative to `sentW/sentH`. 
+                // We create a mask of that size.
+                const maskUrl = await this.pointsToDataURL(pred.points, sentW, sentH);
+
+                // 7. Run Morphology ("Shaving")
+                // Note: The morph function expects the maskUrl to be resized to processW/processH internally
                 const bbox = await this.processMaskMorphologyOptimized(
-                    rawAnnotations[i].image.url, 
+                    maskUrl, 
                     originalW, originalH,
                     processW, processH,
-                    scale,
+                    morphScale,
                     shaveRatio, 
-                    isDebugItem ? `Item ${i+1}` : null
+                    isDebugItem ? `Item ${i+1} (${pred.class})` : null
                 );
                 
                 if (bbox) {
                     detectedItems.push({
                         id: `item_${String(i + 1).padStart(3, '0')}`,
-                        title: `Item ${i + 1}`,
-                        coords: bbox
+                        title: pred.class || `Item ${i + 1}`,
+                        coords: bbox,
+                        confidence: pred.confidence
                     });
                 }
             }
 
-            // Сортировка (строки -> колонки)
+            // 8. Sort & Renumber
             const ROW_TOLERANCE = 50;
             detectedItems.sort((a, b) => {
                 const rowA = Math.floor(a.coords.y / ROW_TOLERANCE);
@@ -110,10 +154,10 @@ export class AutoDetector {
                 return a.coords.x - b.coords.x;
             });
 
-            // Перенумерация после сортировки
             detectedItems.forEach((item, idx) => {
                 item.id = `item_${String(idx + 1).padStart(3, '0')}`;
-                item.title = `Item ${idx + 1}`;
+                // Keep class name if available
+                if (item.title.startsWith("Item ")) item.title = `Item ${idx + 1}`;
             });
 
             this.setStatus("Done!");
@@ -126,17 +170,70 @@ export class AutoDetector {
         }
     }
 
+    // --- Helpers ---
+
+    resizeAndToBase64(file, maxWidth) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = (e) => {
+                const img = new Image();
+                img.src = e.target.result;
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    let w = img.width;
+                    let h = img.height;
+                    if (w > maxWidth) {
+                        h = Math.round(h * (maxWidth / w));
+                        w = maxWidth;
+                    }
+                    canvas.width = w;
+                    canvas.height = h;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, w, h);
+                    const data = canvas.toDataURL('image/jpeg', 0.85); 
+                    resolve(data.split(',')[1]);
+                };
+            };
+            reader.onerror = reject;
+        });
+    }
+
+    pointsToDataURL(points, w, h) {
+        return new Promise((resolve) => {
+            const canvas = document.createElement('canvas');
+            canvas.width = w;
+            canvas.height = h;
+            const ctx = canvas.getContext('2d');
+            
+            // Black background
+            ctx.fillStyle = "black";
+            ctx.fillRect(0, 0, w, h);
+            
+            // White Polygon
+            if (points.length > 0) {
+                ctx.beginPath();
+                ctx.moveTo(points[0].x, points[0].y);
+                for (let i = 1; i < points.length; i++) {
+                    ctx.lineTo(points[i].x, points[i].y);
+                }
+                ctx.closePath();
+                ctx.fillStyle = "white";
+                ctx.fill();
+            }
+            
+            resolve(canvas.toDataURL('image/png'));
+        });
+    }
+
     calculateScale(w, h) {
         const maxDim = Math.max(w, h);
         if (maxDim <= this.MAX_PROCESSING_SIZE) {
-            return 1; // Не нужно уменьшать
+            return 1; 
         }
         return this.MAX_PROCESSING_SIZE / maxDim;
     }
 
-    /**
-     * Позволяет браузеру обработать UI события, чтобы не было фризов
-     */
     yieldToMain() {
         return new Promise(resolve => {
             if ('scheduler' in window && 'yield' in window.scheduler) {
@@ -146,6 +243,8 @@ export class AutoDetector {
             }
         });
     }
+
+    // --- Morphology Logic (Restored from your file) ---
 
     async processMaskMorphologyOptimized(maskUrl, originalW, originalH, processW, processH, scale, shaveRatio, debugName) {
         return new Promise((resolve) => {
@@ -160,11 +259,11 @@ export class AutoDetector {
                 canvas.height = processH;
                 const ctx = canvas.getContext('2d', { willReadFrequently: true });
                 
-                // Рисуем маску
+                // Рисуем маску, масштабируя её под размер обработки
                 ctx.drawImage(img, 0, 0, processW, processH);
 
                 if (debugName) {
-                    this.sendDebugImage(`${debugName} - 1. Original (${processW}×${processH})`, canvas);
+                    this.sendDebugImage(`${debugName} - 1. Original (Scaled to ${processW}×${processH})`, canvas);
                 }
 
                 // 2. Получаем пиксели
@@ -174,6 +273,7 @@ export class AutoDetector {
                 const data = imgData.data;
                 const len = binary.length;
                 for (let k = 0; k < len; k++) {
+                    // Простой порог, так как у нас ч/б маска
                     binary[k] = data[k << 2] > 128 ? 1 : 0; 
                 }
 
@@ -256,7 +356,6 @@ export class AutoDetector {
     findBoundingBoxOptimized(binary, w, h) {
         let minX = w, minY = h, maxX = -1, maxY = -1;
         
-        // Оптимизированный поиск границ
         let foundFirst = false;
         for (let y = 0; y < h && !foundFirst; y++) {
             const rowStart = y * w;
@@ -302,10 +401,6 @@ export class AutoDetector {
         return { x: minX, y: minY, w: maxX - minX, h: maxY - minY };
     }
 
-    /**
-     * Супер-быстрая эрозия (Sliding Window)
-     * O(N) вместо O(N*K)
-     */
     morphErodeOptimized(input, w, h, kSize) {
         const r = kSize >> 1; 
         const temp = new Uint8Array(w * h);
@@ -315,60 +410,33 @@ export class AutoDetector {
         for (let y = 0; y < h; y++) {
             const rowStart = y * w;
             let count = 0;
-            
-            // Заполняем начальное окно
-            for (let x = 0; x < r; x++) {
-                count += input[rowStart + x];
-            }
-            
+            for (let x = 0; x < r; x++) count += input[rowStart + x];
             for (let x = 0; x < w; x++) {
-                if (x + r < w) {
-                    count += input[rowStart + x + r];
-                }
-                
+                if (x + r < w) count += input[rowStart + x + r];
                 const left = x - r;
                 const right = Math.min(x + r, w - 1);
                 const windowSize = right - Math.max(0, left) + 1;
-                
-                // Если сумма в окне равна размеру окна, значит все пиксели = 1
                 temp[rowStart + x] = (count === windowSize) ? 1 : 0;
-                
-                if (left >= 0) {
-                    count -= input[rowStart + left];
-                }
+                if (left >= 0) count -= input[rowStart + left];
             }
         }
 
         // Pass 2: Vertical
         for (let x = 0; x < w; x++) {
             let count = 0;
-            
-            for (let y = 0; y < r; y++) {
-                count += temp[y * w + x];
-            }
-            
+            for (let y = 0; y < r; y++) count += temp[y * w + x];
             for (let y = 0; y < h; y++) {
-                if (y + r < h) {
-                    count += temp[(y + r) * w + x];
-                }
-                
+                if (y + r < h) count += temp[(y + r) * w + x];
                 const top = y - r;
                 const bottom = Math.min(y + r, h - 1);
                 const windowSize = bottom - Math.max(0, top) + 1;
-                
                 output[y * w + x] = (count === windowSize) ? 1 : 0;
-                
-                if (top >= 0) {
-                    count -= temp[top * w + x];
-                }
+                if (top >= 0) count -= temp[top * w + x];
             }
         }
         return output;
     }
 
-    /**
-     * Супер-быстрая дилатация (Sliding Window)
-     */
     morphDilateOptimized(input, w, h, kSize) {
         const r = kSize >> 1;
         const temp = new Uint8Array(w * h);
@@ -378,45 +446,24 @@ export class AutoDetector {
         for (let y = 0; y < h; y++) {
             const rowStart = y * w;
             let count = 0;
-            
-            for (let x = 0; x < r; x++) {
-                count += input[rowStart + x];
-            }
-            
+            for (let x = 0; x < r; x++) count += input[rowStart + x];
             for (let x = 0; x < w; x++) {
-                if (x + r < w) {
-                    count += input[rowStart + x + r];
-                }
-                
-                // Если сумма > 0, значит хотя бы один пиксель = 1
+                if (x + r < w) count += input[rowStart + x + r];
                 temp[rowStart + x] = (count > 0) ? 1 : 0;
-                
                 const left = x - r;
-                if (left >= 0) {
-                    count -= input[rowStart + left];
-                }
+                if (left >= 0) count -= input[rowStart + left];
             }
         }
 
         // Pass 2: Vertical
         for (let x = 0; x < w; x++) {
             let count = 0;
-            
-            for (let y = 0; y < r; y++) {
-                count += temp[y * w + x];
-            }
-            
+            for (let y = 0; y < r; y++) count += temp[y * w + x];
             for (let y = 0; y < h; y++) {
-                if (y + r < h) {
-                    count += temp[(y + r) * w + x];
-                }
-                
+                if (y + r < h) count += temp[(y + r) * w + x];
                 output[y * w + x] = (count > 0) ? 1 : 0;
-                
                 const top = y - r;
-                if (top >= 0) {
-                    count -= temp[top * w + x];
-                }
+                if (top >= 0) count -= temp[top * w + x];
             }
         }
         return output;
