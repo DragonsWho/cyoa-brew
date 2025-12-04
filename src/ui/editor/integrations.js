@@ -83,6 +83,12 @@ export const EditorIntegrationsMixin = {
             this.editablePrompts[mode] = promptArea.value;
         }
 
+        // --- FIX: Sync Provider from DOM before checking keys ---
+        const providerSel = document.getElementById('llm-provider');
+        if (providerSel) {
+            this.llmConfig.provider = providerSel.value;
+        }
+
         this.llmConfig.apiKey = document.getElementById('llm-key')?.value;
         this.llmConfig.baseUrl = document.getElementById('llm-base-url')?.value;
         
