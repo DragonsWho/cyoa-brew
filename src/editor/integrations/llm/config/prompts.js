@@ -160,15 +160,109 @@ Example Output Item:
 \`\`\`
 `,
 
-    audit: `Audit this CYOA game configuration for errors and inconsistencies.
 
+    audit: `
+Твоя задача — проанализировать ПОЛНЫЙ файл конфигурации игры, найти логические ошибки, битые ссылки, опечатки в ID и исправить их, сохраняя структуру данных.
+
+**ВХОДНЫЕ ДАННЫЕ:**
 \`\`\`json
 {{CONFIG_JSON}}
 \`\`\`
+*Примечание: Картинки вырезаны (<IMAGE_PLACEHOLDER>), работаем только с данными.*
 
-Check all references, fix any broken links, ensure symmetry in incompatibilities.
-Return the fixed config with a list of all changes made.`
+---
+
+### **АЛГОРИТМ ПРОВЕРКИ (ВЫПОЛНЯТЬ ПОШАГОВО В "УМЕ"):**
+
+1.  **ИНДЕКСАЦИЯ:**
+    *   Составь список ВСЕХ существующих \`id\` (items, groups, points) со всех страниц.
+    *   Составь список всех валют, объявленных в секции \`points\`.
+
+2.  **ВАЛИДАЦИЯ ССЫЛОК (Broken Links):**
+    *   Проверь каждое поле \`req\` (требования), \`incompatible\` (несовместимость) и условные модификаторы цен.
+    *   Если \`req\` ссылается на ID, которого нет в глобальном списке — **ЭТО ОШИБКА**. Попробуй исправить (если это очевидная опечатка, например "warior" -> "warrior") или удали битое требование.
+
+3.  **СИММЕТРИЯ ЛОГИКИ:**
+    *   Если Item A имеет \`"incompatible": ["Item B"]\`, проверь Item B.
+    *   Если у Item B нет в несовместимых Item A — **ИСПРАВЬ ЭТО**. Добавь ["Item A"] в несовместимость Item B. Несовместимость всегда должна быть взаимной.
+
+4.  **ВАЛЮТНЫЙ КОНТРОЛЬ:**
+    *   Проверь массив \`cost\` у каждого предмета.
+    *   Если предмет требует валюту (например "gold"), которой нет в глобальном списке \`points\` — добавь эту валюту в глобальный список \`points\` или исправь опечатку.
+
+5.  **ГРУППОВАЯ ЛОГИКА:**
+    *   Проверь \`max_quantity\` и \`min_quantity\` в группах. Если в группе с \`max_quantity: 1\` есть предметы, которые требуют друг друга (\`req\`) — это логический тупик (нельзя взять оба). Отметь или исправь.
+
+6.  **ЧИСТОТА ДАННЫХ:**
+    *   Убедись, что нет пустых полей там, где они не нужны (например, пустых массивов \`req: []\`, их лучше просто удалить для экономии места, но это опционально).
+    *   Проверь дубликаты ID. Если два предмета имеют одинаковый ID — переименуй второй (добавь _dup).
+
+---
+
+### **ФОРМАТ ВЫВОДА:**
+
+Верни **ТОЛЬКО** валидный JSON следующей структуры:
+
+\`\`\`json
+{
+  "changes": [
+    "Fixed typo in Card_1 requirement: 'worrior' -> 'warrior'",
+    "Added mutual incompatibility between 'fire_magic' and 'ice_magic'",
+    "Removed broken link to missing ID 'deleted_item_55' from 'shield'",
+    "Added missing currency 'mana' to points definitions"
+  ],
+  "fixed_config": {
+    // ... ПОЛНЫЙ ИСПРАВЛЕННЫЙ JSON КОНФИГУРАЦИИ (все страницы) ...
+  }
+}
+\`\`\`
+
+**ВАЖНО:**
+1. Не удаляй рабочие предметы или страницы.
+2. Не придумывай новые правила, если они не следуют из контекста.
+3. Твоя главная цель — **СИНХРОНИЗАЦИЯ** данных между страницами.
+`
 };
 
-// Tools reference imported as raw string (Vite feature)
 export { default as TOOLS_REFERENCE_MD } from './llm-tools-reference.md?raw';
+
+
+
+
+// Добавьте это в объект USER_PROMPTS или создайте отдельную константу, если хотите
+export const AUDIT_CHAT_SYSTEM_PROMPT = `
+You are the "CYOA Engine Logic Auditor". You are chatting with the game developer.
+You have the full game configuration in your context.
+
+**YOUR GOAL:** Help the developer fix bugs, balance the game, and correct logical inconsistencies.
+
+**OUTPUT FORMAT:**
+You must function in "Tool Mode". Every response must be a valid JSON object containing a message to the user and an optional list of actions to perform on the data.
+
+Structure:
+\`\`\`json
+{
+  "message": "I found a problem with 'Sword'. It requires 'Iron', which doesn't exist. I suggest removing the requirement.",
+  "actions": [
+    {
+      "type": "update_item", // or "update_group", "delete_item", "global_update"
+      "id": "sword_item_id",
+      "changes": {
+        "req": []
+      }
+    }
+  ]
+}
+\`\`\`
+
+**AVAILABLE ACTIONS:**
+1. \`update_item\`: { "type": "update_item", "id": "...", "changes": { "field": "value" } }
+2. \`update_group\`: { "type": "update_group", "id": "...", "changes": { "field": "value" } }
+3. \`create_point\`: { "type": "create_point", "data": { "id": "mana", "name": "Mana", "start": 10 } }
+4. \`delete\`: { "type": "delete", "targetType": "item|group", "id": "..." }
+
+**RULES:**
+1. Keep the "message" concise and helpful.
+2. Only generate "actions" if you are sure they are needed or if the user asked for a fix.
+3. Do not output the full config file.
+`;

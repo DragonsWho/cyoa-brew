@@ -15,7 +15,7 @@ body { margin: 0; padding: 0 0 120px 0; background: #1a1a1a; color: #eee; font-f
 }
 .ctrl-btn { 
     background: transparent; color: #666; border: none; padding: 8px; cursor: pointer; border-radius: 50%; 
-      display: flex; align-items: center; justify-content: center;
+    transition: all 0.2s; display: flex; align-items: center; justify-content: center;
 }
 .ctrl-btn svg { width: 24px; height: 24px; fill: currentColor; }
 .ctrl-btn:hover { color: #eee; background: rgba(255,255,255,0.1); transform: translateY(-1px); }
@@ -24,7 +24,7 @@ body { margin: 0; padding: 0 0 120px 0; background: #1a1a1a; color: #eee; font-f
 /* === GAME WRAPPER & PAGE === */ 
 #game-wrapper { 
     position: relative; max-width: 100%; margin: 0 auto; display: flex; flex-direction: column; align-items: center;
-    min-height: 100vh; justify-content: flex-start; overflow: visible; 
+    padding-top: 15px; min-height: 100vh; justify-content: flex-start; overflow: visible; 
 }
 .page-container { position: relative; margin-bottom: 0; line-height: 0; box-shadow: 0 0 30px rgba(0,0,0,0.5); max-width: 100%; }
 .page-image { display: block; max-width: 100%; height: auto; user-select: none; }
@@ -33,7 +33,7 @@ body { margin: 0; padding: 0 0 120px 0; background: #1a1a1a; color: #eee; font-f
 /* === CLICK ZONES & BUTTONS === */
 .click-zone { 
     position: absolute; cursor: pointer; z-index: 100; pointer-events: auto; border-radius: 12px; 
-      overflow: visible; display: flex; flex-direction: column; justify-content: flex-end; 
+    transition: all 0.2s; overflow: visible; display: flex; flex-direction: column; justify-content: flex-end; 
 }
 .click-zone:hover { background: rgba(255,255,255,0.07); box-shadow: 0 0 10px rgba(255,255,255,0.1); }
 .click-zone.selected { background: rgba(0,255,0,0.1); box-shadow: 0 0 15px 2px #0f0, inset 0 0 20px 5px rgba(0,255,0,0.3); }
@@ -56,7 +56,7 @@ body { margin: 0; padding: 0 0 120px 0; background: #1a1a1a; color: #eee; font-f
     text-shadow: 3px 3px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;
     cursor: default;
 }
-.roulette-item.winner { color: #ffd700; text-shadow: 3px 3px 0 #000, -1px -1px 0 #000, 0 0 20px #ffd700; transform: scale(1.1); transition: transform   cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+.roulette-item.winner { color: #ffd700; text-shadow: 3px 3px 0 #000, -1px -1px 0 #000, 0 0 20px #ffd700; transform: scale(1.1); transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
 .roll-result-badge {
     position: absolute; top: 0; left: 50%; transform: translate(-50%, -50%) scale(1);
     width: 50px; height: 50px; background: #111; border: 3px solid #ffd700; border-radius: 50%;
@@ -70,7 +70,7 @@ body { margin: 0; padding: 0 0 120px 0; background: #1a1a1a; color: #eee; font-f
 
 /* === MULTI-SELECT & BADGES === */
 .split-controls { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; z-index: 150; }
-.split-btn { width: 50%; height: 100%;   display: flex; align-items: center; justify-content: center; font-size: 40px; font-weight: bold; opacity: 0; color: rgba(255,255,255,0.8); text-shadow: 0 0 5px #000; }
+.split-btn { width: 50%; height: 100%; transition: background 0.2s, opacity 0.2s; display: flex; align-items: center; justify-content: center; font-size: 40px; font-weight: bold; opacity: 0; color: rgba(255,255,255,0.8); text-shadow: 0 0 5px #000; }
 .split-btn:hover { opacity: 1; }
 .split-btn.minus:hover { background: rgba(255,0,0,0.2); } .split-btn.minus:hover::after { content: '-'; }
 .split-btn.plus:hover { background: rgba(0,255,0,0.2); } .split-btn.plus:hover::after { content: '+'; }

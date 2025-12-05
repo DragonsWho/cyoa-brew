@@ -1,6 +1,6 @@
 /**
  * src/ui/editor/ui/llm-panel.js
- * LLM Panel HTML (Part of Settings Tab)
+ * LLM Panel HTML (Part of Settings Tab) - with password visibility toggle
  */
 
 import { LLM_PROVIDERS } from '../integrations/llm/config/providers.js';
@@ -24,10 +24,17 @@ export function createLlmPanelHTML() {
                 </div>
                 
                 <div id="llm-api-fields" style="background:#1a1a1a; padding:8px; border-radius:4px; margin-bottom:10px;">
-                    <div class="input-group" style="margin-bottom:8px;">
-                        <input type="password" id="llm-key" placeholder="sk-...">
-                        <span class="input-label">API Key</span>
+                    <div class="input-group-with-toggle" style="margin-bottom:8px;">
+                        <div class="input-group" style="margin-bottom:0;">
+                            <input type="password" id="llm-key" placeholder="sk-..." autocomplete="off">
+                            <span class="input-label">API Key</span>
+                        </div>
+                        <button type="button" class="toggle-visibility-btn" onclick="CYOA.editor.toggleApiKeyVisibility()" title="Show/Hide API Key">
+                            <span class="eye-icon">👁</span>
+                        </button>
                     </div>
+                    <div id="llm-key-status" style="font-size:0.65rem; color:#666; margin-bottom:8px; padding-left:4px;"></div>
+                    
                     <div style="margin-bottom:8px;">
                         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
                             <label style="font-size:0.7rem; color:#888;">Model</label>
@@ -70,8 +77,8 @@ export function createLlmPanelHTML() {
                     <button onclick="CYOA.editor.runLlmAction('fill')" class="action-btn" style="background:linear-gradient(135deg, #5c2d6e, #8e24aa); text-align:left; font-size:0.8rem; padding:10px 12px; border:1px solid #b04cc8;">
                         <span style="float:right; font-size:1.1rem;">👁️</span><strong>OCR & Fill</strong>
                     </button>
-                    <button onclick="CYOA.editor.runLlmAction('audit')" class="action-btn" style="background:linear-gradient(135deg, #1b5e20, #2e7d32); text-align:left; font-size:0.8rem; padding:10px 12px; border:1px solid #4caf50;">
-                        <span style="float:right; font-size:1.1rem;">🛡️</span><strong>Audit Config</strong>
+                    <button onclick="CYOA.editor.startAuditChat()" class="action-btn" style="background:linear-gradient(135deg, #1b5e20, #2e7d32); text-align:left; font-size:0.8rem; padding:10px 12px; border:1px solid #4caf50;">
+                        <span style="float:right; font-size:1.1rem;">🕵️</span><strong>Interactive Audit</strong>
                     </button>
                 </div>
 
@@ -89,4 +96,20 @@ export function createLlmPanelHTML() {
             </div>
         </div>
     `;
+}
+
+// Export toggle function to be added to editor
+export function toggleApiKeyVisibility() {
+    const input = document.getElementById('llm-key');
+    const btn = document.querySelector('.toggle-visibility-btn .eye-icon');
+    
+    if (!input) return;
+    
+    if (input.type === 'password') {
+        input.type = 'text';
+        if (btn) btn.textContent = '🙈';
+    } else {
+        input.type = 'password';
+        if (btn) btn.textContent = '👁';
+    }
 }

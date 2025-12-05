@@ -1,6 +1,6 @@
 /**
  * src/ui/editor/integrations/llm/core.js
- * Main LLM Integration Logic
+ * Main LLM Integration Logic - Fixed Version
  */
 
 import { LLM_PROVIDERS } from './config/providers.js';
@@ -44,17 +44,23 @@ export const LLMCoreMixin = {
         const systemPrompt = SYSTEM_PROMPTS[mode];
         let userPrompt = this.editablePrompts[mode];
         
-        if (data.layout) userPrompt = userPrompt.replace('{{LAYOUT_JSON}}', JSON.stringify(data.layout, null, 2));
-        else if (data.boxes) userPrompt = userPrompt.replace('{{LAYOUT_JSON}}', JSON.stringify(data.boxes, null, 2));
+        if (data.layout) {
+            userPrompt = userPrompt.replace('{{LAYOUT_JSON}}', JSON.stringify(data.layout, null, 2));
+        } else if (data.boxes) {
+            userPrompt = userPrompt.replace('{{LAYOUT_JSON}}', JSON.stringify(data.boxes, null, 2));
+        }
 
         if (mode === 'fill') {
-            userPrompt = userPrompt.replace('{{EXAMPLE_JSON}}', data.exampleJson || '{}')
-                               .replace('{{TOOLS_MD}}', data.toolsMd || 'No tools reference available.')
-                               .replace('{{FULL_CONFIG}}', data.fullConfig ? JSON.stringify(data.fullConfig, null, 2) : '')
-                               .replace('{{PAGE_NUM}}', data.pageNum || '');
+            userPrompt = userPrompt
+                .replace('{{EXAMPLE_JSON}}', data.exampleJson || '{}')
+                .replace('{{TOOLS_MD}}', data.toolsMd || 'No tools reference available.')
+                .replace('{{FULL_CONFIG}}', data.fullConfig ? JSON.stringify(data.fullConfig, null, 2) : '')
+                .replace('{{PAGE_NUM}}', data.pageNum || '');
         }
         
-        if (data.config) userPrompt = userPrompt.replace('{{CONFIG_JSON}}', JSON.stringify(data.config, null, 2));
+        if (data.config) {
+            userPrompt = userPrompt.replace('{{CONFIG_JSON}}', JSON.stringify(data.config, null, 2));
+        }
         
         return [
             { role: 'system', content: systemPrompt }, 
@@ -81,6 +87,7 @@ export const LLMCoreMixin = {
                 { type: 'text', text: lastUserMsg.content }
             ];
         } else {
+            // OpenRouter, OpenAI standard format
             lastUserMsg.content = [
                 { type: 'image_url', image_url: { url: imageDataUrl } }, 
                 { type: 'text', text: lastUserMsg.content }
@@ -96,11 +103,11 @@ export const LLMCoreMixin = {
         const providerConfig = LLM_PROVIDERS[provider];
         
         if (!providerConfig || !providerConfig.formatRequest) {
-            throw new Error(`Unknown provider: ${provider}`);
+            throw new Error(`Unknown or unsupported provider: ${provider}`);
         }
 
         const request = providerConfig.formatRequest(model, messages, apiKey, baseUrl);
-        console.log(`📡 Calling ${provider} API:`, request.url);
+        console.log(`📡 Calling ${provider} API:`, request.url, `Model: ${model}`);
         
         const response = await fetch(request.url, {
             method: 'POST',
@@ -123,15 +130,24 @@ export const LLMCoreMixin = {
     extractJsonFromResponse(text) {
         if (!text) return null;
         let jsonStr = text.trim();
-        const jsonBlockMatch = jsonStr.match(/```json\s*([\s\S]*?)\s*```/) || jsonStr.match(/```\s*([\s\S]*?)\s*```/);
-        if (jsonBlockMatch) jsonStr = jsonBlockMatch[1];
+        
+        // Try to find JSON in code blocks first
+        const jsonBlockMatch = jsonStr.match(/```json\s*([\s\S]*?)\s*```/) || 
+                               jsonStr.match(/```\s*([\s\S]*?)\s*```/);
+        if (jsonBlockMatch) {
+            jsonStr = jsonBlockMatch[1];
+        }
         
         const firstBrace = jsonStr.indexOf('{');
         const firstBracket = jsonStr.indexOf('[');
-        if (firstBrace === -1 && firstBracket === -1) throw new Error('No JSON found in response');
         
-        const startIdx = (firstBrace === -1) ? firstBracket : (firstBracket === -1 ? firstBrace : Math.min(firstBrace, firstBracket));
-        const isArray = firstBracket < firstBrace && firstBracket !== -1;
+        if (firstBrace === -1 && firstBracket === -1) {
+            throw new Error('No JSON found in response');
+        }
+        
+        const startIdx = (firstBrace === -1) ? firstBracket : 
+                         (firstBracket === -1 ? firstBrace : Math.min(firstBrace, firstBracket));
+        const isArray = firstBracket !== -1 && (firstBrace === -1 || firstBracket < firstBrace);
         const openChar = isArray ? '[' : '{';
         const closeChar = isArray ? ']' : '}';
         
@@ -149,25 +165,30 @@ export const LLMCoreMixin = {
     // ==================== MAIN ACTION RUNNER ====================
 
     async runLlmAction(mode) {
+        // Sync editable prompts
         const promptArea = document.getElementById('llm-user-prompt');
         if (promptArea && this.currentPromptMode === mode) {
             this.editablePrompts[mode] = promptArea.value;
         }
 
+        // Read current provider settings
         const providerSel = document.getElementById('llm-provider');
         if (providerSel) this.llmConfig.provider = providerSel.value;
 
-        this.llmConfig.apiKey = document.getElementById('llm-key')?.value;
-        this.llmConfig.baseUrl = document.getElementById('llm-base-url')?.value;
+        this.llmConfig.apiKey = document.getElementById('llm-key')?.value || '';
+        this.llmConfig.baseUrl = document.getElementById('llm-base-url')?.value || '';
         
+        // Handle model selection
         const modelSel = document.getElementById('llm-model-select');
         const customModel = document.getElementById('llm-model-custom');
+        
         if (modelSel?.value === '__custom__' && customModel?.value) {
             this.llmConfig.model = customModel.value;
-        } else if (modelSel) {
+        } else if (modelSel?.value && modelSel.value !== '__custom__') {
             this.llmConfig.model = modelSel.value;
         }
 
+        // Validation
         if (this.llmConfig.provider !== 'manual' && !this.llmConfig.apiKey) {
             alert("Please enter API Key");
             return;
@@ -179,9 +200,10 @@ export const LLMCoreMixin = {
             return;
         }
 
+        // Store original button state
         const btn = document.activeElement;
-        const originalText = btn ? btn.innerHTML : '';
-        if (btn) { 
+        const originalText = btn?.innerHTML || '';
+        if (btn?.tagName === 'BUTTON') { 
             btn.disabled = true; 
             btn.innerHTML = '⏳ Processing...'; 
         }
@@ -194,7 +216,10 @@ export const LLMCoreMixin = {
                 this.sortAndRenameLayout(page.layout);
                 this.renderer.renderLayout();
                 dataForPrompt.layout = page.layout.map(item => ({
-                    type: item.type, id: item.id, coords: item.coords, cost: []
+                    type: item.type, 
+                    id: item.id, 
+                    coords: item.coords, 
+                    cost: []
                 }));
                 imageToSend = page.image;
             } 
@@ -211,7 +236,7 @@ export const LLMCoreMixin = {
                 imageToSend = page.image;
             } 
             else if (mode === 'audit') {
-                dataForPrompt.config = this.engine.config;
+                dataForPrompt.config = this.getCleanConfig();
             }
 
             let messages = this.buildMessagesForMode(mode, dataForPrompt);
@@ -220,8 +245,13 @@ export const LLMCoreMixin = {
                 messages = this.addImageToMessages(messages, imageToSend, this.llmConfig.provider);
             }
 
+            // Manual mode handling
             if (this.llmConfig.provider === 'manual') {
                 this.showManualMode(mode, messages, imageToSend);
+                if (btn?.tagName === 'BUTTON') { 
+                    btn.disabled = false; 
+                    btn.innerHTML = originalText; 
+                }
                 return;
             }
 
@@ -232,7 +262,7 @@ export const LLMCoreMixin = {
             alert(`LLM Error: ${e.message}`);
             console.error('LLM Error:', e);
         } finally {
-            if (btn && this.llmConfig.provider !== 'manual') { 
+            if (btn?.tagName === 'BUTTON' && this.llmConfig.provider !== 'manual') { 
                 btn.disabled = false; 
                 btn.innerHTML = originalText; 
             }
@@ -254,13 +284,17 @@ export const LLMCoreMixin = {
             let summary = '';
             
             if (mode === 'audit') {
-                if (resultObj.changes) summary = `Found ${resultObj.changes.length} changes`;
+                if (resultObj.changes) {
+                    summary = `Found ${resultObj.changes.length} changes to apply`;
+                }
                 displayData = resultObj.fixed_config || resultObj;
             } else if (mode === 'refine') {
                 const items = Array.isArray(resultObj) ? resultObj : (resultObj.layout || []);
                 summary = `Refined: ${items.length} top-level elements`;
             } else if (mode === 'fill') {
-                summary = `Extracted data`;
+                const items = Array.isArray(resultObj) ? resultObj : (resultObj.layout || resultObj);
+                const count = Array.isArray(items) ? items.length : Object.keys(items).length;
+                summary = `Extracted ${count} elements with full data`;
             }
 
             if (textArea) textArea.value = JSON.stringify(displayData, null, 2);
@@ -271,8 +305,9 @@ export const LLMCoreMixin = {
             if (modal) modal.style.display = 'flex';
 
         } catch (e) {
-            alert(`Failed to parse JSON response: ${e.message}`);
+            alert(`Failed to parse JSON response: ${e.message}\n\nRaw response logged to console.`);
             console.error('Parse Error:', e);
+            console.log('Raw response:', text);
         }
     },
 
@@ -281,14 +316,20 @@ export const LLMCoreMixin = {
     sortAndRenameLayout(layout) {
         if (!layout || layout.length === 0) return;
 
+        // Sort by Y position first, then X (reading order)
         layout.sort((a, b) => {
-            const yDiff = Math.abs(a.coords.y - b.coords.y);
+            const aY = a.coords?.y || 0;
+            const bY = b.coords?.y || 0;
+            const yDiff = Math.abs(aY - bY);
+            
+            // If items are roughly on the same row (within 40px), sort by X
             if (yDiff < 40) {
-                return a.coords.x - b.coords.x;
+                return (a.coords?.x || 0) - (b.coords?.x || 0);
             }
-            return a.coords.y - b.coords.y;
+            return aY - bY;
         });
 
+        // Rename with sequential IDs
         layout.forEach((item, index) => {
             if (item.type === 'item' || item.type === 'group') {
                 item.id = `Card_${index + 1}`;

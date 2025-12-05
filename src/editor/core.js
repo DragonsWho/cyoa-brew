@@ -35,6 +35,7 @@ import { ResponseHandlerMixin } from './integrations/llm/response-handler.js';
 import { LLMListenersMixin } from './integrations/llm/ui-listeners.js';
 import { SAMCoreMixin } from './integrations/sam/core.js';
 import { SAMListenersMixin } from './integrations/sam/ui-listeners.js';
+import { AuditChatMixin } from './integrations/llm/audit-chat.js';
 
 // IO & Menus & Helpers
 import { EditorIOMixin } from './io.js';
@@ -174,6 +175,7 @@ Object.assign(CYOAEditor.prototype, ResponseHandlerMixin);
 Object.assign(CYOAEditor.prototype, LLMListenersMixin);
 Object.assign(CYOAEditor.prototype, SAMCoreMixin);
 Object.assign(CYOAEditor.prototype, SAMListenersMixin);
+Object.assign(CYOAEditor.prototype, AuditChatMixin);
 
 // 7. Menus
 Object.assign(CYOAEditor.prototype, EditorMenusMixin);
