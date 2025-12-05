@@ -4,7 +4,8 @@
  * Fixed: Robust DOM access in runSamDetection to prevent crashes on missing inputs
  */
 
-import { LLM_PROVIDERS, USER_PROMPTS, buildMessages, addImageToMessages, extractJsonFromResponse } from '../../config/llm-config.js';
+// FIXED IMPORT PATH:
+import { LLM_PROVIDERS, USER_PROMPTS, buildMessages, addImageToMessages, extractJsonFromResponse } from './config/llm-config.js';
 
 export const EditorIntegrationsMixin = {
     

@@ -5,7 +5,7 @@
  */
 
 import { RuleBuilder } from '../rule-builder.js';
-import { AutoDetector } from '../../utils/autodetect.js';
+import { AutoDetector } from './utils/autodetect.js'; 
 import { HistoryManager } from './history.js';
 
 import { EditorGeometryMixin } from './geometry.js';
@@ -13,6 +13,7 @@ import { EditorInputMixin } from './input.js';
 import { EditorUIMixin } from './ui.js';
 import { EditorActionsMixin } from './actions.js';
 import { EditorIntegrationsMixin } from './integrations.js';
+import { EditorMenusMixin } from './menus.js'; // NEW IMPORT
 
 export class CYOAEditor {
     constructor(engine, renderer) {
@@ -125,3 +126,4 @@ Object.assign(CYOAEditor.prototype, EditorInputMixin);
 Object.assign(CYOAEditor.prototype, EditorUIMixin);
 Object.assign(CYOAEditor.prototype, EditorActionsMixin);
 Object.assign(CYOAEditor.prototype, EditorIntegrationsMixin);
+Object.assign(CYOAEditor.prototype, EditorMenusMixin); // NEW MIXIN

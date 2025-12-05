@@ -3,6 +3,7 @@
  * Editor UI Mixin - Manages the editor user interface and sidebar logic
  */
 import { ProjectStorage } from '../../utils/storage.js';
+// FIXED IMPORT PATH:
 import { 
     LLM_PROVIDERS, 
     fetchAvailableModels, 
@@ -10,7 +11,7 @@ import {
     loadLlmSettings,
     getStoredApiKey,
     USER_PROMPTS 
-} from '../../config/llm-config.js';
+} from './config/llm-config.js'; 
 
 export const EditorUIMixin = {
     // ==================== CREATE UI ====================
@@ -322,7 +323,7 @@ export const EditorUIMixin = {
         document.body.appendChild(sidebar);
         this.ruleBuilder.renderUI(document.getElementById('rule-builder-container'));
         
-        // NOW CALL THE SETUP LISTENERS HERE, defined in THIS file below
+        // Setup listeners
         this.setupChoiceListeners();
         this.setupGroupListeners();
         this.setupJsonListeners();
@@ -331,12 +332,16 @@ export const EditorUIMixin = {
         this.setupLlmListeners(); 
         this.setupLoadListener();
         this.setupAddPageListener();
-        this.setupContextMenu(); 
+        
+        // Context menu is now setup via mixin in core.js -> menus.js
+        if (this.setupContextMenu) {
+             this.setupContextMenu(); 
+        }
         
         this.renderPagesList();
     },
 
-    // ==================== LISTENER SETUPS (MOVED FROM INPUT.JS) ====================
+    // ==================== LISTENER SETUPS ====================
     setupChoiceListeners() {
         const update = (key, val, isNum) => {
             if (!this.selectedItem) return;
@@ -504,10 +509,6 @@ export const EditorUIMixin = {
         });
     },
 
-    // ... (Keep setupLlmListeners and setupContextMenu from original file) ...
-    // Since I cannot provide partial files easily without confusion, I assume the LLM part is unchanged from my previous answer step 6 in UI.js.
-    // I will include getLlmConfig and setupContextMenu here for completeness.
-
     getLlmConfig() {
         const provider = document.getElementById('llm-provider').value;
         const apiKey = document.getElementById('llm-key').value;
@@ -519,153 +520,7 @@ export const EditorUIMixin = {
         return { provider, apiKey, model, baseUrl, config: LLM_PROVIDERS[provider] };
     },
 
-    setupContextMenu() {
-        const contextMenu = document.createElement('div');
-        contextMenu.id = 'editor-context-menu';
-        contextMenu.className = 'custom-context-menu';
-        contextMenu.style.display = 'none';
-        contextMenu.innerHTML = `
-            <div class="menu-label" id="ctx-label">Actions</div>
-            <div class="menu-divider"></div>
-            <div class="menu-item ctx-common" onclick="CYOA.editor.handleContextAction('add-item')">➕ Add Item Here</div>
-            <div class="menu-item ctx-common" onclick="CYOA.editor.handleContextAction('add-group')">📂 Add Group Here</div>
-            <div class="menu-divider ctx-obj"></div>
-            <div class="menu-item ctx-obj" onclick="CYOA.editor.handleContextAction('duplicate')">📄 Duplicate</div>
-            <div class="menu-item ctx-obj" onclick="CYOA.editor.handleContextAction('copy')">📋 Copy</div>
-            <div class="menu-item ctx-obj" style="color:#ff6b6b;" onclick="CYOA.editor.handleContextAction('delete')">🗑️ Delete</div>
-            <div class="menu-divider ctx-obj"></div>
-            <div class="menu-item ctx-obj" onclick="CYOA.editor.handleContextAction('split-v')">✂️ Split Vertical</div>
-            <div class="menu-item ctx-obj" onclick="CYOA.editor.handleContextAction('split-h')">✂️ Split Horizontal</div>
-            <div class="menu-divider ctx-paste"></div>
-            <div class="menu-item ctx-paste" id="ctx-paste-btn" onclick="CYOA.editor.handleContextAction('paste')">📌 Paste</div>
-            <div class="menu-divider"></div>
-            <div class="menu-item" onclick="CYOA.editor.handleContextAction('auto-detect')">🚀 Auto-Detect (SAM)</div>
-        `;
-        document.body.appendChild(contextMenu);
-
-        document.addEventListener('contextmenu', (e) => {
-            if (!this.enabled) return;
-            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-            if (!e.target.closest('.page-container')) return;
-
-            e.preventDefault();
-            
-            let targetType = 'bg';
-            let targetId = null;
-            let targetName = 'Page';
-
-            const itemEl = e.target.closest('.item-zone');
-            const groupEl = e.target.closest('.info-zone');
-
-            if (itemEl) {
-                targetType = 'item';
-                targetId = itemEl.dataset.itemId;
-                targetName = 'Item';
-                const item = this.engine.findItem(targetId);
-                if(item) {
-                    this.switchTab('choice');
-                    this.selectChoice(item, itemEl);
-                }
-            } else if (groupEl) {
-                targetType = 'group';
-                targetId = groupEl.id.replace('group-', '');
-                targetName = 'Group';
-                const group = this.engine.findGroup(targetId);
-                if(group) {
-                    this.switchTab('group');
-                    this.selectGroup(group);
-                }
-            }
-
-            const pageContainer = e.target.closest('.page-container');
-            const pageIndex = pageContainer ? parseInt(pageContainer.id.replace('page-', '')) || 0 : this.activePageIndex;
-            this.activePageIndex = pageIndex;
-
-            this.contextMenuContext = {
-                x: e.clientX,
-                y: e.clientY,
-                pageIndex,
-                targetType,
-                targetId
-            };
-
-            document.getElementById('ctx-label').textContent = targetType === 'bg' ? 'Page Actions' : `${targetName} Actions`;
-            document.querySelectorAll('.ctx-obj').forEach(el => el.style.display = (targetType !== 'bg') ? 'block' : 'none');
-            
-            const pasteBtn = document.getElementById('ctx-paste-btn');
-            pasteBtn.style.display = this.clipboard ? 'block' : 'none';
-            if (this.clipboard) {
-                pasteBtn.textContent = `📌 Paste ${this.clipboard.type === 'item' ? 'Item' : 'Group'}`;
-            }
-
-            contextMenu.style.left = `${e.clientX}px`;
-            contextMenu.style.top = `${e.clientY}px`;
-            contextMenu.style.display = 'block';
-        });
-
-        document.addEventListener('click', (e) => {
-            if (contextMenu.style.display === 'block') {
-                contextMenu.style.display = 'none';
-            }
-        });
-    },
-
-    handleContextAction(action) {
-        if (!this.contextMenuContext) return;
-        const { targetType, targetId } = this.contextMenuContext;
-
-        switch (action) {
-            case 'add-item':
-                this.switchTab('choice');
-                this.addNewItem(this.contextMenuContext);
-                break;
-            case 'add-group':
-                this.switchTab('group');
-                this.addNewGroup(this.contextMenuContext);
-                break;
-            case 'duplicate':
-                this.actionDuplicate(targetType, targetId);
-                break;
-            case 'copy':
-                this.actionCopy(targetType, targetId);
-                break;
-            case 'paste':
-                this.actionPaste();
-                break;
-            case 'delete':
-                if (targetType === 'item') this.deleteSelectedItem();
-                if (targetType === 'group') this.deleteSelectedGroup();
-                break;
-            case 'split-v':
-                if (targetType === 'item') {
-                    const item = this.engine.findItem(targetId);
-                    if (item) {
-                        this.startSplit(item, 'vertical');
-                    }
-                }
-                break;
-            case 'split-h':
-                if (targetType === 'item') {
-                    const item = this.engine.findItem(targetId);
-                    if (item) {
-                        this.startSplit(item, 'horizontal');
-                    }
-                }
-                break;
-            case 'auto-detect':
-                this.switchTab('settings');
-                const samHeader = document.querySelector("#tab-content-settings .accordion-header:nth-of-type(3)");
-                if (samHeader && samHeader.classList.contains('collapsed')) {
-                    this.toggleAccordion(samHeader);
-                }
-                break;
-        }
-    },
-
-    // ... (Keep setupLlmListeners as well, it is long but necessary) ...
     setupLlmListeners() {
-        // ... (Logic from previous file is unchanged, just needs to be present in this file) ...
-        // Re-pasting the LLM listener logic briefly to ensure functionality:
         const providerSelect = document.getElementById('llm-provider');
         const keyInput = document.getElementById('llm-key');
         const modelSelect = document.getElementById('llm-model-select');
@@ -676,9 +531,6 @@ export const EditorUIMixin = {
         const statusEl = document.getElementById('llm-model-status');
         const manualUI = document.getElementById('llm-manual-ui');
         const apiFields = document.getElementById('llm-api-fields');
-        const promptSel = document.getElementById('llm-prompt-selector');
-        const promptArea = document.getElementById('llm-user-prompt');
-        const resetPromptsBtn = document.getElementById('llm-reset-prompts');
 
         const savedSettings = loadLlmSettings();
         if(providerSelect) providerSelect.value = savedSettings.provider;
