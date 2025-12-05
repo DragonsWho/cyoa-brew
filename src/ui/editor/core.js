@@ -1,21 +1,45 @@
 /**
- * src\ui\editor\core.js
+ * src/ui/editor/core.js
  * CYOA Editor - Visual editing mode
- * Modular Architecture
+ * Fully Modular Architecture (Refactored)
  */
 
 import { RuleBuilder } from '../rule-builder.js';
 import { AutoDetector } from './utils/autodetect.js'; 
 import { HistoryManager } from './history.js';
 
+// Geometry & Input (unchanged)
 import { EditorGeometryMixin } from './geometry.js';
 import { EditorInputMixin } from './input.js';
-import { EditorUIMixin } from './ui.js';
-import { EditorActionsMixin } from './actions.js';
-import { EditorIntegrationsMixin } from './integrations.js';
+
+// Actions (split into 6 modules)
+import { CRUDMixin } from './actions/crud.js';
+import { MovementMixin } from './actions/movement.js';
+import { AlignmentMixin } from './actions/alignment.js';
+import { SplittingMixin } from './actions/splitting.js';
+import { ClipboardMixin } from './actions/clipboard.js';
+import { NavigationMixin } from './actions/navigation.js';
+
+// UI (split into 6 modules)
+import { SidebarMixin } from './ui/sidebar.js';
+import { ChoicePanelMixin } from './ui/choice-panel.js';
+import { GroupPanelMixin } from './ui/group-panel.js';
+import { SettingsPanelMixin } from './ui/settings-panel.js';
+import { ListenersMixin } from './ui/listeners.js';
+import { SelectionMixin } from './ui/selection.js';
+
+// Integrations
+import { LLMCoreMixin } from './integrations/llm/core.js';
+import { ManualModeMixin } from './integrations/llm/manual-mode.js';
+import { ResponseHandlerMixin } from './integrations/llm/response-handler.js';
+import { LLMListenersMixin } from './integrations/llm/ui-listeners.js';
+import { SAMCoreMixin } from './integrations/sam/core.js';
+import { SAMListenersMixin } from './integrations/sam/ui-listeners.js';
+
+// IO & Menus & Helpers
+import { EditorIOMixin } from './io.js';
 import { EditorMenusMixin } from './menus.js'; 
-import { EditorHelpersMixin } from './utils/helpers.js'; // NEW
-import { EditorIOMixin } from './io.js'; // NEW
+import { EditorHelpersMixin } from './utils/helpers.js';
 
 export class CYOAEditor {
     constructor(engine, renderer) {
@@ -27,7 +51,7 @@ export class CYOAEditor {
         
         this.selectedItem = null;
         this.selectedGroup = null;
-        this.selectedItems = []; // Array for Multi-Select
+        this.selectedItems = [];
         this.activePageIndex = 0;
         this.activeTab = 'choice'; 
         
@@ -52,8 +76,8 @@ export class CYOAEditor {
         this.marqueeStart = { x: 0, y: 0 };
         this.marqueeBox = null;
 
-        // NEW: Creation Drag State (Z/X drawing)
-        this.creationState = null; // { active: bool, type: 'item'|'group', startX, startY, obj, pageIndex }
+        // Creation Drag State (Z/X drawing)
+        this.creationState = null;
 
         // Split State
         this.splitState = null;
@@ -71,19 +95,12 @@ export class CYOAEditor {
         this.enabled = false;
         this.triggerLabelCheck = null;
 
-        // LLM Defaults
+        // LLM Config
         this.llmConfig = {
-            provider: 'google', 
-            baseUrl: 'https://generativelanguage.googleapis.com/v1beta/models/',
+            provider: 'openrouter', 
+            baseUrl: 'https://openrouter.ai/api/v1',
             apiKey: '',
-            model: 'gemini-2.0-flash',
-            systemPrompt: `You are a layout assistant. I have a JSON with page layouts containing items and groups with coordinates.
-Your task is to:
-1. "Smart Align" - fix coordinates so elements are properly aligned in rows/columns
-2. Group related items together
-3. Keep the structure: pages[] -> layout[] -> items and groups
-
-Return ONLY valid JSON, no explanations.`
+            model: 'google/gemini-2.0-flash-exp:free'
         };
 
         console.log('✏️ Editor initialized');
@@ -122,17 +139,41 @@ Return ONLY valid JSON, no explanations.`
     }
 }
 
-// Apply Mixins
-// 1. Utilities (Must be applied early if others depend on them, though mostly runtime)
+// ==================== APPLY MIXINS ====================
+
+// 1. Utilities (Must be applied first)
 Object.assign(CYOAEditor.prototype, EditorHelpersMixin);
 Object.assign(CYOAEditor.prototype, EditorGeometryMixin);
 
-// 2. Core Features
+// 2. IO
 Object.assign(CYOAEditor.prototype, EditorIOMixin);
-Object.assign(CYOAEditor.prototype, EditorActionsMixin);
-Object.assign(CYOAEditor.prototype, EditorInputMixin);
-Object.assign(CYOAEditor.prototype, EditorIntegrationsMixin);
 
-// 3. UI and Menus
-Object.assign(CYOAEditor.prototype, EditorUIMixin);
+// 3. Actions (6 modules)
+Object.assign(CYOAEditor.prototype, CRUDMixin);
+Object.assign(CYOAEditor.prototype, MovementMixin);
+Object.assign(CYOAEditor.prototype, AlignmentMixin);
+Object.assign(CYOAEditor.prototype, SplittingMixin);
+Object.assign(CYOAEditor.prototype, ClipboardMixin);
+Object.assign(CYOAEditor.prototype, NavigationMixin);
+
+// 4. Input
+Object.assign(CYOAEditor.prototype, EditorInputMixin);
+
+// 5. UI (6 modules)
+Object.assign(CYOAEditor.prototype, SidebarMixin);
+Object.assign(CYOAEditor.prototype, ChoicePanelMixin);
+Object.assign(CYOAEditor.prototype, GroupPanelMixin);
+Object.assign(CYOAEditor.prototype, SettingsPanelMixin);
+Object.assign(CYOAEditor.prototype, ListenersMixin);
+Object.assign(CYOAEditor.prototype, SelectionMixin);
+
+// 6. Integrations
+Object.assign(CYOAEditor.prototype, LLMCoreMixin);
+Object.assign(CYOAEditor.prototype, ManualModeMixin);
+Object.assign(CYOAEditor.prototype, ResponseHandlerMixin);
+Object.assign(CYOAEditor.prototype, LLMListenersMixin);
+Object.assign(CYOAEditor.prototype, SAMCoreMixin);
+Object.assign(CYOAEditor.prototype, SAMListenersMixin);
+
+// 7. Menus
 Object.assign(CYOAEditor.prototype, EditorMenusMixin);
