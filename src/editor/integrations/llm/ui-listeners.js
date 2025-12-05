@@ -18,7 +18,7 @@ export const LLMListenersMixin = {
         
         if (input.type === 'password') {
             input.type = 'text';
-            if (btn) btn.textContent = '🙈';
+            if (btn) btn.textContent = '🔒';
         } else {
             input.type = 'password';
             if (btn) btn.textContent = '👁';
