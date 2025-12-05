@@ -13,7 +13,9 @@ import { EditorInputMixin } from './input.js';
 import { EditorUIMixin } from './ui.js';
 import { EditorActionsMixin } from './actions.js';
 import { EditorIntegrationsMixin } from './integrations.js';
-import { EditorMenusMixin } from './menus.js'; // NEW IMPORT
+import { EditorMenusMixin } from './menus.js'; 
+import { EditorHelpersMixin } from './utils/helpers.js'; // NEW
+import { EditorIOMixin } from './io.js'; // NEW
 
 export class CYOAEditor {
     constructor(engine, renderer) {
@@ -121,9 +123,16 @@ Return ONLY valid JSON, no explanations.`
 }
 
 // Apply Mixins
+// 1. Utilities (Must be applied early if others depend on them, though mostly runtime)
+Object.assign(CYOAEditor.prototype, EditorHelpersMixin);
 Object.assign(CYOAEditor.prototype, EditorGeometryMixin);
-Object.assign(CYOAEditor.prototype, EditorInputMixin);
-Object.assign(CYOAEditor.prototype, EditorUIMixin);
+
+// 2. Core Features
+Object.assign(CYOAEditor.prototype, EditorIOMixin);
 Object.assign(CYOAEditor.prototype, EditorActionsMixin);
+Object.assign(CYOAEditor.prototype, EditorInputMixin);
 Object.assign(CYOAEditor.prototype, EditorIntegrationsMixin);
-Object.assign(CYOAEditor.prototype, EditorMenusMixin); // NEW MIXIN
+
+// 3. UI and Menus
+Object.assign(CYOAEditor.prototype, EditorUIMixin);
+Object.assign(CYOAEditor.prototype, EditorMenusMixin);

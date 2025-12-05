@@ -1,11 +1,12 @@
 /**
  * src/ui/editor/integrations.js
  * Editor Integrations Mixin
- * Fixed: Robust DOM access in runSamDetection to prevent crashes on missing inputs
+ * Fixed: Imports tools reference directly using Vite ?raw to avoid fetch errors
  */
 
-// FIXED IMPORT PATH:
 import { LLM_PROVIDERS, USER_PROMPTS, buildMessages, addImageToMessages, extractJsonFromResponse } from './config/llm-config.js';
+// Import the markdown content directly as a string
+import toolsReferenceRaw from './config/llm-tools-reference.md?raw';
 
 export const EditorIntegrationsMixin = {
     
@@ -115,14 +116,14 @@ export const EditorIntegrationsMixin = {
                 imageToSend = page.image;
             } 
             else if (mode === 'fill') {
-                const [toolsMd, exampleJson] = await Promise.all([
-                    this.loadStaticFile('/docs/llm-tools-reference.md'),
-                    this.loadStaticFile('/config/test_config.json')
-                ]);
+                // We use imported raw string for toolsMd, but still fetch test_config because it's in public/
+                const exampleJson = await this.loadStaticFile('/config/test_config.json');
+                
                 dataForPrompt.layout = page.layout;
-                dataForPrompt.toolsMd = toolsMd;
+                dataForPrompt.toolsMd = toolsReferenceRaw; // DIRECT USE
                 dataForPrompt.exampleJson = exampleJson;
                 dataForPrompt.fullConfig = this.getCleanConfig();
+                
                 const pageIndex = this.engine.config.pages.indexOf(page);
                 dataForPrompt.pageNum = pageIndex !== -1 ? pageIndex + 1 : "?";
                 imageToSend = page.image;
