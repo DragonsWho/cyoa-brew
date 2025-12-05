@@ -1,5 +1,5 @@
 /* ==========================================================================
-   CYOA INTERACTIVE STYLES
+   CYOA PLAYER STYLES (Core)
    ========================================================================== */
 
 /* === RESET & BASE === */
@@ -10,69 +10,30 @@ body { margin: 0; padding: 0 0 120px 0; background: #1a1a1a; color: #eee; font-f
 
 /* === CONTROLS === */
 .bottom-tools { 
-    position: fixed; 
-    bottom: 0; 
-    left: 0; 
-    z-index: 2500; 
-    display: flex; 
-    gap: 5px; 
-    padding: 10px 15px;
-    height: 60px;
-    align-items: center;
+    position: fixed; bottom: 0; left: 0; z-index: 2500; 
+    display: flex; gap: 5px; padding: 10px 15px; height: 60px; align-items: center;
 }
-
 .ctrl-btn { 
-    background: transparent; 
-    color: #666; 
-    border: none; 
-    padding: 8px; 
-    cursor: pointer; 
-    border-radius: 50%; 
-    transition: all 0.2s; 
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    background: transparent; color: #666; border: none; padding: 8px; cursor: pointer; border-radius: 50%; 
+    transition: all 0.2s; display: flex; align-items: center; justify-content: center;
 }
-
 .ctrl-btn svg { width: 24px; height: 24px; fill: currentColor; }
 .ctrl-btn:hover { color: #eee; background: rgba(255,255,255,0.1); transform: translateY(-1px); }
 .ctrl-btn.active { color: #4CAF50; background: rgba(76, 175, 80, 0.1); opacity: 1; }
 
 /* === GAME WRAPPER & PAGE === */ 
 #game-wrapper { 
-    position: relative; 
-    max-width: 100%; 
-    margin: 0 auto; 
-    display: flex; 
-    flex-direction: column; 
-    align-items: center;
-    
-    /* Возвращаем статический паддинг. 
-       100px достаточно для x1, а для x2+ мы добавляем margin через JS */
-    padding: 100px; 
-    
-    min-height: 100vh;
-    justify-content: flex-start;
-    /* Убедимся, что ничего не скрывается */
-    overflow: visible; 
+    position: relative; max-width: 100%; margin: 0 auto; display: flex; flex-direction: column; align-items: center;
+    padding: 100px; min-height: 100vh; justify-content: flex-start; overflow: visible; 
 }
-
 .page-container { position: relative; margin-bottom: 0; line-height: 0; box-shadow: 0 0 30px rgba(0,0,0,0.5); max-width: 100%; }
 .page-image { display: block; max-width: 100%; height: auto; user-select: none; }
 .page-layer { position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 10; pointer-events: none; }
 
 /* === CLICK ZONES & BUTTONS === */
 .click-zone { 
-    position: absolute; 
-    cursor: pointer; 
-    z-index: 100; 
-    pointer-events: auto; 
-    border-radius: 12px; 
-    transition: all 0.2s; 
-    overflow: visible; 
-    display: flex; 
-    flex-direction: column; 
-    justify-content: flex-end; 
+    position: absolute; cursor: pointer; z-index: 100; pointer-events: auto; border-radius: 12px; 
+    transition: all 0.2s; overflow: visible; display: flex; flex-direction: column; justify-content: flex-end; 
 }
 .click-zone:hover { background: rgba(255,255,255,0.07); box-shadow: 0 0 10px rgba(255,255,255,0.1); }
 .click-zone.selected { background: rgba(0,255,0,0.1); box-shadow: 0 0 15px 2px #0f0, inset 0 0 20px 5px rgba(0,255,0,0.3); }
@@ -135,215 +96,4 @@ body.text-mode .text-content { display: block; pointer-events: auto; }
 #tooltip .debug-info { margin-top: 10px; padding-top: 10px; border-top: 1px dashed #555; color: #777; font-size: 0.75em; font-family: monospace; }
 #tooltip .mod-applied { color: #4db8ff; font-size: 0.85em; font-weight: normal; margin-left: 6px; font-family: monospace;}
 
-/* === EDIT MODE VISUALS === */
-
-body.editor-interacting .click-zone,
-body.editor-interacting .info-zone {
-    transition: none !important;
-}
-
-/* Marquee Selection Box */
-.selection-marquee {
-    position: fixed;
-    border: 1px dashed #00ff88;
-    background-color: rgba(0, 255, 136, 0.1);
-    z-index: 9999;
-    pointer-events: none;
-    display: none;
-}
-
-/* Base debug style */
-body.show-zones .click-zone { 
-    border: 2px solid rgba(255,0,0,0.5) !important; 
-    background-color: rgba(255,0,0,0.05) !important;
-    border-radius: 0 !important; 
-    box-shadow: none !important; 
-}
-body.show-zones .click-zone::after { content: attr(id); position: absolute; top: 0; left: 0; background: red; color: white; font-size: 10px; padding: 1px 3px; pointer-events: none; }
-body.show-zones .info-zone { border: 2px dashed rgba(255,165,0,0.4) !important; background-color: rgba(255,165,0,0.1) !important; }
-
-/* Edit Interaction Modes */
-body.edit-mode-choice .item-zone { pointer-events: auto; cursor: move; }
-body.edit-mode-choice .info-zone { pointer-events: none; }
-body.edit-mode-group .info-zone { pointer-events: auto; cursor: move; z-index: 2000; } 
-body.edit-mode-group .item-zone { pointer-events: none; opacity: 0.5; }
-
-/* === SELECTION HIGHLIGHTS (Borders, Shadows, Corners, Notch) === */
-
-/* 1. Basic Colored Borders */
-.item-zone.editor-selected { 
-    border: 2px solid #FFD700 !important; 
-    z-index: 3000 !important;
-    color: #FFD700; /* Used for corners */
-}
-.info-zone.editor-selected { 
-    border: 2px solid #4CAF50 !important; 
-    background-color: rgba(76,175,80,0.1) !important; 
-    z-index: 3000 !important; 
-    color: #FFD700; /* Used for corners */
-}
-
-/* 2. Common Selected Styles: Outer Black Outline + Corner Triangles */
-.editor-selected {
-    /* 1px Solid Black Outline outside + Glow */
-    box-shadow: 0 0 0 2px #000, 0 0 20px rgba(0,0,0,0.5) !important;
-    
-    /* Corner Triangles using Gradients */
-    /* Note: Angles use standard bearing: 135deg = TopLeft to BottomRight */
-    background-image: 
-        linear-gradient(135deg, currentColor 8px, transparent 8px), /* Top-Left */
-        linear-gradient(225deg, currentColor 8px, transparent 8px), /* Top-Right */
-        linear-gradient(315deg, currentColor 8px, transparent 8px), /* Bottom-Right */
-        linear-gradient(45deg, currentColor 8px, transparent 8px) !important; /* Bottom-Left */
-    
-    background-position: top left, top right, bottom right, bottom left !important;
-    background-size: 14px 14px !important;
-    background-repeat: no-repeat !important;
-    
-    /* Ensure selection follows transforms smoothly */
-    transform-origin: center;
-    will-change: top, left, width, height;
-}
-
-/* FIX: Kill transitions on selected items so dragging/WASD is instant */
-.click-zone.editor-selected,
-.info-zone.editor-selected {
-    transition: none !important;
-}
-
-/* FIX: Also kill transitions on pseudo-elements (the Notch) */
-.click-zone.editor-selected::before,
-.info-zone.editor-selected::before {
-    transition: none !important;
-}
-
-/* 3. The "Notch" showing Title */
-.editor-selected::before {
-    content: attr(data-editor-title);
-    position: absolute;
-    top: 0;
-    left: 50%;
-    transform: translateX(-50%);
-    background: #d32f2f; /* Red strip */
-    color: white;
-    font-size: 11px;
-    font-weight: bold;
-    padding: 2px 8px;
-    height: 18px;
-    min-width: 60px;
-    text-align: center;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 90%;
-    border-bottom-left-radius: 6px;
-    border-bottom-right-radius: 6px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.5);
-    pointer-events: none;
-    z-index: 3001;
-    line-height: 14px;
-    border-top: none;
-}
-
-.click-zone.dragging { transition: none !important; z-index: 9999 !important; pointer-events: none; opacity: 0.8; }
-
-/* === EDITOR SIDEBAR & UI === */
-.editor-sidebar { background: #1a1a1a; width: 340px; position: fixed; right: 0; top: 0; bottom: 0; z-index: 4000; display: flex; flex-direction: column; box-shadow: -5px 0 20px rgba(0,0,0,0.5); border-left: 1px solid #333; }
-body.edit-mode-active #game-wrapper { margin-right: 340px; transition: margin-right 0.3s; }
-
-.editor-tabs { display: flex; background: #111; border-bottom: 1px solid #333; }
-.tab-btn { flex: 1; background: #111; border: none; color: #888; padding: 12px 0; cursor: pointer; font-weight: bold; font-size: 0.9rem; border-bottom: 2px solid transparent; transition: all 0.2s; }
-.tab-btn:hover { color: #ccc; background: #181818; }
-.tab-btn.active { color: #fff; background: #1a1a1a; border-bottom: 2px solid #4CAF50; }
-.close-tab-btn { background: #d32f2f; color: white; border: none; width: 40px; flex-shrink: 0; cursor: pointer; font-size: 16px; font-weight: bold; display: flex; align-items: center; justify-content: center; }
-.close-tab-btn:hover { background: #b71c1c; }
-
-.sidebar-scroll-content { flex: 1; overflow-y: auto; overflow-x: hidden; padding-bottom: 40px; padding-top: 15px; scrollbar-gutter: stable; scrollbar-width: thin; scrollbar-color: #444 transparent; }
-.editor-section { padding: 5px 2px 5px 10px; width: 100%; box-sizing: border-box; border-bottom: 1px solid #222; }
-.info-text { background: #252525; padding: 15px; border-radius: 4px; color: #aaa; font-size: 0.9rem; line-height: 1.4; text-align: center; margin: 10px; }
-
-.input-group { position: relative; margin-bottom: 5px; width: 100%; background: #252525; border: 1px solid #333; border-radius: 4px; transition: border-color 0.2s; }
-.input-group:focus-within { border-color: #4CAF50; background: #2a2a2a; }
-.input-group input, .input-group textarea, .input-group select { width: 100%; background: transparent; border: none; color: #eee; padding: 6px 8px; font-size: 0.9rem; z-index: 2; position: relative; font-family: inherit; resize: vertical; display: block; }
-.input-group input:focus, .input-group textarea:focus { outline: none; }
-.input-label { position: absolute; right: 8px; color: #555; font-size: 0.75rem; pointer-events: none; font-weight: 600; text-transform: uppercase; z-index: 1; transition: opacity 0.2s; white-space: nowrap; }
-.input-group input + .input-label { top: 50%; transform: translateY(-50%); }
-.input-group textarea + .input-label { bottom: 6px; right: 8px; }
-.input-label.label-hidden { opacity: 0 !important; }
-
-.row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; width: 100%; }
-.row-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; width: 100%; }
-.row-4 .input-group input { text-align: center; padding: 6px 2px; }
-.row-4 .input-label { display: none; }
-.accordion-header { cursor: pointer; padding: 6px 0; display: flex; justify-content: space-between; color: #4CAF50; font-weight: bold; border-bottom: 1px solid #222; user-select: none; font-size: 0.9em; }
-.accordion-header::after { content: '▼'; font-size: 0.8em; transition: transform 0.2s; }
-.accordion-header.collapsed::after { transform: rotate(-90deg); }
-.accordion-content { display: block; overflow: hidden; padding: 5px 0; }
-.accordion-content.collapsed { display: none; }
-.row-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 5px; }
-.action-btn { width: 100%; padding: 10px; border-radius: 4px; cursor: pointer; font-weight: bold; color: white; border: none; font-size: 0.9rem; }
-.btn-delete { background: #500; border: 1px solid #700; }
-.btn-delete:hover { background: #700; }
-.btn-add { background: #333; border: 1px solid #444; }
-.btn-add:hover { background: #444; }
-.primary-btn { background: #2e7d32; color: white; border: none; width: 100%; padding: 10px; border-radius: 4px; font-weight: bold; }
-
-.compact-list { display: flex; flex-direction: column; gap: 6px; width: 100%; }
-.compact-row { display: grid; grid-template-columns: 35% 1fr 24px; gap: 4px; align-items: center; }
-.compact-row select, .compact-row input { background: #222; border: 1px solid #333; color: #ddd; padding: 4px; border-radius: 3px; width: 100%; }
-.icon-btn { background: #d32f2f; color: white; border: none; border-radius: 3px; width: 24px; height: 24px; cursor: pointer; }
-.full-width-btn { width: 100%; padding: 8px; background: #333; border: 1px solid #444; color: #ccc; cursor: pointer; border-radius: 4px; margin-top: 5px; font-weight: bold; font-size: 0.85rem; }
-.code-editor { width: 100%; height: 200px; background: #111; color: #0f0; font-family: monospace; font-size: 0.8rem; border: 1px solid #333; border-radius: 4px; padding: 5px; box-sizing: border-box; resize: vertical; }
-.code-editor:focus { outline: none !important; border-color: #4CAF50; box-shadow: none; }
-::-webkit-resizer { background: linear-gradient(135deg, transparent 70%, #666 70%); }
-::-webkit-scrollbar { width: 8px; height: 8px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #444; border-radius: 4px; }
-::-webkit-scrollbar-thumb:hover { background: #666; }
-
-.modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); z-index: 5000; display: flex; align-items: center; justify-content: center; }
-.modal-content { background: #1a1a1a; padding: 20px; border: 1px solid #444; border-radius: 8px; width: 80%; max-width: 600px; box-shadow: 0 10px 30px #000; display: flex; flex-direction: column; max-height: 90vh; }
-.modal-content h3 { margin-top: 0; color: #4CAF50; border-bottom: 1px solid #333; padding-bottom: 10px; }
-
-/* === CONTEXT MENU === */
-.custom-context-menu {
-    position: fixed;
-    background: #1f1f1f;
-    border: 1px solid #444;
-    border-radius: 4px;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.8);
-    z-index: 6000;
-    min-width: 160px;
-    padding: 5px 0;
-    overflow: hidden;
-}
-.custom-context-menu .menu-label {
-    padding: 5px 15px;
-    font-size: 0.7rem;
-    color: #666;
-    text-transform: uppercase;
-    font-weight: bold;
-    pointer-events: none;
-    letter-spacing: 0.5px;
-}
-.custom-context-menu .menu-item {
-    padding: 8px 15px;
-    font-size: 0.9rem;
-    color: #eee;
-    cursor: pointer;
-    transition: background 0.15s;
-    display: flex;
-    align-items: center;
-}
-.custom-context-menu .menu-item:hover {
-    background: #4CAF50;
-    color: white;
-}
-.custom-context-menu .menu-divider {
-    height: 1px;
-    background: #333;
-    margin: 4px 0;
-}
-
-@media (max-width: 1200px) { .editor-sidebar { width: 100%; max-width: 340px; } body.edit-mode-active #game-wrapper { margin-right: 0; } }
 @media (max-width: 768px) { .bottom-tools { gap: 0; padding: 10px 5px; } .ctrl-btn { padding: 6px; } #points-bar { gap: 20px; padding: 10px; } }
