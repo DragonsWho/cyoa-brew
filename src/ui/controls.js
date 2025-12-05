@@ -58,7 +58,7 @@ export class ControlPanel {
                 console.log('📦 Downloading Editor module...');
                 
                 // ИЗМЕНЕНИЕ ЗДЕСЬ: Импорт из index.js внутри папки editor
-                const module = await import('./editor/index.js');
+                const module = await import('../editor/index.js');
                 
                 const CYOAEditor = module.CYOAEditor;
                 this.editor = new CYOAEditor(this.engine, this.renderer);
