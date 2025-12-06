@@ -2,6 +2,7 @@
  * src\ui\editor\input.js
  * Editor Input Mixin - Handles mouse and keyboard input
  * Updated: Drag-to-Create Logic for Z/X + Redo Support
+ * Fix: Prevent clicks on Audit Window and Scrollbars from affecting selection
  */
 
 import { CoordHelper } from '../utils/coords.js';
@@ -206,8 +207,22 @@ export const EditorInputMixin = {
     handleMouseDown(e) {
         if (!this.enabled) return;
         
-        // Check for Creation Mode (Z / X)
-        if (e.button === 0 && !e.target.closest('#editor-sidebar') && !e.target.closest('#editor-context-menu')) {
+        // --- UI & SCROLLBAR PROTECTION ---
+        // Prevent clicks on editor UI overlays from triggering workspace actions
+        if (e.target.closest('#editor-sidebar')) return;
+        if (e.target.closest('.modal-content')) return;
+        if (e.target.closest('#editor-context-menu')) return;
+        if (e.target.closest('#audit-chat-window')) return; // Added Audit Chat protection
+
+        // Prevent clicks on Main Window Scrollbars from triggering workspace actions
+        // (Checks if click is outside the viewport client area)
+        if (e.clientX >= document.documentElement.clientWidth || 
+            e.clientY >= document.documentElement.clientHeight) {
+            return;
+        }
+
+        // --- CREATION MODE (Z/X) ---
+        if (e.button === 0) {
             const isZ = this.isHoldingZ;
             const isX = this.isHoldingX;
 
@@ -255,6 +270,7 @@ export const EditorInputMixin = {
             }
         }
         
+        // --- SPLIT MODE ---
         if (this.splitState && e.button === 0) {
             e.preventDefault();
             this.commitSplit();
@@ -266,11 +282,9 @@ export const EditorInputMixin = {
              return;
         }
 
-        if (e.target.closest('#editor-sidebar')) return;
-        if (e.target.closest('.modal-content')) return;
-        if (e.target.closest('#editor-context-menu')) return;
         if (e.button === 2) return; 
 
+        // --- SELECTION LOGIC ---
         let objectToEdit = null;
         let pageIndex = 0;
         

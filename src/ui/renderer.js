@@ -165,7 +165,27 @@ export class UIRenderer {
 
         Object.assign(button.style, CoordHelper.toPercent(item.coords, dim));
 
-        // Text layer
+        // --- NON-SELECTABLE (STATIC INFO) CARDS ---
+        if (item.selectable === false) {
+            button.classList.add('static-info');
+            
+            // Still render text for translation/readability
+            if (item.title || item.description) {
+                button.appendChild(this.createTextLayer(
+                    item.title || '',
+                    item.description || ''
+                ));
+            }
+            
+            // Still attach tooltip to allow reading descriptions
+            this.tooltip.attach(button, item, group);
+            
+            layer.appendChild(button);
+            return; // EXIT HERE: No click logic needed
+        }
+        // -------------------------------------------
+
+        // Normal Interactive Item logic
         if (item.title || item.description) {
             button.appendChild(this.createTextLayer(
                 item.title || '',
@@ -268,7 +288,7 @@ export class UIRenderer {
         this.updateBudgets();
     }
 
- updateButtons() {
+    updateButtons() {
         document.querySelectorAll('.item-zone').forEach(el => {
             const itemId = el.dataset.itemId;
             
@@ -277,6 +297,9 @@ export class UIRenderer {
             const group = this.engine.findGroupForItem(itemId);
 
             if (!item) return;
+
+            // Skip static items for updates
+            if (item.selectable === false) return;
 
             // 1. Вычисляем текущее логическое состояние
             const qty = this.engine.state.selected.get(itemId) || 0;

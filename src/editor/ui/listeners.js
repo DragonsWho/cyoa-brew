@@ -21,75 +21,87 @@ export const ListenersMixin = {
 
     // ==================== CHOICE PANEL ====================
 
-setupSettingsListeners() {
-    const notes = document.getElementById('project-notes');
-    if (notes) {
-        notes.addEventListener('input', (e) => {
-            this.engine.config.notes = e.target.value;
-        });
-    }
-},
+    setupSettingsListeners() {
+        const notes = document.getElementById('project-notes');
+        if (notes) {
+            notes.addEventListener('input', (e) => {
+                this.engine.config.notes = e.target.value;
+            });
+        }
+    },
 
-setupChoiceListeners() {
+    setupChoiceListeners() {
+        // --- Selectable Checkbox Handler (Logic Inverted) ---
+        const selCheck = document.getElementById('edit-selectable');
+        if (selCheck) {
+            selCheck.addEventListener('change', (e) => {
+                if (!this.selectedItem) return;
+                
+                // Checked means "Static / Not Selectable"
+                if (e.target.checked) {
+                    this.selectedItem.selectable = false;
+                } else {
+                    // Unchecked means "Interactive" (default)
+                    delete this.selectedItem.selectable;
+                }
+                
+                this.renderer.renderLayout(); // Re-render to apply CSS classes
+                this.updateCodePreview();
+            });
+        }
+
         const update = (key, val, isNum) => {
             if (!this.selectedItem) return;
             if (isNum) val = parseInt(val) || 0;
             
-            // === ЗАЩИТА ОТ ДУРАКА (Min/Max Validation) ===
+            // === Min/Max Validation ===
             if (key === 'min_quantity') {
-                // Если Минимум стал больше Максимума -> Поднимаем Максимум
                 const currentMax = this.selectedItem.max_quantity !== undefined ? this.selectedItem.max_quantity : 1;
                 if (val > currentMax) {
                     this.selectedItem.max_quantity = val;
-                    // Обновляем поле ввода в UI, чтобы пользователь видел изменение
                     const maxInput = document.getElementById('edit-max_quantity');
                     if (maxInput) maxInput.value = val;
-                }}
-        if (key === 'max_quantity') {
-            // Если Максимум стал меньше Минимума -> Опускаем Минимум
-            const currentMin = this.selectedItem.min_quantity !== undefined ? this.selectedItem.min_quantity : 0;
-            if (val < currentMin) {
-                this.selectedItem.min_quantity = val;
-                // Обновляем поле ввода в UI
-                const minInput = document.getElementById('edit-min_quantity');
-                if (minInput) minInput.value = val;
+                }
             }
-        }
-        if (['x','y','w','h'].includes(key)) { 
-            if (!this.selectedItem.coords) this.selectedItem.coords = {}; 
-            this.selectedItem.coords[key] = val; 
-        } else if (key === 'tags') { 
-            this.selectedItem.tags = val.split(',').map(t => t.trim()).filter(t => t); 
-        } else { 
-            this.selectedItem[key] = val; 
-        }
+            if (key === 'max_quantity') {
+                const currentMin = this.selectedItem.min_quantity !== undefined ? this.selectedItem.min_quantity : 0;
+                if (val < currentMin) {
+                    this.selectedItem.min_quantity = val;
+                    const minInput = document.getElementById('edit-min_quantity');
+                    if (minInput) minInput.value = val;
+                }
+            }
 
-        // Очистка дефолтных значений для чистоты JSON
-        if (key === 'max_quantity' || key === 'min_quantity') {
-            if (key === 'max_quantity' && val <= 1) delete this.selectedItem.max_quantity;
-            if (key === 'min_quantity' && val === 0) delete this.selectedItem.min_quantity;
-            
-            this.renderer.renderLayout();
-            setTimeout(() => { 
-                this.refreshSelectionVisuals();
-            }, 0);
-        } else { 
-            this.renderer.renderLayout
-            ();
-            this.refreshSelectionVisuals();
+            if (['x','y','w','h'].includes(key)) { 
+                if (!this.selectedItem.coords) this.selectedItem.coords = {}; 
+                this.selectedItem.coords[key] = val; 
+            } else if (key === 'tags') { 
+                this.selectedItem.tags = val.split(',').map(t => t.trim()).filter(t => t); 
+            } else { 
+                this.selectedItem[key] = val; 
             }
+
+            // Cleanup defaults
+            if (key === 'max_quantity' || key === 'min_quantity') {
+                if (key === 'max_quantity' && val <= 1) delete this.selectedItem.max_quantity;
+                if (key === 'min_quantity' && val === 0) delete this.selectedItem.min_quantity;
+            }
+
+            this.renderer.renderLayout();
+            this.refreshSelectionVisuals();
             this.updateCodePreview();
-            };
+        };
+
         const inputs = ['edit-id', 'edit-title', 'edit-description', 'edit-tags', 'edit-x', 'edit-y', 'edit-w', 'edit-h', 'edit-max_quantity', 'edit-min_quantity'];
-            inputs.forEach(id => {
-                const el = document.getElementById(id); 
-                if (!el) return;
-                const key = id.split('-').pop(); 
-                const realKey = (id === 'edit-description') ? 'description' : key; 
-                const isNum = ['x','y','w','h', 'max_quantity', 'min_quantity'].includes(key); 
-                el.addEventListener('input', (e) => update(realKey, e.target.value, isNum));
-            });
-        },
+        inputs.forEach(id => {
+            const el = document.getElementById(id); 
+            if (!el) return;
+            const key = id.split('-').pop(); 
+            const realKey = (id === 'edit-description') ? 'description' : key; 
+            const isNum = ['x','y','w','h', 'max_quantity', 'min_quantity'].includes(key); 
+            el.addEventListener('input', (e) => update(realKey, e.target.value, isNum));
+        });
+    },
 
     // ==================== GROUP PANEL ====================
 

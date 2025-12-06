@@ -23,7 +23,7 @@ export const EditorIOMixin = {
         }
     },
     
-    async copyDebugImageToClipboard() {
+async copyDebugImageToClipboard() {
         const page = this.getCurrentPage();
         if (!page || !page.image) { alert("No image on this page."); return; }
         
@@ -49,34 +49,46 @@ export const EditorIOMixin = {
             const ctx = canvas.getContext('2d');
             ctx.drawImage(img, 0, 0);
             
-            // Draw boxes logic
-            const fontSize = Math.max(16, Math.min(48, Math.floor(canvas.width / 60)));
-            const lineWidth = Math.max(3, Math.floor(fontSize / 5));
+            // --- НАСТРОЙКИ ОТРИСОВКИ ---
+            // Делаем шрифт меньше (делим ширину на 100 вместо 60)
+            const fontSize = Math.max(12, Math.min(28, Math.floor(canvas.width / 100)));
+            // Линия чуть тоньше
+            const lineWidth = Math.max(2, Math.floor(fontSize / 6));
             
             const drawBox = (obj, isGroup) => {
                 if (!obj.coords) return;
                 const c = CoordHelper.toPixels(obj.coords, { w: canvas.width, h: canvas.height });
                 
+                // 1. Рисуем саму рамку
                 ctx.lineWidth = lineWidth;
-                ctx.strokeStyle = isGroup ? '#FFD700' : '#00FF00'; 
+                ctx.strokeStyle = isGroup ? '#FFD700' : '#00FF00'; // Золотой для групп, Зеленый для предметов
                 ctx.strokeRect(c.x, c.y, c.w, c.h);
                 
-                ctx.font = `bold ${fontSize}px sans-serif`;
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'top'; 
-                
+                // 2. Подготовка текста ID
+                ctx.font = `bold ${fontSize}px monospace`; // Моноширинный шрифт лучше для OCR ID
                 let text = obj.id;
-                if (isGroup) text = `[Group] ${text}`;
-                if (text.length > 30) text = text.substring(0, 27) + '...';
+                if (isGroup) text = `[G] ${text}`;
                 
-                const tx = c.x + c.w / 2;
-                const ty = c.y + lineWidth + 5; 
+                // Измеряем текст для фона
+                const tm = ctx.measureText(text);
+                const padding = fontSize * 0.4;
+                const bgW = tm.width + (padding * 2);
+                const bgH = fontSize * 1.2;
+
+                // 3. Вычисляем позицию (Центр ВЕРХНЕЙ границы)
+                // Текст будет сидеть ровно на линии
+                const tx = c.x + (c.w / 2);
+                const ty = c.y; 
                 
-                ctx.lineJoin = 'round';
-                ctx.lineWidth = lineWidth + 2;
-                ctx.strokeStyle = '#000000';
-                ctx.strokeText(text, tx, ty);
-                ctx.fillStyle = isGroup ? '#FFD700' : '#FFFFFF';
+                // 4. Рисуем подложку (Черный фон), чтобы ID не сливался с картинкой
+                ctx.fillStyle = "rgba(0, 0, 0, 0.85)";
+                // Центрируем прямоугольник фона относительно tx, ty
+                ctx.fillRect(tx - (bgW / 2), ty - (bgH / 2), bgW, bgH);
+                
+                // 5. Рисуем текст
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle'; // Важно: центрирование по вертикали
+                ctx.fillStyle = isGroup ? '#FFD700' : '#00FF00'; // Цвет текста совпадает с рамкой
                 ctx.fillText(text, tx, ty);
             };
             

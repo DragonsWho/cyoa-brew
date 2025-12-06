@@ -40,6 +40,19 @@ body { margin: 0; padding: 0 0 120px 0; background: #1a1a1a; color: #eee; font-f
 .click-zone.disabled { cursor: not-allowed; background-image: repeating-linear-gradient(45deg, rgba(0,0,0,0.4), rgba(0,0,0,0.4) 10px, rgba(50,50,50,0.6) 10px, rgba(50,50,50,0.6) 20px); box-shadow: 0 0 15px 5px #000, inset 0 0 20px 10px rgba(0,0,0,0.8); }
 .click-zone.maxed { background: rgba(0,255,0,0.05); cursor: default; }
 
+/* --- STATIC INFO CARDS (Non-clickable) --- */
+.click-zone.static-info {
+    cursor: default !important;
+    background: rgba(255, 255, 255, 0.05);
+    box-shadow: none !important;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+.click-zone.static-info:hover {
+    transform: none !important;
+    background: rgba(255, 255, 255, 0.08);
+    box-shadow: none !important;
+}
+
 .info-zone { z-index: 50; pointer-events: none; border: none; }
 .info-zone .text-content { pointer-events: auto; }
 
@@ -99,4 +112,3 @@ body.text-mode .text-content { display: block; pointer-events: auto; }
 #tooltip .mod-applied { color: #4db8ff; font-size: 0.85em; font-weight: normal; margin-left: 6px; font-family: monospace;}
 
 @media (max-width: 768px) { .bottom-tools { gap: 0; padding: 10px 5px; } .ctrl-btn { padding: 6px; } #points-bar { gap: 20px; padding: 10px; } }
-

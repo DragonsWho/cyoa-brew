@@ -5,6 +5,38 @@ Use this as the authoritative reference when generating or parsing CYOA configur
 
 ---
 
+Transfer the full text to the card descriptions. And the full names. All text from the images must be transferred — players will be able to use it for automatic translation, so the full text must be there.
+
+IMPORTANT: HEADERS & TEXT VISIBILITY RULES
+Do NOT merge text into Group Descriptions: In this engine, group descriptions are invisible and purely technical. NEVER take text from a visual card (like a Section Header or Intro) and move it to the group properties.
+Headers are Items: Every visual rectangle, including headers with long text, must be an object in the items array.
+Keep ALL narrative text in the description field of that specific item/header.
+Set "selectable": false for these items so they act as static text/images. Use “selectable”: false with caution, only if you are absolutely sure that the player should never click on this object. If the object has a price, requirements, etc., never apply “selectable”: false to it.
+Group Logic: Rules like max_choices apply to the group container. 
+
+
+### SPECIAL CASE: ADD-ONS & UPGRADES (Child Items)
+Sometimes, a single visual card frame contains multiple logical items. This usually happens when a main item has optional upgrades listed below it (often text-only blocks within the same green frame or immediately following it).
+
+**CRITICAL RULE: The "Cost" Trigger**
+If a text block contains a specific Cost indicator (e.g., "(-5)", "Cost: 10", "+5 pts"), it is **NEVER** just a description. 
+
+**How to structure Add-ons:**
+1. **Identify the Parent:** The main card with the image/primary title (e.g., "Armor").
+2. **Identify the Child:** The sub-section with a cost (e.g., "Hateful Armor (-5)").
+3. **Create a separate Item:** Even if it looks like text, create a full JSON item object for the Child.
+4. **Set Dependencies:** Add the Parent's ID to the Child's `requirements` array.
+   - Example: If Parent ID is `suit_armor`, the Child (Hateful) must have `"requirements": ["suit_armor"]`.
+5. **Set Cost:** Extract the specific cost for the Child item.
+
+
+
+If there is one logical group in the game is divided into several pages, the group can be merged by assigning it the same ID as the beginning of the group on the previous page. The engine supports this and will apply the rules from the first block to both instances of the group, so that “no more than 2 options can be selected in this group” will work correctly.
+
+
+
+
+---
 ## 1. JSON STRUCTURE OVERVIEW
 
 ```json

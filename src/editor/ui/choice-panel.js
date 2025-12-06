@@ -53,6 +53,13 @@ export function createChoicePanel() {
                             <span class="input-label">GRP</span>
                         </div>
                     </div>
+                    
+                    <!-- UPDATED SELECTABLE TOGGLE -->
+                    <div class="input-group" style="display: flex; flex-direction: row; align-items: center; justify-content: flex-start; padding: 8px 5px; background: transparent; border: none;">
+                        <input type="checkbox" id="edit-selectable" style="width: auto; margin: 0 8px 0 0; cursor: pointer;">
+                        <label for="edit-selectable" style="position: static; color: #ccc; font-size: 0.85rem; cursor: pointer; text-transform: none; pointer-events: auto;">Static (Not Selectable)</label>
+                    </div>
+
                     <div class="row-2">
                         <div class="input-group">
                             <input type="number" id="edit-min_quantity" placeholder="0">
@@ -148,6 +155,13 @@ export const ChoicePanelMixin = {
         document.getElementById('edit-tags').value = (item.tags || []).join(', ');
         ['x','y','w','h'].forEach(k => { document.getElementById(`edit-${k}`).value = Math.round(item.coords?.[k] || 0); });
         
+        // UPDATE: Check logic inverted
+        // Checked = Static (selectable: false)
+        const selCheck = document.getElementById('edit-selectable');
+        if (selCheck) {
+            selCheck.checked = (item.selectable === false);
+        }
+
         const el = document.getElementById(`btn-${item.id}`);
         if(el) el.setAttribute('data-editor-title', item.title || item.id);
         this.updateCodePreview();

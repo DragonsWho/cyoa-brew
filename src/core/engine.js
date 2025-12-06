@@ -21,10 +21,13 @@ export class GameEngine {
 
         // === Flat lookup maps (built from hierarchical config) ===
         this.itemMap = new Map();       // itemId -> item object
-        this.itemToGroup = new Map();   // itemId -> group object (or null for standalone)
+        this.itemToGroup = new Map();   // itemId -> group object (Logical Master Group)
         this.itemToPage = new Map();    // itemId -> page object
-        this.groupMap = new Map();      // groupId -> group object
+        this.groupMap = new Map();      // groupId -> group object (Logical Master Group)
         this.groupToPage = new Map();   // groupId -> page object
+        
+        // NEW: Map to store ALL items belonging to a group ID across multiple pages
+        this.groupItemsMap = new Map(); // groupId -> Array<Item>
 
         this.state = new GameState(config);
         this.rules = new RuleEvaluator(this);
@@ -42,11 +45,12 @@ export class GameEngine {
         this.buildMaps();
         this.initDefaults();
 
-        console.log('🎮 Engine initialized (v2 - Pages Architecture)');
+        console.log('🎮 Engine initialized (v2.1 - Split Groups Support)');
     }
 
     /**
      * Build flat lookup maps from hierarchical page/layout config
+     * Supports "Split Groups" (Same ID on different pages)
      */
     buildMaps() {
         this.itemMap.clear();
@@ -54,6 +58,7 @@ export class GameEngine {
         this.itemToPage.clear();
         this.groupMap.clear();
         this.groupToPage.clear();
+        this.groupItemsMap.clear();
 
         const pages = this.config.pages || [];
         
@@ -62,17 +67,34 @@ export class GameEngine {
             
             for (const element of layout) {
                 if (element.type === 'group') {
-                    // Register group
-                    this.groupMap.set(element.id, element);
-                    this.groupToPage.set(element.id, page);
+                    // Logic for Split Groups:
+                    // If we've seen this Group ID before, use the FIRST one as the "Master" (Logical) group.
+                    // This ensures rules like 'max_choices' are taken from a single source of truth.
+                    let logicalGroup = this.groupMap.get(element.id);
+
+                    if (!logicalGroup) {
+                        // First time seeing this group
+                        logicalGroup = element;
+                        this.groupMap.set(element.id, element);
+                        this.groupToPage.set(element.id, page);
+                    }
+
+                    // Aggregate items from this chunk into the global list for this group ID
+                    let currentGroupItems = this.groupItemsMap.get(element.id) || [];
+                    if (element.items && element.items.length > 0) {
+                        currentGroupItems = currentGroupItems.concat(element.items);
+                    }
+                    this.groupItemsMap.set(element.id, currentGroupItems);
                     
-                    // Register items inside group
+                    // Register items
                     const items = element.items || [];
                     for (const item of items) {
                         this.itemMap.set(item.id, item);
-                        this.itemToGroup.set(item.id, element);
+                        // IMPORTANT: Map item to the Logical (Master) Group, not necessarily the local container
+                        this.itemToGroup.set(item.id, logicalGroup);
                         this.itemToPage.set(item.id, page);
                     }
+
                 } else if (element.type === 'item') {
                     // Standalone item (not in any group)
                     this.itemMap.set(element.id, element);
@@ -82,7 +104,7 @@ export class GameEngine {
             }
         }
 
-        console.log(`📊 Maps built: ${this.itemMap.size} items, ${this.groupMap.size} groups`);
+        console.log(`📊 Maps built: ${this.itemMap.size} items, ${this.groupMap.size} logical groups`);
     }
 
     /**
@@ -126,12 +148,11 @@ export class GameEngine {
         const item = this.findItem(itemId);
         if (!item) return false;
 
+        // --- Check selectable property ---
+        if (item.selectable === false) return false;
+
         const group = this.findGroupForItem(itemId);
         
-        // Check requirements only if we are increasing from 0 or above (conceptually "taking" the item)
-        // If we are simply reducing a negative debt (e.g. -2 -> -1), we might skip strict req checks, 
-        // but typically requirements apply to having the item at all. 
-        // For simplicity, we keep checking canSelect.
         if (!this.canSelect(item, group)) return false;
 
         const currentQty = this.state.selected.get(itemId) || 0;
@@ -140,12 +161,10 @@ export class GameEngine {
         if (currentQty >= maxQty) return false;
 
         // Radio logic (only if item is in a group with max_choices)
-        // Only apply radio logic if we are actually selecting a positive amount (qty > 0)
-        // or moving from 0 to 1. 
         if (group && group.rules?.max_choices && currentQty >= 0) {
             if (currentQty === 0 && group.rules.max_choices === 1) {
-                // Deselect others in this group
-                const groupItems = group.items || [];
+                // Deselect others in this group (across ALL pages)
+                const groupItems = this.getAllItemsInGroup(group.id);
                 for (const i of groupItems) {
                     if (this.state.selected.has(i.id) && i.id !== itemId) {
                         const otherQty = this.state.selected.get(i.id);
@@ -209,6 +228,9 @@ export class GameEngine {
     }
 
     toggle(itemId) {
+        const item = this.findItem(itemId);
+        if (item && item.selectable === false) return false;
+
         if (this.state.selected.has(itemId)) {
             return this.deselect(itemId);
         } else {
@@ -327,7 +349,7 @@ export class GameEngine {
     }
 
     findGroupForItem(itemId) {
-        // Returns the group object, or null if standalone
+        // Returns the group object (Logical Master), or null if standalone
         if (!this.itemToGroup.has(itemId)) return null;
         return this.itemToGroup.get(itemId);
     }
@@ -340,30 +362,40 @@ export class GameEngine {
         return this.groupMap.get(groupId) || null;
     }
 
-    getSelectedInGroup(group) {
-        if (!group || !group.items) return [];
-        return group.items.filter(i => this.state.selected.has(i.id));
+    /**
+     * Helper to get ALL items belonging to a group ID (across all pages)
+     */
+    getAllItemsInGroup(groupId) {
+        return this.groupItemsMap.get(groupId) || [];
     }
 
+    /**
+     * Get array of selected items that belong to this group (logically)
+     */
+    getSelectedInGroup(group) {
+        if (!group) return [];
+        const allItems = this.getAllItemsInGroup(group.id);
+        return allItems.filter(i => this.state.selected.has(i.id));
+    }
+
+    /**
+     * Count total selected quantity for this group (logically across pages)
+     */
     getGroupQty(group) {
-        if (!group || !group.items) return 0;
+        if (!group) return 0;
+        const allItems = this.getAllItemsInGroup(group.id);
+        
         let total = 0;
-        for (const item of group.items) {
+        for (const item of allItems) {
             total += (this.state.selected.get(item.id) || 0);
         }
         return total;
     }
 
-    /**
-     * Get all items as array (for iteration)
-     */
     getAllItems() {
         return Array.from(this.itemMap.values());
     }
 
-    /**
-     * Get all groups as array (for iteration)
-     */
     getAllGroups() {
         return Array.from(this.groupMap.values());
     }
