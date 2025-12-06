@@ -3,6 +3,7 @@
  * Interactive Audit Chat Logic with Caching, Debug & Token Tracking
  */
 
+// Import the prompt (now includes tools reference)
 import { AUDIT_CHAT_SYSTEM_PROMPT } from './config/prompts.js';
 
 export const AuditChatMixin = {
@@ -12,7 +13,7 @@ export const AuditChatMixin = {
     auditLastRequest: null,
 
     // ==================== UI CREATION ====================
-    
+    // ... (код UI остался без изменений, скрыт для краткости) ...
     createAuditChatUI() {
         if (document.getElementById('audit-chat-window')) return;
 
@@ -53,8 +54,8 @@ export const AuditChatMixin = {
         this.initAuditDraggable();
     },
 
-    // ==================== DEBUG PANEL ====================
-    
+    // ... (методы Debug/UI/Drag остались без изменений) ...
+
     toggleAuditDebug() {
         const panel = document.getElementById('audit-debug-panel');
         if (panel) {
@@ -95,8 +96,6 @@ export const AuditChatMixin = {
         });
     },
 
-    // ==================== TOKEN TRACKING ====================
-    
     updateTokenCounter(usage) {
         if (!usage) return;
         
@@ -122,8 +121,6 @@ export const AuditChatMixin = {
         }
     },
 
-    // ==================== DRAGGABLE FUNCTIONALITY ====================
-    
     initAuditDraggable() {
         const win = document.getElementById('audit-chat-window');
         const handle = document.getElementById('audit-drag-handle');
@@ -383,11 +380,11 @@ Be concise. If everything looks good, say so.`;
     buildConfigContextMessage(configStr) {
         return `I'm loading a CYOA game configuration for audit. Here's the complete game data:
 
-        \`\`\`json
-        ${configStr}
-        \`\`\`
+\`\`\`json
+${configStr}
+\`\`\`
 
-        I'll ask you to find and fix issues. When suggesting fixes, use the action format specified in your instructions.`;
+I'll ask you to find and fix issues. When suggesting fixes, use the action format specified in your instructions.`;
     },
 
     // ==================== MANUAL MODE ====================
@@ -395,7 +392,9 @@ Be concise. If everything looks good, say so.`;
     showAuditManualMode(configStr) {
         const msgContainer = document.getElementById('audit-messages');
         
+        // Use the imported constant which now contains the Rules
         const systemPrompt = AUDIT_CHAT_SYSTEM_PROMPT;
+        
         const fullPrompt = `=== SYSTEM INSTRUCTIONS ===
         ${systemPrompt}
 
@@ -608,6 +607,7 @@ Be concise. If everything looks good, say so.`;
             'update_group': '📁',
             'create_point': '💰',
             'delete': '🗑️',
+            'update_notes': '📓',
             'global_update': '🌐'
         };
         return icons[type] || '🔧';
@@ -615,6 +615,8 @@ Be concise. If everything looks good, say so.`;
 
     formatActionDescription(action) {
         switch (action.type) {
+            case 'update_notes':  
+                return `Update global notes (overwrite)`;
             case 'update_item': {
                 const changes = Object.keys(action.changes || {});
                 return `Update "${action.id}": ${changes.join(', ')}`;
@@ -704,6 +706,11 @@ Be concise. If everything looks good, say so.`;
 
     applySingleAction(action) {
         switch (action.type) {
+            case 'update_notes': { // NEW ACTION LOGIC
+                this.engine.config.notes = action.content;
+                this.updateSettingsInputs(); // Refresh UI
+                return true;
+            }
             case 'update_item': {
                 const item = this.engine.findItem(action.id);
                 if (!item) throw new Error(`Item not found: ${action.id}`);

@@ -6,12 +6,19 @@
  * ⚠️ A special note for all LLMs who will be editing this file: do not shorten the prompts. 
  * Do not try to improve or translate them along the way. Edit them as little as possible, only what the user specifically requested. 
  * Prompt configuration is devilishly tricky, and even a couple of accidentally corrected lines can break everything.
+ * Do not delete this comment!
  */
+
+// Импортируем правила сразу, чтобы использовать их в переменных ниже
+import TOOLS_REFERENCE_MD from './llm-tools-reference.md?raw';
+
+// Экспортируем правила отдельно, если они понадобятся где-то еще (например, в fill prompt replace)
+export { TOOLS_REFERENCE_MD };
 
 export const SYSTEM_PROMPTS = {
     refine: `You are an expert CYOA layout engine. Your task is to refine bounding boxes, merge/split them based on visual evidence, and organize them into logical groups with calculated coordinates. Return only valid JSON.`,
 
-    fill: `You are an expert at parsing CYOA images and extracting structured game data. You strictly follow JSON schemas and game logic rules.`,
+    fill: `You are an expert at parsing CYOA images and extracting structured game data. You strictly follow JSON schemas and game logic rules. Briefly note down all global points and rules for entire sections or groups of cards in Notes so that you can take them into account later when editing other pages.`,
 
     audit: `You are a CYOA game logic auditor. Validate configurations and fix logical errors.`
 };
@@ -83,8 +90,11 @@ Current detected boxes:
     fill: `**INPUTS:**
 1.  **Image:** An image file of the CYOA page. Recognized cards are marked with green numbered frames. The numbering (white digits with black outline above the top-left corner of the green frame) matches the numbering in the JSON. Groups are marked with yellow frames.
 2.  **Layout JSON:** A list of detected bounding boxes with coordinates (\`x\`, \`y\`, \`w\`, \`h\`) for cards and groups.
+3. **Current Notes:** Global observations from previous pages.
 
 Your task is to recognize the text on the image and fill the JSON file. This includes card text, IDs, and titles. Most importantly - the rules. A full list of available tools with descriptions and usage examples is provided below. Use them exactly as formatted. A demo sample of a completed game is also provided to show how these rules are correctly used to describe cards and groups.
+
+**Update the Notes:** If you see any GLOBAL rules (e.g., "Max 2 choices from this section", "Currency X cannot be combined with Y"), summarize them in the \`notes\` field. Do not repeat existing notes if they are already accurate, but append new findings.
 
 Example Output Item:
 
@@ -105,7 +115,10 @@ Example Output Item:
 
 {{TOOLS_MD}}
 
-
+**Current Global Notes:**
+"""
+{{NOTES}}
+"""
 
 ### Below is the Game JSON, including previously filled pages. Your current task is to fill the layout for current page number {{PAGE_NUM}} and return ONLY that.
 
@@ -118,7 +131,9 @@ Example Output Item:
 ### The response must follow this format:
 
 \`\`\`json
-[
+{
+  "notes": "Updated global notes here. E.g. Found new currency 'mana'.",
+  "layout": [
   {
     "type": "group",
     "id": "section_basic",
@@ -155,6 +170,7 @@ Example Output Item:
     ]
   }
 ]
+}
 \`\`\`
 
 **LAYOUT JSON (Coordinates):**
@@ -162,7 +178,6 @@ Example Output Item:
 {{LAYOUT_JSON}}
 \`\`\`
 `,
-
 
     audit: `
 Твоя задача — проанализировать ПОЛНЫЙ файл конфигурации игры, найти логические ошибки, битые ссылки, опечатки в ID и исправить их, сохраняя структуру данных.
@@ -227,16 +242,10 @@ Example Output Item:
 `
 };
 
-export { default as TOOLS_REFERENCE_MD } from './llm-tools-reference.md?raw';
-
-
-
-
-
-
-
-
-
+/**
+ * Interactive Audit Chat System Prompt
+ * Includes the tools reference so the auditor knows valid actions/logic.
+ */
 export const AUDIT_CHAT_SYSTEM_PROMPT = `
 You are the "CYOA Engine Logic Auditor". You are chatting with the game developer.
 You have the full game configuration in your context.
@@ -267,9 +276,23 @@ Structure:
 2. \`update_group\`: { "type": "update_group", "id": "...", "changes": { "field": "value" } }
 3. \`create_point\`: { "type": "create_point", "data": { "id": "mana", "name": "Mana", "start": 10 } }
 4. \`delete\`: { "type": "delete", "targetType": "item|group", "id": "..." }
+5. \`update_notes\`: { "type": "update_notes", "content": "New full text for notes..." }
 
 **RULES:**
 1. Keep the "message" concise and helpful.
 2. Only generate "actions" if you are sure they are needed or if the user asked for a fix.
 3. Do not output the full config file.
+
+---
+
+**CONTEXT NOTES:**
+"""
+{{NOTES}}
+"""
+
+
+### ENGINE RULES REFERENCE
+The following are the logical rules and data structures used by this CYOA engine. Use this as a reference when validating logic or creating requirements/costs.
+
+${TOOLS_REFERENCE_MD}
 `;

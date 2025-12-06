@@ -34,10 +34,25 @@ export const ResponseHandlerMixin = {
     },
 
     applyFillResult(data) {
+        // Handle Notes
+        if (data.notes) {
+            this.engine.config.notes = data.notes;
+        }
+
         const page = this.getCurrentPage();
+        
+        // Handle Layout (support both direct array or object wrapper)
         const newLayout = data.layout || (Array.isArray(data) ? data : []);
-        if (!newLayout.length) throw new Error("No layout data in response");
-        page.layout = newLayout.map(item => ({ type: item.type || 'item', ...item }));
+        
+        if (!newLayout.length && !data.notes) {
+            throw new Error("No layout data or notes in response");
+        }
+        
+        if (newLayout.length > 0) {
+            page.layout = newLayout.map(item => ({ type: item.type || 'item', ...item }));
+        }
+
+        // Handle Currencies
         if (data.inferred_currencies) {
             const existingIds = new Set((this.engine.config.points || []).map(p => p.id));
             data.inferred_currencies.forEach(c => {
@@ -47,6 +62,9 @@ export const ResponseHandlerMixin = {
                 }
             });
         }
+        
+        // Refresh Settings UI to show new notes
+        this.updateSettingsInputs();
     },
 
     applyAuditResult(data) {

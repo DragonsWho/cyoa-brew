@@ -44,6 +44,9 @@ export const LLMCoreMixin = {
         const systemPrompt = SYSTEM_PROMPTS[mode];
         let userPrompt = this.editablePrompts[mode];
         
+        // COMMON INJECTIONS
+        userPrompt = userPrompt.replace('{{NOTES}}', this.engine.config.notes || "No notes yet.");
+        
         if (data.layout) {
             userPrompt = userPrompt.replace('{{LAYOUT_JSON}}', JSON.stringify(data.layout, null, 2));
         } else if (data.boxes) {

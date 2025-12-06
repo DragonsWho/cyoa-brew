@@ -1,6 +1,5 @@
 /**
  * src/ui/editor/ui/settings-panel.js
- * Settings Tab: Pages, File Ops, Points, LLM, SAM
  */
 
 import { createLlmPanelHTML } from './llm-panel.js';
@@ -8,6 +7,18 @@ import { createLlmPanelHTML } from './llm-panel.js';
 export function createSettingsPanel() {
     return `
         <div id="tab-content-settings" class="tab-content" style="display:none;">
+            
+            <!-- Project Notes (New Section) -->
+            <div class="editor-section">
+                <div class="accordion-header" onclick="CYOA.editor.toggleAccordion(this)">📝 Project Notes & Global Rules</div>
+                <div class="accordion-content">
+                    <div style="margin-bottom:5px; font-size:0.75rem; color:#888;">
+                        Shared context for the LLM. Keep track of global mechanics (e.g. "You can only pick 2 Boons", "Strength converts to Health") here.
+                    </div>
+                    <textarea id="project-notes" class="code-editor" style="height:150px; font-family: sans-serif; font-size: 0.9rem; color:#ddd;" placeholder="Enter global game rules or notes here..."></textarea>
+                </div>
+            </div>
+
             <!-- Pages -->
             <div class="editor-section">
                 <div class="accordion-header" onclick="CYOA.editor.toggleAccordion(this)">📄 Pages</div>
@@ -77,6 +88,16 @@ export const SettingsPanelMixin = {
             document.getElementById('group-props').style.display = 'none';
             document.getElementById('group-empty-state').style.display = 'block';
         }
+    },
+
+    // UPDATE THIS FUNCTION TO POPULATE NOTES
+    updateSettingsInputs() {
+        const notesEl = document.getElementById('project-notes');
+        if (notesEl) {
+            notesEl.value = this.engine.config.notes || '';
+        }
+        this.renderPagesList();
+        this.renderPointsList();
     },
 
     renderPagesList() {

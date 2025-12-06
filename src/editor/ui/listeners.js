@@ -16,9 +16,19 @@ export const ListenersMixin = {
         this.setupLlmListeners(); 
         this.setupLoadListener();
         this.setupAddPageListener();
+        this.setupSettingsListeners();
     },
 
     // ==================== CHOICE PANEL ====================
+
+setupSettingsListeners() {
+    const notes = document.getElementById('project-notes');
+    if (notes) {
+        notes.addEventListener('input', (e) => {
+            this.engine.config.notes = e.target.value;
+        });
+    }
+},
 
 setupChoiceListeners() {
         const update = (key, val, isNum) => {
@@ -210,7 +220,10 @@ setupChoiceListeners() {
                 this.deselectChoice();
                 this.selectedGroup = null;
                 this.activePageIndex = 0;
-                this.renderPagesList();
+                
+                // Refresh UI including notes
+                this.updateSettingsInputs(); 
+                
             } catch (err) {
                 alert(`Error loading project: ${err.message}`);
             } finally {

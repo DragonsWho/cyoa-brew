@@ -94,8 +94,8 @@ export const SidebarMixin = {
                 document.getElementById('group-props').style.display = 'block';
             }
         } else if (tabName === 'settings') {
-            this.renderPagesList();
-            this.renderPointsList();
+            // CALL THE NEW UPDATE FUNCTION
+            this.updateSettingsInputs(); 
         }
     },
 
