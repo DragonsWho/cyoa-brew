@@ -23,6 +23,7 @@ export class UIRenderer {
             this.renderAll();
         });
 
+        this.buttonStateCache = new Map();
         console.log('🎨 Renderer initialized');
     }
 
@@ -266,40 +267,82 @@ export class UIRenderer {
         this.updateBudgets();
     }
 
-    updateButtons() {
+ updateButtons() {
         document.querySelectorAll('.item-zone').forEach(el => {
             const itemId = el.dataset.itemId;
-
+            
+            // Быстрый поиск через Map в движке
             const item = this.engine.findItem(itemId);
             const group = this.engine.findGroupForItem(itemId);
 
             if (!item) return;
 
+            // 1. Вычисляем текущее логическое состояние (Чистая математика, очень быстро)
+            // qty - сколько выбрано
+            // isSelected - выбрано ли вообще
+            // canSelect - доступны ли требования (reqs)
+            // hasMoney - хватает ли денег (если важно визуально блокировать без денег)
+            // (В canSelect обычно уже входит проверка требований, но не всегда денег - зависит от твоего rules.js. 
+            //  Если canSelect проверяет только требования, а не деньги - добавь проверку денег сюда, если хочешь,
+            //  но для базовой оптимизации достаточно того, что влияет на CSS классы).
+            
             const qty = this.engine.state.selected.get(itemId) || 0;
             const isSelected = qty > 0;
             const canSelect = this.engine.canSelect(item, group);
             const maxQty = item.max_quantity || 1;
+            
+            // Для рулетки: активно ли вращение?
+            const isSpinning = el.classList.contains('spinning-active');
 
-            el.classList.toggle('selected', isSelected);
+            // 2. Формируем уникальный ключ состояния
+            // Если этот ключ совпадет с прошлым - значит визуально ничего менять не надо
+            const stateKey = `${isSelected}|${canSelect}|${qty}|${isSpinning}`;
+            
+            // 3. ПРОВЕРКА КЭША (ОПТИМИЗАЦИЯ)
+            // Если состояние не изменилось - не трогаем медленный DOM
+            if (this.buttonStateCache.get(itemId) === stateKey) {
+                return; 
+            }
+
+            // Запоминаем новое состояние
+            this.buttonStateCache.set(itemId, stateKey);
+
+            // 4. ОБНОВЛЕНИЕ DOM (Только если реально что-то поменялось)
+            
+            // Класс 'selected'
+            if (el.classList.contains('selected') !== isSelected) {
+                el.classList.toggle('selected', isSelected);
+            }
 
             if (maxQty > 1) {
-                el.classList.toggle('maxed', qty >= maxQty);
+                const isMaxed = qty >= maxQty;
+                if (el.classList.contains('maxed') !== isMaxed) {
+                    el.classList.toggle('maxed', isMaxed);
+                }
+                
                 const badge = el.querySelector('.qty-badge');
                 if (badge) {
                     badge.textContent = qty;
-                    badge.style.display = isSelected ? 'flex' : 'none';
+                    // Избегаем лишнего style.display = '...' если он уже такой
+                    const displayStyle = isSelected ? 'flex' : 'none';
+                    if (badge.style.display !== displayStyle) {
+                        badge.style.display = displayStyle;
+                    }
                 }
             } else {
-                el.classList.toggle('disabled', !canSelect && !isSelected);
+                // Класс 'disabled'
+                // Кнопка заблокирована, если нельзя выбрать И она еще не выбрана
+                const isDisabled = !canSelect && !isSelected;
+                if (el.classList.contains('disabled') !== isDisabled) {
+                    el.classList.toggle('disabled', isDisabled);
+                }
             }
 
-            // Roulette logic
+            // Логика рулетки (оставляем как есть, она специфичная)
             const hasDiceEffect = item.effects && item.effects.some(e => e.type === 'roll_dice');
-            
             if (hasDiceEffect) {
                 const rolledValue = this.engine.state.rollResults.get(itemId);
                 const currentBadge = el.querySelector('.roll-result-badge');
-                const isSpinning = el.classList.contains('spinning-active');
 
                 if (isSelected && rolledValue !== undefined) {
                     if (!el.dataset.hasAnimated && !isSpinning && !currentBadge) {
@@ -308,10 +351,13 @@ export class UIRenderer {
                         this.showPermanentBadge(el, rolledValue, true);
                     }
                 } else {
-                    const mask = el.querySelector('.roulette-mask');
-                    if (mask) mask.remove();
+                    // Очистка при отмене выбора
                     if (currentBadge) currentBadge.remove();
-                    el.classList.remove('spinning-active');
+                    if (isSpinning) {
+                        const mask = el.querySelector('.roulette-mask');
+                        if (mask) mask.remove();
+                        el.classList.remove('spinning-active');
+                    }
                     delete el.dataset.hasAnimated;
                 }
             }

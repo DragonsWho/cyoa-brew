@@ -6,6 +6,11 @@
 export class RuleEvaluator {
     constructor(engine) {
         this.engine = engine;
+        // ⚡ КЭШ ФОРМУЛ
+        // Здесь мы будем хранить скомпилированные функции, чтобы не создавать их заново.
+        // Ключ = строка формулы (например, "qty('sword') > 1")
+        // Значение = готовая JS функция
+        this.formulaCache = new Map();
     }
 
     // ==================== REQUIREMENTS ====================
@@ -137,13 +142,31 @@ export class RuleEvaluator {
         return Math.round(finalValue);
     }
 
-    // ==================== FORMULA EVALUATION ====================
+    // ==================== FORMULA EVALUATION (OPTIMIZED) ====================
 
     evaluateFormula(formula, item, group) {
         try {
+            // 1. Создаем свежие данные (контекст). 
+            // Это происходит КАЖДЫЙ раз, поэтому "Скидка" всегда будет учтена.
             const context = this.createFormulaContext(item, group);
-            const func = new Function(...Object.keys(context), `return ${formula};`);
+            
+            // 2. Проверяем, есть ли у нас уже скомпилированная функция для этой строки формулы
+            let func = this.formulaCache.get(formula);
+
+            if (!func) {
+                // 3. Если нет в кэше — компилируем.
+                // ВАЖНО: Мы используем Object.keys(context), чтобы имена аргументов (has, qty...) 
+                // совпадали с тем, что мы передадим при вызове.
+                func = new Function(...Object.keys(context), `return ${formula};`);
+                
+                // Сохраняем "рецепт" в кэш
+                this.formulaCache.set(formula, func);
+            }
+
+            // 4. Выполняем сохраненную (или только что созданную) функцию
+            // передавая ей СВЕЖИЕ значения (Object.values(context))
             return func(...Object.values(context));
+
         } catch (error) {
             console.error('Formula error:', formula, error);
             return 0;
@@ -154,6 +177,8 @@ export class RuleEvaluator {
         const state = this.engine.state;
 
         return {
+            // Эти ключи должны быть стабильными (всегда в одном порядке), 
+            // но в JS создание объекта литералом обычно сохраняет порядок добавления.
             has: (id) => state.selected.has(id),
             qty: (id) => state.selected.get(id) || 0,
             
@@ -187,7 +212,6 @@ export class RuleEvaluator {
 
     createCountHelper(currentGroup) {
         const counts = {};
-        // Changed: use getAllGroups() instead of config.groups
         for (const group of this.engine.getAllGroups()) {
             counts[group.id] = this.engine.getGroupQty(group);
         }
