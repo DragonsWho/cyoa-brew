@@ -20,42 +20,66 @@ export const ListenersMixin = {
 
     // ==================== CHOICE PANEL ====================
 
-    setupChoiceListeners() {
+setupChoiceListeners() {
         const update = (key, val, isNum) => {
             if (!this.selectedItem) return;
             if (isNum) val = parseInt(val) || 0;
-            if (['x','y','w','h'].includes(key)) { 
-                if (!this.selectedItem.coords) this.selectedItem.coords = {}; 
-                this.selectedItem.coords[key] = val; 
-            } else if (key === 'tags') { 
-                this.selectedItem.tags = val.split(',').map(t => t.trim()).filter(t => t); 
-            } else { 
-                this.selectedItem[key] = val; 
+            
+            // === ЗАЩИТА ОТ ДУРАКА (Min/Max Validation) ===
+            if (key === 'min_quantity') {
+                // Если Минимум стал больше Максимума -> Поднимаем Максимум
+                const currentMax = this.selectedItem.max_quantity !== undefined ? this.selectedItem.max_quantity : 1;
+                if (val > currentMax) {
+                    this.selectedItem.max_quantity = val;
+                    // Обновляем поле ввода в UI, чтобы пользователь видел изменение
+                    const maxInput = document.getElementById('edit-max_quantity');
+                    if (maxInput) maxInput.value = val;
+                }}
+        if (key === 'max_quantity') {
+            // Если Максимум стал меньше Минимума -> Опускаем Минимум
+            const currentMin = this.selectedItem.min_quantity !== undefined ? this.selectedItem.min_quantity : 0;
+            if (val < currentMin) {
+                this.selectedItem.min_quantity = val;
+                // Обновляем поле ввода в UI
+                const minInput = document.getElementById('edit-min_quantity');
+                if (minInput) minInput.value = val;
             }
-            if (key === 'max_quantity' || key === 'min_quantity') {
-                if (key === 'max_quantity' && val <= 1) delete this.selectedItem.max_quantity;
-                if (key === 'min_quantity' && val === 0) delete this.selectedItem.min_quantity;
-                
-                this.renderer.renderLayout();
-                setTimeout(() => { 
-                    this.refreshSelectionVisuals();
-                }, 0);
-            } else {
-                this.renderer.renderLayout(); 
+        }
+        if (['x','y','w','h'].includes(key)) { 
+            if (!this.selectedItem.coords) this.selectedItem.coords = {}; 
+            this.selectedItem.coords[key] = val; 
+        } else if (key === 'tags') { 
+            this.selectedItem.tags = val.split(',').map(t => t.trim()).filter(t => t); 
+        } else { 
+            this.selectedItem[key] = val; 
+        }
+
+        // Очистка дефолтных значений для чистоты JSON
+        if (key === 'max_quantity' || key === 'min_quantity') {
+            if (key === 'max_quantity' && val <= 1) delete this.selectedItem.max_quantity;
+            if (key === 'min_quantity' && val === 0) delete this.selectedItem.min_quantity;
+            
+            this.renderer.renderLayout();
+            setTimeout(() => { 
                 this.refreshSelectionVisuals();
+            }, 0);
+        } else { 
+            this.renderer.renderLayout
+            ();
+            this.refreshSelectionVisuals();
             }
             this.updateCodePreview();
-        };
+            };
         const inputs = ['edit-id', 'edit-title', 'edit-description', 'edit-tags', 'edit-x', 'edit-y', 'edit-w', 'edit-h', 'edit-max_quantity', 'edit-min_quantity'];
-        inputs.forEach(id => {
-            const el = document.getElementById(id); 
-            if (!el) return;
-            const key = id.split('-').pop(); 
-            const realKey = (id === 'edit-description') ? 'description' : key; 
-            const isNum = ['x','y','w','h', 'max_quantity', 'min_quantity'].includes(key);
-            el.addEventListener('input', (e) => update(realKey, e.target.value, isNum));
-        });
-    },
+            inputs.forEach(id => {
+                const el = document.getElementById(id); 
+                if (!el) return;
+                const key = id.split('-').pop(); 
+                const realKey = (id === 'edit-description') ? 'description' : key; 
+                const isNum = ['x','y','w','h', 'max_quantity', 'min_quantity'].includes(key); 
+                el.addEventListener('input', (e) => update(realKey, e.target.value, isNum));
+            });
+        },
 
     // ==================== GROUP PANEL ====================
 

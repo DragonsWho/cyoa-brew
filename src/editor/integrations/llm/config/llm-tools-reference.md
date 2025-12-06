@@ -7,7 +7,7 @@ Use this as the authoritative reference when generating or parsing CYOA configur
 
 ## 1. JSON STRUCTURE OVERVIEW
 
-```
+```json
 {
   "meta": { ... },           // Project metadata
   "points": [ ... ],         // Currency definitions
@@ -196,7 +196,8 @@ Items are the selectable cards/choices.
   ],
   "requirements": ["basic_magic"],
   "incompatible": ["pacifist_oath"],
-  "max_quantity": 1,
+  "max_quantity": 5,
+  "min_quantity": 0,
   "effects": [ ... ]
 }
 ```
@@ -204,7 +205,7 @@ Items are the selectable cards/choices.
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `type` | `"item"` | Yes | Must be "item" |
-| `id` | string | Yes | Unique identifier (全局唯一) |
+| `id` | string | Yes | Unique identifier (Global unique) |
 | `title` | string | No | Display title |
 | `description` | string | No | Card description (use `\n` for line breaks) |
 | `coords` | object | Yes | Position `{x, y, w, h}` |
@@ -213,6 +214,7 @@ Items are the selectable cards/choices.
 | `requirements` | array | No | Prerequisites |
 | `incompatible` | array | No | Mutually exclusive items |
 | `max_quantity` | number | No | Max times selectable (default: 1) |
+| `min_quantity` | number | No | Min times selectable (default: 0). Can be negative. |
 | `effects` | array | No | Effects when selected |
 
 ---
@@ -365,17 +367,28 @@ Used by:
 
 ---
 
-## 12. MAX_QUANTITY
+## 12. QUANTITY LIMITS (MAX & MIN)
 
-Allows an item to be selected multiple times.
+Controls how many times an item can be selected, including negative selection (selling/debt).
 
 ```json
-"max_quantity": 5
+"max_quantity": 5,
+"min_quantity": -2
 ```
 
-- Default: `1` (can only select once)
-- If > 1: Shows +/- buttons, displays quantity badge
-- Cost is multiplied by quantity
+- **`max_quantity`**: Maximum times selectable.
+    - Default: `1` (single select).
+    - If > 1, enables multi-select mode.
+- **`min_quantity`**: Minimum times selectable.
+    - Default: `0`.
+    - Can be negative (e.g., `-5`) to allow "selling" stats or taking on debt.
+    - Can be positive (e.g., `1`). This creates a "Ratchet" effect: players start at 0, but once they buy the item, they cannot sell it back below this limit.
+
+**Behavior:**
+- If `max_quantity > 1` OR `min_quantity < 0`:
+    - The item shows `+` / `-` buttons.
+    - Displays a quantity badge (Red for negative, Standard for positive).
+    - Cost is multiplied by quantity (Negative quantity = Reverse cost logic).
 
 ---
 

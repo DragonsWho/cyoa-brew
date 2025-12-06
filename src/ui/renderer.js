@@ -278,29 +278,24 @@ export class UIRenderer {
 
             if (!item) return;
 
-            // 1. Вычисляем текущее логическое состояние (Чистая математика, очень быстро)
-            // qty - сколько выбрано
-            // isSelected - выбрано ли вообще
-            // canSelect - доступны ли требования (reqs)
-            // hasMoney - хватает ли денег (если важно визуально блокировать без денег)
-            // (В canSelect обычно уже входит проверка требований, но не всегда денег - зависит от твоего rules.js. 
-            //  Если canSelect проверяет только требования, а не деньги - добавь проверку денег сюда, если хочешь,
-            //  но для базовой оптимизации достаточно того, что влияет на CSS классы).
-            
+            // 1. Вычисляем текущее логическое состояние
             const qty = this.engine.state.selected.get(itemId) || 0;
-            const isSelected = qty > 0;
+            const isSelected = qty !== 0; // Выбрано, если не 0 (включая отрицательные)
+            
+            // canSelect проверяет требования (reqs/costs). 
             const canSelect = this.engine.canSelect(item, group);
-const maxQty = item.max_quantity !== undefined ? item.max_quantity : 1;
+            
+            const maxQty = item.max_quantity !== undefined ? item.max_quantity : 1;
             const minQty = item.min_quantity !== undefined ? item.min_quantity : 0;
             
             // Для рулетки: активно ли вращение?
             const isSpinning = el.classList.contains('spinning-active');
 
             // 2. Формируем уникальный ключ состояния
+            // Если этот ключ совпадет с прошлым - значит визуально ничего менять не надо
             const stateKey = `${isSelected}|${canSelect}|${qty}|${isSpinning}|${maxQty}|${minQty}`;
             
             // 3. ПРОВЕРКА КЭША (ОПТИМИЗАЦИЯ)
-            // Если состояние не изменилось - не трогаем медленный DOM
             if (this.buttonStateCache.get(itemId) === stateKey) {
                 return; 
             }
@@ -308,56 +303,55 @@ const maxQty = item.max_quantity !== undefined ? item.max_quantity : 1;
             // Запоминаем новое состояние
             this.buttonStateCache.set(itemId, stateKey);
 
-            // 4. ОБНОВЛЕНИЕ DOM (Только если реально что-то поменялось)
+            // 4. ОБНОВЛЕНИЕ DOM
             
-            // Класс 'selected'
+            // -- КЛАСС SELECTED --
             if (el.classList.contains('selected') !== isSelected) {
                 el.classList.toggle('selected', isSelected);
             }
 
+            // -- КЛАСС DISABLED (ГЛОБАЛЬНО) --
+            // Карточка "выключена" визуально (серые полоски), ТОЛЬКО если
+            // мы её еще не выбрали И не можем выбрать (не выполнены условия).
+            // Если мы на 0, но canSelect=true, она должна быть активна.
+            const isDisabled = !canSelect && !isSelected;
+            if (el.classList.contains('disabled') !== isDisabled) {
+                el.classList.toggle('disabled', isDisabled);
+            }
+
+            // -- ЛОГИКА МУЛЬТИ-ВЫБОРА / ОТРИЦАТЕЛЬНЫХ ЗНАЧЕНИЙ --
             if (maxQty > 1 || minQty < 0) {
                 const isMaxed = qty >= maxQty;
-                const isMinned = qty <= minQty;
-
-                // Toggle visual classes for buttons (using CSS targeting or additional logic could be added)
-                // For now, relies on click-zone not reacting if logic prevents it, 
-                // but visually we can mark limits if desired. 
-                // Let's just update the main classes.
-                el.classList.toggle('maxed', isMaxed);
-                el.classList.toggle('disabled', isMinned && !isMaxed && !isSelected && qty === 0); 
+                // Класс maxed делает карточку визуально "полной" (зеленоватый фон), 
+                // но не disabled.
+                if (el.classList.contains('maxed') !== isMaxed) {
+                    el.classList.toggle('maxed', isMaxed);
+                }
                 
                 const badge = el.querySelector('.qty-badge');
                 if (badge) {
                     badge.textContent = qty;
-                    
-                    // Color logic for negative values
-                    if (qty < 0) {
-                        badge.style.backgroundColor = '#d32f2f'; // Red
-                        badge.style.borderColor = '#ff9999';
-                        badge.style.color = '#fff';
-                    } else {
-                        badge.style.backgroundColor = ''; // Reset to CSS default (black)
-                        badge.style.borderColor = '';     // Reset (green)
-                        badge.style.color = '';           // Reset (green)
-                    }
 
-                    // Show badge if non-zero OR if we are in negative territory but currently at 0 (rare, usually 0 is removed)
-                    // Actually, if qty !== 0, isSelected is true.
+                    // Стиль для отрицательных значений
+                    if (qty < 0) {
+                        badge.classList.add('negative');
+                        badge.style.backgroundColor = '';
+                        badge.style.borderColor = '';
+                        badge.style.color = '';
+                    } else {
+                        badge.classList.remove('negative');
+                    }
+                    
+                    // Показываем бейдж, если количество не равно 0
+                    // (для мульти-выбора иногда полезно видеть и 0, но по стандарту скрываем)
                     const displayStyle = (qty !== 0) ? 'flex' : 'none';
                     if (badge.style.display !== displayStyle) {
                         badge.style.display = displayStyle;
                     }
                 }
-            } else {
-                // Класс 'disabled'
-                // Кнопка заблокирована, если нельзя выбрать И она еще не выбрана
-                const isDisabled = !canSelect && !isSelected;
-                if (el.classList.contains('disabled') !== isDisabled) {
-                    el.classList.toggle('disabled', isDisabled);
-                }
-            }
+            } 
 
-            // Логика рулетки (оставляем как есть, она специфичная)
+            // -- ЛОГИКА РУЛЕТКИ --
             const hasDiceEffect = item.effects && item.effects.some(e => e.type === 'roll_dice');
             if (hasDiceEffect) {
                 const rolledValue = this.engine.state.rollResults.get(itemId);

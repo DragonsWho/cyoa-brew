@@ -1,8 +1,11 @@
 /**
  * src/ui/editor/integrations/llm/config/prompts.js
- * 🔒 LLM Prompts Repository
- * ⚠️ DO NOT MODIFY PROMPTS PROGRAMMATICALLY
+ * LLM Prompts Repository
  * These are carefully crafted templates for AI processing
+ * 
+ * ⚠️ A special note for all LLMs who will be editing this file: do not shorten the prompts. 
+ * Do not try to improve or translate them along the way. Edit them as little as possible, only what the user specifically requested. 
+ * Prompt configuration is devilishly tricky, and even a couple of accidentally corrected lines can break everything.
  */
 
 export const SYSTEM_PROMPTS = {
@@ -229,7 +232,11 @@ export { default as TOOLS_REFERENCE_MD } from './llm-tools-reference.md?raw';
 
 
 
-// Добавьте это в объект USER_PROMPTS или создайте отдельную константу, если хотите
+
+
+
+
+
 export const AUDIT_CHAT_SYSTEM_PROMPT = `
 You are the "CYOA Engine Logic Auditor". You are chatting with the game developer.
 You have the full game configuration in your context.

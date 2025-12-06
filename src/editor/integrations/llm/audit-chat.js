@@ -383,11 +383,11 @@ Be concise. If everything looks good, say so.`;
     buildConfigContextMessage(configStr) {
         return `I'm loading a CYOA game configuration for audit. Here's the complete game data:
 
-\`\`\`json
-${configStr}
-\`\`\`
+        \`\`\`json
+        ${configStr}
+        \`\`\`
 
-I'll ask you to find and fix issues. When suggesting fixes, use the action format specified in your instructions.`;
+        I'll ask you to find and fix issues. When suggesting fixes, use the action format specified in your instructions.`;
     },
 
     // ==================== MANUAL MODE ====================
@@ -397,24 +397,24 @@ I'll ask you to find and fix issues. When suggesting fixes, use the action forma
         
         const systemPrompt = AUDIT_CHAT_SYSTEM_PROMPT;
         const fullPrompt = `=== SYSTEM INSTRUCTIONS ===
-${systemPrompt}
+        ${systemPrompt}
 
-=== GAME CONFIGURATION ===
-\`\`\`json
-${configStr}
-\`\`\`
+        === GAME CONFIGURATION ===
+        \`\`\`json
+        ${configStr}
+        \`\`\`
 
-=== YOUR TASK ===
-Analyze this configuration. Find broken references, missing reciprocal incompatibilities, undefined currencies, and other logical issues.
+        === YOUR TASK ===
+        Analyze this configuration. Find broken references, missing reciprocal incompatibilities, undefined currencies, and other logical issues.
 
-Respond with JSON in this format:
-{
-  "message": "Summary of what you found",
-  "actions": [
-    {"type": "update_item", "id": "item_id", "changes": {"field": "value"}},
-    {"type": "create_point", "data": {"id": "currency_id", "name": "Currency", "start": 0}}
-  ]
-}`;
+        Respond with JSON in this format:
+            {
+            "message": "Summary of what you found",
+            "actions": [
+                {"type": "update_item", "id": "item_id", "changes": {"field": "value"}},
+                {"type": "create_point", "data": {"id": "currency_id", "name": "Currency", "start": 0}}
+            ]
+        }`;
 
         msgContainer.innerHTML = `
             <div class="audit-msg system">📋 Manual Mode</div>
