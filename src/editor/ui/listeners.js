@@ -32,25 +32,27 @@ export const ListenersMixin = {
             } else { 
                 this.selectedItem[key] = val; 
             }
-            if (key === 'max_quantity') {
-                if (val <= 1) delete this.selectedItem.max_quantity;
+            if (key === 'max_quantity' || key === 'min_quantity') {
+                if (key === 'max_quantity' && val <= 1) delete this.selectedItem.max_quantity;
+                if (key === 'min_quantity' && val === 0) delete this.selectedItem.min_quantity;
+                
                 this.renderer.renderLayout();
                 setTimeout(() => { 
                     this.refreshSelectionVisuals();
                 }, 0);
-            } else { 
+            } else {
                 this.renderer.renderLayout(); 
                 this.refreshSelectionVisuals();
             }
             this.updateCodePreview();
         };
-        const inputs = ['edit-id', 'edit-title', 'edit-description', 'edit-tags', 'edit-x', 'edit-y', 'edit-w', 'edit-h', 'edit-max_quantity'];
+        const inputs = ['edit-id', 'edit-title', 'edit-description', 'edit-tags', 'edit-x', 'edit-y', 'edit-w', 'edit-h', 'edit-max_quantity', 'edit-min_quantity'];
         inputs.forEach(id => {
             const el = document.getElementById(id); 
             if (!el) return;
             const key = id.split('-').pop(); 
             const realKey = (id === 'edit-description') ? 'description' : key; 
-            const isNum = ['x','y','w','h', 'max_quantity'].includes(key); 
+            const isNum = ['x','y','w','h', 'max_quantity', 'min_quantity'].includes(key);
             el.addEventListener('input', (e) => update(realKey, e.target.value, isNum));
         });
     },

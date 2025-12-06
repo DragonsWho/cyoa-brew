@@ -173,9 +173,10 @@ export class UIRenderer {
             ));
         }
 
-        const maxQty = item.max_quantity || 1;
+        const maxQty = item.max_quantity !== undefined ? item.max_quantity : 1;
+        const minQty = item.min_quantity !== undefined ? item.min_quantity : 0;
 
-        if (maxQty > 1) {
+        if (maxQty > 1 || minQty < 0) {
             button.classList.add('multi-select');
             const controls = document.createElement('div');
             controls.className = 'split-controls';
@@ -289,14 +290,14 @@ export class UIRenderer {
             const qty = this.engine.state.selected.get(itemId) || 0;
             const isSelected = qty > 0;
             const canSelect = this.engine.canSelect(item, group);
-            const maxQty = item.max_quantity || 1;
+const maxQty = item.max_quantity !== undefined ? item.max_quantity : 1;
+            const minQty = item.min_quantity !== undefined ? item.min_quantity : 0;
             
             // Для рулетки: активно ли вращение?
             const isSpinning = el.classList.contains('spinning-active');
 
             // 2. Формируем уникальный ключ состояния
-            // Если этот ключ совпадет с прошлым - значит визуально ничего менять не надо
-            const stateKey = `${isSelected}|${canSelect}|${qty}|${isSpinning}`;
+            const stateKey = `${isSelected}|${canSelect}|${qty}|${isSpinning}|${maxQty}|${minQty}`;
             
             // 3. ПРОВЕРКА КЭША (ОПТИМИЗАЦИЯ)
             // Если состояние не изменилось - не трогаем медленный DOM
@@ -314,17 +315,35 @@ export class UIRenderer {
                 el.classList.toggle('selected', isSelected);
             }
 
-            if (maxQty > 1) {
+            if (maxQty > 1 || minQty < 0) {
                 const isMaxed = qty >= maxQty;
-                if (el.classList.contains('maxed') !== isMaxed) {
-                    el.classList.toggle('maxed', isMaxed);
-                }
+                const isMinned = qty <= minQty;
+
+                // Toggle visual classes for buttons (using CSS targeting or additional logic could be added)
+                // For now, relies on click-zone not reacting if logic prevents it, 
+                // but visually we can mark limits if desired. 
+                // Let's just update the main classes.
+                el.classList.toggle('maxed', isMaxed);
+                el.classList.toggle('disabled', isMinned && !isMaxed && !isSelected && qty === 0); 
                 
                 const badge = el.querySelector('.qty-badge');
                 if (badge) {
                     badge.textContent = qty;
-                    // Избегаем лишнего style.display = '...' если он уже такой
-                    const displayStyle = isSelected ? 'flex' : 'none';
+                    
+                    // Color logic for negative values
+                    if (qty < 0) {
+                        badge.style.backgroundColor = '#d32f2f'; // Red
+                        badge.style.borderColor = '#ff9999';
+                        badge.style.color = '#fff';
+                    } else {
+                        badge.style.backgroundColor = ''; // Reset to CSS default (black)
+                        badge.style.borderColor = '';     // Reset (green)
+                        badge.style.color = '';           // Reset (green)
+                    }
+
+                    // Show badge if non-zero OR if we are in negative territory but currently at 0 (rare, usually 0 is removed)
+                    // Actually, if qty !== 0, isSelected is true.
+                    const displayStyle = (qty !== 0) ? 'flex' : 'none';
                     if (badge.style.display !== displayStyle) {
                         badge.style.display = displayStyle;
                     }

@@ -120,33 +120,40 @@ export class GameEngine {
         }
     }
 
-    // ==================== SELECTION ====================
+// ==================== SELECTION ====================
 
     select(itemId) {
         const item = this.findItem(itemId);
         if (!item) return false;
 
         const group = this.findGroupForItem(itemId);
-        // Group can be null for standalone items - that's OK
-
+        
+        // Check requirements only if we are increasing from 0 or above (conceptually "taking" the item)
+        // If we are simply reducing a negative debt (e.g. -2 -> -1), we might skip strict req checks, 
+        // but typically requirements apply to having the item at all. 
+        // For simplicity, we keep checking canSelect.
         if (!this.canSelect(item, group)) return false;
 
         const currentQty = this.state.selected.get(itemId) || 0;
-        const maxQty = item.max_quantity || 1;
+        const maxQty = item.max_quantity !== undefined ? item.max_quantity : 1;
 
         if (currentQty >= maxQty) return false;
 
         // Radio logic (only if item is in a group with max_choices)
-        if (group && group.rules?.max_choices) {
+        // Only apply radio logic if we are actually selecting a positive amount (qty > 0)
+        // or moving from 0 to 1. 
+        if (group && group.rules?.max_choices && currentQty >= 0) {
             if (currentQty === 0 && group.rules.max_choices === 1) {
                 // Deselect others in this group
                 const groupItems = group.items || [];
                 for (const i of groupItems) {
                     if (this.state.selected.has(i.id) && i.id !== itemId) {
-                        this.state.selected.delete(i.id);
+                        const otherQty = this.state.selected.get(i.id);
+                        if (otherQty > 0) this.state.selected.delete(i.id);
                     }
                 }
             } else {
+                // Check if adding 1 would exceed group limit (sum of positive selections)
                 const totalInGroup = this.getGroupQty(group);
                 if (totalInGroup >= group.rules.max_choices) {
                     console.log(`Max choices reached in ${group.id}`);
@@ -155,8 +162,8 @@ export class GameEngine {
             }
         }
 
-        // Roll dice logic
-        if (item.effects) {
+        // Roll dice logic (only trigger on 0 -> 1 transition)
+        if (currentQty === 0 && item.effects) {
             const rollEffect = item.effects.find(e => e.type === 'roll_dice');
             if (rollEffect && !this.state.rollResults.has(itemId)) {
                 const min = parseInt(rollEffect.min) || 1;
@@ -167,25 +174,37 @@ export class GameEngine {
             }
         }
 
-        this.state.selected.set(itemId, currentQty + 1);
+        const newQty = currentQty + 1;
+        if (newQty === 0) {
+            this.state.selected.delete(itemId);
+        } else {
+            this.state.selected.set(itemId, newQty);
+        }
+
         this.recalculate(); 
-        this.emit('selection', { itemId, selected: true, qty: currentQty + 1 });
+        this.emit('selection', { itemId, selected: true, qty: newQty });
         return true;
     }
 
     deselect(itemId) {
-        if (!this.state.selected.has(itemId)) return false;
+        const item = this.findItem(itemId);
+        if (!item) return false;
 
-        const currentQty = this.state.selected.get(itemId);
+        const currentQty = this.state.selected.get(itemId) || 0;
+        const minQty = item.min_quantity !== undefined ? item.min_quantity : 0;
+
+        if (currentQty <= minQty) return false;
+
+        const newQty = currentQty - 1;
         
-        if (currentQty > 1) {
-            this.state.selected.set(itemId, currentQty - 1);
-        } else {
+        if (newQty === 0) {
             this.state.selected.delete(itemId);
+        } else {
+            this.state.selected.set(itemId, newQty);
         }
 
         this.recalculate();
-        this.emit('selection', { itemId, selected: false, qty: currentQty - 1 });
+        this.emit('selection', { itemId, selected: false, qty: newQty });
         return true;
     }
 

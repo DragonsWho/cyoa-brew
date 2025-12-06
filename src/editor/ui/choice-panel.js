@@ -53,9 +53,15 @@ export function createChoicePanel() {
                             <span class="input-label">GRP</span>
                         </div>
                     </div>
-                    <div class="input-group">
-                        <input type="number" id="edit-max_quantity" min="1" placeholder="1">
-                        <span class="input-label">Max Qty</span>
+                    <div class="row-2">
+                        <div class="input-group">
+                            <input type="number" id="edit-min_quantity" placeholder="0">
+                            <span class="input-label">Min Qty</span>
+                        </div>
+                        <div class="input-group">
+                            <input type="number" id="edit-max_quantity" min="1" placeholder="1">
+                            <span class="input-label">Max Qty</span>
+                        </div>
                     </div>
                     <div class="input-group">
                         <input type="text" id="edit-title">
@@ -135,7 +141,8 @@ export const ChoicePanelMixin = {
         const group = this.engine.findGroupForItem(item.id);
         document.getElementById('edit-id').value = item.id || '';
         document.getElementById('edit-parent-group').value = group ? group.id : '(none)';
-        document.getElementById('edit-max_quantity').value = item.max_quantity || 1;
+        document.getElementById('edit-max_quantity').value = item.max_quantity !== undefined ? item.max_quantity : 1;
+        document.getElementById('edit-min_quantity').value = item.min_quantity !== undefined ? item.min_quantity : 0;
         document.getElementById('edit-title').value = item.title || '';
         document.getElementById('edit-description').value = item.description || '';
         document.getElementById('edit-tags').value = (item.tags || []).join(', ');
