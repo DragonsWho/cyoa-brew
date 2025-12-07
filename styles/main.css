@@ -111,4 +111,7 @@ body.text-mode .text-content { display: block; pointer-events: auto; }
 #tooltip .debug-info { margin-top: 10px; padding-top: 10px; border-top: 1px dashed #555; color: #777; font-size: 0.75em; font-family: monospace; }
 #tooltip .mod-applied { color: #4db8ff; font-size: 0.85em; font-weight: normal; margin-left: 6px; font-family: monospace;}
 
+/* === SEPARATOR (Hidden by default, shown by editor.css) === */
+.page-separator { display: none; }
+
 @media (max-width: 768px) { .bottom-tools { gap: 0; padding: 10px 5px; } .ctrl-btn { padding: 6px; } #points-bar { gap: 20px; padding: 10px; } }

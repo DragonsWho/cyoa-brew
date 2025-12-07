@@ -1,8 +1,6 @@
 /**
  * src\ui\renderer.js
  * UI Renderer - Handles all visual rendering
- * 
- * Architecture v2: Renders from config.pages[].layout[]
  */
 
 import { CoordHelper } from '../utils/coords.js';
@@ -57,6 +55,12 @@ export class UIRenderer {
                 container.id = `page-${index}`;
                 container.dataset.pageId = page.id;
 
+                // VISUAL DIVIDER (Editor Mode)
+                const separator = document.createElement('div');
+                separator.className = 'page-separator';
+                separator.textContent = `Page ${index + 1}`;
+                container.appendChild(separator);
+
                 const img = document.createElement('img');
                 img.className = 'page-image';
                 img.src = page.image;
@@ -89,167 +93,221 @@ export class UIRenderer {
         await Promise.all(loadPromises);
     }
 
-    // ==================== LAYOUT RENDERING ====================
+    // ==================== LAYOUT RENDERING (OPTIMIZED) ====================
 
     renderLayout() {
         const pages = this.engine.config.pages || [];
         
-        // Clear all layers first
-        pages.forEach((_, index) => {
-            const layer = document.getElementById(`layer-${index}`);
-            if (layer) layer.innerHTML = '';
-        });
-
-        // Render each page's layout
         pages.forEach((page, pageIndex) => {
             const layer = document.getElementById(`layer-${pageIndex}`);
             const dim = this.pageDimensions[pageIndex];
-            
             if (!layer || !dim) return;
 
+            const existingElements = Array.from(layer.children);
+            const activeIds = new Set();
             const layout = page.layout || [];
             
+            // 1. Sync Groups and Items
             for (const element of layout) {
                 if (element.type === 'group') {
-                    this.renderGroup(element, layer, dim);
+                    this.syncGroupDOM(element, layer, dim, activeIds);
+                    // Sync items inside group
+                    const items = element.items || [];
+                    for (const item of items) {
+                        this.syncItemDOM(item, element, layer, dim, activeIds);
+                    }
                 } else if (element.type === 'item') {
-                    // Standalone item (not in a group)
-                    this.renderItem(element, null, layer, dim);
+                    this.syncItemDOM(element, null, layer, dim, activeIds);
                 }
             }
+            
+            // 2. Cleanup Removed Elements
+            existingElements.forEach(el => {
+                // Ignore Budget Badges in this cleanup phase, handled by updateBudget
+                if (el.classList.contains('group-budget-badge')) return; 
+
+                // If element ID is not in active set, remove it
+                if (el.id && !activeIds.has(el.id)) {
+                    el.remove();
+                }
+            });
+
+            // 3. Render/Update Budget Badges (separate pass logic for simplicity)
+            this.syncBudgetBadges(page, layer, dim);
         });
         
         this.updateUI();
     }
 
-    renderGroup(group, layer, dim) {
-        // Render group zone (info box)
-        if (group.coords) {
-            const zone = document.createElement('div');
+    syncGroupDOM(group, layer, dim, activeIds) {
+        if (!group.coords) return;
+        
+        const domId = `group-${group.id}`;
+        activeIds.add(domId);
+
+        let zone = document.getElementById(domId);
+        let isNew = false;
+
+        if (!zone) {
+            isNew = true;
+            zone = document.createElement('div');
             zone.className = 'click-zone info-zone';
-            zone.id = `group-${group.id}`;
+            zone.id = domId;
             zone.dataset.groupId = group.id;
-
-            Object.assign(zone.style, CoordHelper.toPercent(group.coords, dim));
-
-            if (group.title || group.description) {
-                zone.appendChild(this.createTextLayer(
-                    group.title || '',
-                    group.description || ''
-                ));
-            }
-
             layer.appendChild(zone);
-
-            // Budget badge
-            if (group.rules?.budget) {
-                this.renderBudgetBadge(group, layer, dim);
-            }
         }
 
-        // Render items inside group
-        const items = group.items || [];
-        for (const item of items) {
-            this.renderItem(item, group, layer, dim);
+        // Update Geometry
+        Object.assign(zone.style, CoordHelper.toPercent(group.coords, dim));
+
+        // Update Text (Only if content changes or new)
+        const newTitle = group.title || '';
+        const newDesc = group.description || '';
+        const combinedContent = `${newTitle}|${newDesc}`;
+        
+        if (isNew || zone.dataset.contentHash !== combinedContent) {
+            zone.innerHTML = ''; // Clear old text
+            if (newTitle || newDesc) {
+                zone.appendChild(this.createTextLayer(newTitle, newDesc));
+            }
+            zone.dataset.contentHash = combinedContent;
         }
     }
 
-    renderItem(item, group, layer, dim) {
+    syncItemDOM(item, group, layer, dim, activeIds) {
         if (!item.coords) return;
 
-        const button = document.createElement('div');
-        button.className = 'click-zone item-zone';
-        button.id = `btn-${item.id}`;
+        const domId = `btn-${item.id}`;
+        activeIds.add(domId);
+
+        let button = document.getElementById(domId);
+        let isNew = false;
+
+        if (!button) {
+            isNew = true;
+            button = document.createElement('div');
+            button.className = 'click-zone item-zone';
+            button.id = domId;
+            layer.appendChild(button);
+            
+            // One-time Setup
+            this.setupItemEvents(button, item, group);
+        }
+        
+        // Update Attributes
         button.dataset.itemId = item.id;
         button.dataset.groupId = group ? group.id : '';
 
+        // Update Geometry
         Object.assign(button.style, CoordHelper.toPercent(item.coords, dim));
 
-        // --- NON-SELECTABLE (STATIC INFO) CARDS ---
-        if (item.selectable === false) {
-            button.classList.add('static-info');
+        // --- Handle Static vs Interactive State Changes ---
+        const isStatic = (item.selectable === false);
+        if (button.classList.contains('static-info') !== isStatic) {
+            button.classList.toggle('static-info', isStatic);
+            // Re-bind events if type changed? Usually cleaner to just update class
+            // But static items ignore clicks via CSS pointer-events (mostly)
+        }
+
+        // --- Content Update ---
+        const newTitle = item.title || '';
+        const newDesc = item.description || '';
+        const isMulti = (item.max_quantity !== undefined && item.max_quantity > 1) || (item.min_quantity !== undefined && item.min_quantity < 0);
+        
+        const contentHash = `${newTitle}|${newDesc}|${isMulti}`;
+
+        if (isNew || button.dataset.contentHash !== contentHash) {
+            // Rebuild inner HTML structure
+            button.innerHTML = '';
             
-            // Still render text for translation/readability
-            if (item.title || item.description) {
-                button.appendChild(this.createTextLayer(
-                    item.title || '',
-                    item.description || ''
-                ));
+            if (newTitle || newDesc) {
+                button.appendChild(this.createTextLayer(newTitle, newDesc));
+            }
+
+            if (!isStatic && isMulti) {
+                button.classList.add('multi-select');
+                const controls = document.createElement('div');
+                controls.className = 'split-controls';
+                
+                const minusBtn = document.createElement('div');
+                minusBtn.className = 'split-btn minus';
+                // Direct assignment prevents listener duplication
+                minusBtn.onclick = (e) => { e.stopPropagation(); this.engine.deselect(item.id); };
+
+                const plusBtn = document.createElement('div');
+                plusBtn.className = 'split-btn plus';
+                plusBtn.onclick = (e) => { e.stopPropagation(); this.engine.select(item.id); };
+
+                controls.appendChild(minusBtn);
+                controls.appendChild(plusBtn);
+                button.appendChild(controls);
+
+                const badge = document.createElement('div');
+                badge.className = 'qty-badge';
+                badge.style.display = 'none'; 
+                button.appendChild(badge);
+            } else {
+                button.classList.remove('multi-select');
             }
             
-            // Still attach tooltip to allow reading descriptions
+            button.dataset.contentHash = contentHash;
+        }
+        
+        // Always ensure tooltip is attached/updated
+        // TooltipManager handles updates internally usually, but we ensure it knows the current data
+        // Optimization: Tooltip only needs attach on mouseenter, which is stable. 
+        // We only re-attach if it's new to ensure listeners are there.
+        if (isNew) {
             this.tooltip.attach(button, item, group);
-            
-            layer.appendChild(button);
-            return; // EXIT HERE: No click logic needed
         }
-        // -------------------------------------------
-
-        // Normal Interactive Item logic
-        if (item.title || item.description) {
-            button.appendChild(this.createTextLayer(
-                item.title || '',
-                item.description || ''
-            ));
-        }
-
-        const maxQty = item.max_quantity !== undefined ? item.max_quantity : 1;
-        const minQty = item.min_quantity !== undefined ? item.min_quantity : 0;
-
-        if (maxQty > 1 || minQty < 0) {
-            button.classList.add('multi-select');
-            const controls = document.createElement('div');
-            controls.className = 'split-controls';
-            
-            const minusBtn = document.createElement('div');
-            minusBtn.className = 'split-btn minus';
-            minusBtn.onclick = (e) => {
-                e.stopPropagation(); 
-                this.engine.deselect(item.id);
-            };
-
-            const plusBtn = document.createElement('div');
-            plusBtn.className = 'split-btn plus';
-            plusBtn.onclick = (e) => {
-                e.stopPropagation();
-                this.engine.select(item.id);
-            };
-
-            controls.appendChild(minusBtn);
-            controls.appendChild(plusBtn);
-            button.appendChild(controls);
-
-            const badge = document.createElement('div');
-            badge.className = 'qty-badge';
-            badge.style.display = 'none'; 
-            button.appendChild(badge);
-
-        } else {
-            button.onclick = () => {
-                this.engine.toggle(item.id);
-            };
-        }
-
-        this.tooltip.attach(button, item, group);
-
-        layer.appendChild(button);
     }
 
-    renderBudgetBadge(group, layer, dim) {
-        const badge = document.createElement('div');
-        badge.className = 'group-budget-badge';
-        badge.id = `budget-${group.id}`;
+    setupItemEvents(button, item, group) {
+        // Main Click
+        button.onclick = (e) => {
+             // If multi-select, click is handled by split-btns, but background click logic?
+             // Usually background click toggles for single items.
+             const currentItem = this.engine.findItem(button.dataset.itemId);
+             const isMulti = (currentItem.max_quantity !== undefined && currentItem.max_quantity > 1);
+             if (!isMulti && currentItem.selectable !== false) {
+                 this.engine.toggle(currentItem.id);
+             }
+        };
+    }
 
-        const style = CoordHelper.toPercent(group.coords, dim);
-        const leftVal = parseFloat(style.left);
-        const widthVal = parseFloat(style.width);
-        const topVal = parseFloat(style.top);
+    syncBudgetBadges(page, layer, dim) {
+        const layout = page.layout || [];
+        const activeBadges = new Set();
 
-        badge.style.left = (leftVal + widthVal / 2) + '%';
-        badge.style.top = topVal + '%';
+        layout.forEach(element => {
+            if (element.type === 'group' && element.rules?.budget) {
+                const badgeId = `budget-${element.id}`;
+                activeBadges.add(badgeId);
+                
+                let badge = document.getElementById(badgeId);
+                if (!badge) {
+                    badge = document.createElement('div');
+                    badge.className = 'group-budget-badge';
+                    badge.id = badgeId;
+                    layer.appendChild(badge);
+                }
+                
+                // Position
+                const style = CoordHelper.toPercent(element.coords, dim);
+                const leftVal = parseFloat(style.left);
+                const widthVal = parseFloat(style.width);
+                const topVal = parseFloat(style.top);
+                badge.style.left = (leftVal + widthVal / 2) + '%';
+                badge.style.top = topVal + '%';
 
-        layer.appendChild(badge);
-        this.updateBudgetBadge(group);
+                this.updateBudgetBadge(element);
+            }
+        });
+
+        // Cleanup
+        Array.from(layer.getElementsByClassName('group-budget-badge')).forEach(el => {
+            if (!activeBadges.has(el.id)) el.remove();
+        });
     }
 
     createTextLayer(title, description) {
@@ -291,90 +349,51 @@ export class UIRenderer {
     updateButtons() {
         document.querySelectorAll('.item-zone').forEach(el => {
             const itemId = el.dataset.itemId;
-            
-            // Быстрый поиск через Map в движке
             const item = this.engine.findItem(itemId);
-            const group = this.engine.findGroupForItem(itemId);
-
             if (!item) return;
 
             // Skip static items for updates
             if (item.selectable === false) return;
 
-            // 1. Вычисляем текущее логическое состояние
             const qty = this.engine.state.selected.get(itemId) || 0;
-            const isSelected = qty !== 0; // Выбрано, если не 0 (включая отрицательные)
-            
-            // canSelect проверяет требования (reqs/costs). 
-            const canSelect = this.engine.canSelect(item, group);
-            
+            const isSelected = qty !== 0; 
+            const canSelect = this.engine.canSelect(item, this.engine.findGroupForItem(itemId));
             const maxQty = item.max_quantity !== undefined ? item.max_quantity : 1;
             const minQty = item.min_quantity !== undefined ? item.min_quantity : 0;
-            
-            // Для рулетки: активно ли вращение?
             const isSpinning = el.classList.contains('spinning-active');
 
-            // 2. Формируем уникальный ключ состояния
-            // Если этот ключ совпадет с прошлым - значит визуально ничего менять не надо
             const stateKey = `${isSelected}|${canSelect}|${qty}|${isSpinning}|${maxQty}|${minQty}`;
             
-            // 3. ПРОВЕРКА КЭША (ОПТИМИЗАЦИЯ)
             if (this.buttonStateCache.get(itemId) === stateKey) {
                 return; 
             }
-
-            // Запоминаем новое состояние
             this.buttonStateCache.set(itemId, stateKey);
 
-            // 4. ОБНОВЛЕНИЕ DOM
-            
-            // -- КЛАСС SELECTED --
             if (el.classList.contains('selected') !== isSelected) {
                 el.classList.toggle('selected', isSelected);
             }
 
-            // -- КЛАСС DISABLED (ГЛОБАЛЬНО) --
-            // Карточка "выключена" визуально (серые полоски), ТОЛЬКО если
-            // мы её еще не выбрали И не можем выбрать (не выполнены условия).
-            // Если мы на 0, но canSelect=true, она должна быть активна.
             const isDisabled = !canSelect && !isSelected;
             if (el.classList.contains('disabled') !== isDisabled) {
                 el.classList.toggle('disabled', isDisabled);
             }
 
-            // -- ЛОГИКА МУЛЬТИ-ВЫБОРА / ОТРИЦАТЕЛЬНЫХ ЗНАЧЕНИЙ --
             if (maxQty > 1 || minQty < 0) {
                 const isMaxed = qty >= maxQty;
-                // Класс maxed делает карточку визуально "полной" (зеленоватый фон), 
-                // но не disabled.
                 if (el.classList.contains('maxed') !== isMaxed) {
                     el.classList.toggle('maxed', isMaxed);
                 }
-                
                 const badge = el.querySelector('.qty-badge');
                 if (badge) {
                     badge.textContent = qty;
-
-                    // Стиль для отрицательных значений
-                    if (qty < 0) {
-                        badge.classList.add('negative');
-                        badge.style.backgroundColor = '';
-                        badge.style.borderColor = '';
-                        badge.style.color = '';
-                    } else {
-                        badge.classList.remove('negative');
-                    }
+                    if (qty < 0) badge.classList.add('negative');
+                    else badge.classList.remove('negative');
                     
-                    // Показываем бейдж, если количество не равно 0
-                    // (для мульти-выбора иногда полезно видеть и 0, но по стандарту скрываем)
                     const displayStyle = (qty !== 0) ? 'flex' : 'none';
-                    if (badge.style.display !== displayStyle) {
-                        badge.style.display = displayStyle;
-                    }
+                    if (badge.style.display !== displayStyle) badge.style.display = displayStyle;
                 }
             } 
 
-            // -- ЛОГИКА РУЛЕТКИ --
             const hasDiceEffect = item.effects && item.effects.some(e => e.type === 'roll_dice');
             if (hasDiceEffect) {
                 const rolledValue = this.engine.state.rollResults.get(itemId);
@@ -387,7 +406,6 @@ export class UIRenderer {
                         this.showPermanentBadge(el, rolledValue, true);
                     }
                 } else {
-                    // Очистка при отмене выбора
                     if (currentBadge) currentBadge.remove();
                     if (isSpinning) {
                         const mask = el.querySelector('.roulette-mask');
@@ -536,11 +554,6 @@ export class UIRenderer {
         badge.textContent = `${budget.name || budget.currency}: ${remaining}/${total}`;
         badge.classList.toggle('empty', remaining === 0);
     }
-
-    // ==================== LEGACY COMPATIBILITY ====================
-    // These methods are called by editor.js - keeping them for now
-
-    renderButtons() {
-        this.renderLayout();
-    }
+    
+    renderButtons() { this.renderLayout(); }
 }

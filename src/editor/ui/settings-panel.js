@@ -8,25 +8,18 @@ export function createSettingsPanel() {
     return `
         <div id="tab-content-settings" class="tab-content" style="display:none;">
             
-            <!-- Project Notes (New Section) -->
+            <!-- Project Notes -->
             <div class="editor-section">
                 <div class="accordion-header" onclick="CYOA.editor.toggleAccordion(this)">📝 Project Notes & Global Rules</div>
                 <div class="accordion-content">
                     <div style="margin-bottom:5px; font-size:0.75rem; color:#888;">
-                        Shared context for the LLM. Keep track of global mechanics (e.g. "You can only pick 2 Boons", "Strength converts to Health") here.
+                        Shared context for the LLM. Keep track of global mechanics here.
                     </div>
                     <textarea id="project-notes" class="code-editor" style="height:150px; font-family: sans-serif; font-size: 0.9rem; color:#ddd;" placeholder="Enter global game rules or notes here..."></textarea>
                 </div>
             </div>
 
-            <!-- Pages -->
-            <div class="editor-section">
-                <div class="accordion-header" onclick="CYOA.editor.toggleAccordion(this)">📄 Pages</div>
-                <div class="accordion-content">
-                    <div id="pages-list" style="margin-bottom:10px; max-height:200px; overflow-y:auto;"></div>
-                    <button class="full-width-btn" style="background:#2e7d32;" onclick="document.getElementById('add-page-image-input').click()">➕ Add New Page</button>
-                </div>
-            </div>
+            <!-- Removed 'Page Operations' accordion as button moved to navbar -->
 
             <!-- File Operations -->
             <div class="editor-section">
@@ -82,7 +75,14 @@ export function createSettingsPanel() {
 export const SettingsPanelMixin = {
     selectPage(index) {
         this.activePageIndex = index;
-        this.renderPagesList();
+        
+        // Scroll workspace to the selected page
+        const pageEl = document.getElementById(`page-${index}`);
+        if (pageEl) {
+            pageEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        this.renderPageNavigationBar(); // Re-render nav to update active state
         this.deselectChoice();
         this.selectedGroup = null;
         if (this.activeTab === 'group') {
@@ -91,37 +91,18 @@ export const SettingsPanelMixin = {
         }
     },
 
-    // UPDATE THIS FUNCTION TO POPULATE NOTES
     updateSettingsInputs() {
         const notesEl = document.getElementById('project-notes');
         if (notesEl) {
             notesEl.value = this.engine.config.notes || '';
         }
-        this.renderPagesList();
+        this.renderPageNavigationBar();
         this.renderPointsList();
     },
 
+    // Legacy method redirection
     renderPagesList() {
-        const container = document.getElementById('pages-list');
-        if (!container) return;
-        const pages = this.engine.config.pages || [];
-        if (pages.length === 0) { container.innerHTML = `<div style="color:#888; padding:10px;">No pages yet.</div>`; return; }
-        
-        container.innerHTML = pages.map((page, idx) => {
-            const counts = this.countPageElements(page);
-            const isActive = idx === this.activePageIndex;
-            return `
-                <div class="page-list-item ${isActive ? 'active' : ''}" 
-                     onclick="CYOA.editor.selectPage(${idx})"
-                     style="display:flex; justify-content:space-between; padding:8px; margin-bottom:4px; background:${isActive ? '#2e7d32' : '#2a2a2a'}; border-radius:4px; cursor:pointer;">
-                    <div>
-                        <span style="font-weight:bold;">Page ${idx + 1}</span>
-                        <div style="font-size:0.7rem; color:#aaa;">${counts.groups} groups, ${counts.items} items</div>
-                    </div>
-                    <button onclick="event.stopPropagation(); CYOA.editor.deletePage(${idx})" style="background:#d32f2f; border:none; color:white; border-radius:3px; padding:0 6px;">✕</button>
-                </div>
-            `;
-        }).join('');
+        this.renderPageNavigationBar();
     },
     
     renderPointsList() {

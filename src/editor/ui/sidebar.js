@@ -37,6 +37,13 @@ export const SidebarMixin = {
                 <button class="close-tab-btn" onclick="CYOA.controls.toggleEditMode()">✕</button>
             </div>
             
+            <!-- Page Navigation Strip -->
+            <div class="editor-page-nav-container">
+                <button class="nav-arrow" onclick="CYOA.editor.scrollPageNav(-100)">‹</button>
+                <div id="editor-page-nav-scroll" class="nav-scroll-area"></div>
+                <button class="nav-arrow" onclick="CYOA.editor.scrollPageNav(100)">›</button>
+            </div>
+            
             <div class="sidebar-scroll-content">
                 ${createChoicePanel()}
                 ${createGroupPanel()}
@@ -63,12 +70,72 @@ export const SidebarMixin = {
         // Setup listeners
         this.setupAllListeners();
         
+        // Mouse wheel scrolling for page nav
+        const navScroll = document.getElementById('editor-page-nav-scroll');
+        if (navScroll) {
+            navScroll.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                navScroll.scrollLeft += e.deltaY;
+            });
+        }
+        
         // Context menu
         if (this.setupContextMenu) {
              this.setupContextMenu(); 
         }
         
-        this.renderPagesList();
+        this.renderPageNavigationBar();
+    },
+
+    // ==================== PAGE NAV RENDERER ====================
+
+    renderPageNavigationBar() {
+        const container = document.getElementById('editor-page-nav-scroll');
+        if (!container) return;
+        
+        const pages = this.engine.config.pages || [];
+        
+        let html = '';
+        
+        if (pages.length > 0) {
+            pages.forEach((page, idx) => {
+                const counts = this.countPageElements(page);
+                const isActive = idx === this.activePageIndex;
+                const tooltip = `Page ${idx + 1}\nItems: ${counts.items}\nGroups: ${counts.groups}`;
+                
+                html += `
+                    <div class="nav-page-btn ${isActive ? 'active' : ''}" 
+                        onclick="CYOA.editor.selectPage(${idx})" 
+                        title="${tooltip}">
+                        <span class="page-num">${idx + 1}</span>
+                        ${isActive ? `<span class="page-close" onclick="event.stopPropagation(); CYOA.editor.deletePage(${idx})">×</span>` : ''}
+                    </div>
+                    <div class="nav-divider">|</div>
+                `;
+            });
+        }
+
+        // Add New Page Button at the end
+        html += `
+            <div class="nav-page-btn nav-add-btn" 
+                 onclick="document.getElementById('add-page-image-input').click()" 
+                 title="Add New Page Image">
+                 <span>+</span>
+            </div>
+        `;
+        
+        container.innerHTML = html;
+        
+        // Ensure active page is visible
+        setTimeout(() => {
+            const activeEl = container.querySelector('.nav-page-btn.active');
+            if (activeEl) activeEl.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+        }, 10);
+    },
+
+    scrollPageNav(amount) {
+        const container = document.getElementById('editor-page-nav-scroll');
+        if (container) container.scrollBy({ left: amount, behavior: 'smooth' });
     },
 
     // ==================== TAB SWITCHING ====================
@@ -94,7 +161,6 @@ export const SidebarMixin = {
                 document.getElementById('group-props').style.display = 'block';
             }
         } else if (tabName === 'settings') {
-            // CALL THE NEW UPDATE FUNCTION
             this.updateSettingsInputs(); 
         }
     },
