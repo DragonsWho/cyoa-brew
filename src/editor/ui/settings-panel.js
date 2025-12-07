@@ -9,9 +9,9 @@ export function createSettingsPanel() {
         <div id="tab-content-settings" class="tab-content" style="display:none;">
             
             <!-- Project Notes -->
-            <div class="editor-section">
-                <div class="accordion-header" onclick="CYOA.editor.toggleAccordion(this)">📝 Project Notes & Global Rules</div>
-                <div class="accordion-content">
+            <div class="editor-section"> 
+                <div class="accordion-header collapsed" onclick="CYOA.editor.toggleAccordion(this)">📝 Project Notes & Global Rules</div> 
+                <div class="accordion-content collapsed">
                     <div style="margin-bottom:5px; font-size:0.75rem; color:#888;">
                         Shared context for the LLM. Keep track of global mechanics here.
                     </div>
