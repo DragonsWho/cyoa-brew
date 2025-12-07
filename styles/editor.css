@@ -14,13 +14,37 @@ body.editor-interacting .info-zone { transition: none !important; }
     z-index: 9999; pointer-events: none; display: none;
 }
 
-/* Base debug style (when edit mode is ON but items not selected) */
-body.show-zones .click-zone { 
-    border: 2px solid rgba(255,0,0,0.5) !important; background-color: rgba(255,0,0,0.05) !important;
-    border-radius: 0 !important; box-shadow: none !important; 
+/* === BASE EDITOR STYLES (When NOT in Preview Mode) === */
+/* Using high specificity to override custom user CSS */
+
+body.show-zones:not(.editor-preview-active) #game-wrapper .click-zone { 
+    border: 2px solid rgba(255,0,0,0.5) !important; 
+    background-color: rgba(255,0,0,0.05) !important;
+    background-image: none !important; /* Kill custom backgrounds */
+    border-radius: 0 !important; 
+    box-shadow: none !important; /* Kill custom shadows */
+    opacity: 1 !important;
 }
-body.show-zones .click-zone::after { content: attr(id); position: absolute; top: 0; left: 0; background: red; color: white; font-size: 10px; padding: 1px 3px; pointer-events: none; }
-body.show-zones .info-zone { border: 2px dashed rgba(255,165,0,0.4) !important; background-color: rgba(255,165,0,0.1) !important; }
+
+body.show-zones:not(.editor-preview-active) #game-wrapper .click-zone::after { 
+    content: attr(id); position: absolute; top: 0; left: 0; 
+    background: red; color: white; font-size: 10px; padding: 1px 3px; 
+    pointer-events: none; display: block !important;
+    border-radius: 0 !important;
+    /* Reset any decorative ::after styles from main.css */
+    width: auto !important; height: auto !important; inset: auto !important;
+    box-shadow: none !important; border: none !important; opacity: 1 !important;
+}
+
+body.show-zones:not(.editor-preview-active) #game-wrapper .info-zone { 
+    border: 2px dashed rgba(255,165,0,0.4) !important; 
+    background-color: rgba(255,165,0,0.1) !important; 
+}
+
+/* Hide budget badges in editor mode to avoid clutter */
+body.show-zones:not(.editor-preview-active) .group-budget-badge {
+    opacity: 0.5; pointer-events: none;
+}
 
 /* Edit Interaction Modes */
 body.edit-mode-choice .item-zone { pointer-events: auto; cursor: move; }
@@ -79,6 +103,9 @@ body.editor-preview-active.show-zones .click-zone.selected::after {
     background-color: var(--sel-bg-color) !important;
     opacity: var(--sel-bg-opacity) !important;
     z-index: -1 !important;
+    /* Reset positioning just in case */
+    position: absolute !important; inset: 0 !important; width: 100% !important; height: 100% !important;
+    border-radius: inherit !important;
 }
 
 /* 5. FORCE Game Styles for Disabled Items */
@@ -104,6 +131,7 @@ body.editor-preview-active.show-zones .click-zone.disabled::after {
     background-size: cover !important;
     opacity: var(--dis-bg-opacity) !important;
     z-index: -1 !important;
+    border-radius: inherit !important;
 }
 
 
