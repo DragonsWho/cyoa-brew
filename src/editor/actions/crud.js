@@ -157,13 +157,19 @@ export const CRUDMixin = {
     deletePage(index) {
         this.history.push('delete_page');
         const pages = this.engine.config.pages || [];
-        if (pages.length <= 1) { alert('Cannot delete the last page.'); return; }
+        
+        // REMOVED: Restriction on deleting the last page
+        // if (pages.length <= 1) { alert('Cannot delete the last page.'); return; }
         
         const counts = this.countPageElements(pages[index]);
         if (!confirm(`Delete page ${index + 1}? (${counts.items} items)`)) return;
         
         pages.splice(index, 1);
-        if (this.activePageIndex >= pages.length) this.activePageIndex = pages.length - 1;
+        
+        // Adjust active index if necessary
+        if (this.activePageIndex >= pages.length) {
+            this.activePageIndex = Math.max(0, pages.length - 1);
+        }
         
         this.engine.buildMaps();
         this.renderer.renderAll();

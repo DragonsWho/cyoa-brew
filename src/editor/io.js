@@ -1,7 +1,7 @@
 /**
  * src/ui/editor/io.js
  * Editor IO Mixin
- * Handles File Export (JSON/ZIP) and Debug Image generation.
+ * Handles File Export (JSON/ZIP), New Project, and Debug Image generation.
  */
 
 import { ProjectStorage } from '../utils/storage.js';
@@ -9,6 +9,35 @@ import { CoordHelper } from '../utils/coords.js';
 
 export const EditorIOMixin = {
     
+    newProject() {
+        if (!confirm("Create new project? All unsaved changes will be lost.")) return;
+        
+        // Reset configuration to default empty state
+        this.engine.config = {
+            pages: [],
+            points: [
+                { id: "points", name: "Points", start: 10 }
+            ],
+            notes: ""
+        };
+
+        this.activePageIndex = 0;
+        this.selectedItem = null;
+        this.selectedItems = [];
+        this.selectedGroup = null;
+
+        // Rebuild and Render
+        this.engine.buildMaps();
+        this.engine.state.resetCurrencies();
+        this.renderer.renderAll();
+        
+        // Update Editor UI
+        this.renderPagesList();
+        this.renderPointsList();
+        if (this.updateSettingsInputs) this.updateSettingsInputs();
+        this.switchTab('settings'); // Switch to settings so user can add a page
+    },
+
     exportConfig() {
         this.sortAllLayouts();
         ProjectStorage.save(this.engine.config);
@@ -23,7 +52,7 @@ export const EditorIOMixin = {
         }
     },
     
-async copyDebugImageToClipboard() {
+    async copyDebugImageToClipboard() {
         const page = this.getCurrentPage();
         if (!page || !page.image) { alert("No image on this page."); return; }
         
