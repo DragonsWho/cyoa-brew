@@ -25,13 +25,31 @@ export class UIRenderer {
         console.log('🎨 Renderer initialized');
     }
 
-    // ==================== MAIN RENDER ====================
-
     async renderAll() {
         await this.renderPages();
         this.renderLayout();
         this.renderPointsBar();
+        this.applyGlobalStyles(); // Apply custom CSS variables
         console.log('✅ All elements rendered');
+    }
+
+    // ==================== STYLES ====================
+
+    applyGlobalStyles() {
+        const style = this.engine.config.style;
+        if (!style) return;
+
+        const root = document.documentElement;
+        
+        // CSS Variables for .click-zone.selected
+        root.style.setProperty('--sel-border-c', style.borderColor || '#00ff00');
+        root.style.setProperty('--sel-border-w', `${style.borderWidth || 3}px`);
+        root.style.setProperty('--sel-radius', `${style.borderRadius || 12}px`);
+        root.style.setProperty('--sel-shadow-c', style.shadowColor || '#00ff00');
+        root.style.setProperty('--sel-shadow-w', `${style.shadowWidth || 15}px`);
+        
+        // Inset shadow opacity is derived
+        // Note: We use a hardcoded alpha for inset in CSS, but color comes from var
     }
 
     // ==================== PAGES ====================
@@ -55,7 +73,6 @@ export class UIRenderer {
                 container.id = `page-${index}`;
                 container.dataset.pageId = page.id;
 
-                // VISUAL DIVIDER (Editor Mode)
                 const separator = document.createElement('div');
                 separator.className = 'page-separator';
                 separator.textContent = `Page ${index + 1}`;
@@ -93,7 +110,7 @@ export class UIRenderer {
         await Promise.all(loadPromises);
     }
 
-    // ==================== LAYOUT RENDERING (OPTIMIZED) ====================
+    // ==================== LAYOUT RENDERING ====================
 
     renderLayout() {
         const pages = this.engine.config.pages || [];
@@ -107,11 +124,9 @@ export class UIRenderer {
             const activeIds = new Set();
             const layout = page.layout || [];
             
-            // 1. Sync Groups and Items
             for (const element of layout) {
                 if (element.type === 'group') {
                     this.syncGroupDOM(element, layer, dim, activeIds);
-                    // Sync items inside group
                     const items = element.items || [];
                     for (const item of items) {
                         this.syncItemDOM(item, element, layer, dim, activeIds);
@@ -121,18 +136,13 @@ export class UIRenderer {
                 }
             }
             
-            // 2. Cleanup Removed Elements
             existingElements.forEach(el => {
-                // Ignore Budget Badges in this cleanup phase, handled by updateBudget
                 if (el.classList.contains('group-budget-badge')) return; 
-
-                // If element ID is not in active set, remove it
                 if (el.id && !activeIds.has(el.id)) {
                     el.remove();
                 }
             });
 
-            // 3. Render/Update Budget Badges (separate pass logic for simplicity)
             this.syncBudgetBadges(page, layer, dim);
         });
         
@@ -141,13 +151,10 @@ export class UIRenderer {
 
     syncGroupDOM(group, layer, dim, activeIds) {
         if (!group.coords) return;
-        
         const domId = `group-${group.id}`;
         activeIds.add(domId);
-
         let zone = document.getElementById(domId);
         let isNew = false;
-
         if (!zone) {
             isNew = true;
             zone = document.createElement('div');
@@ -156,17 +163,12 @@ export class UIRenderer {
             zone.dataset.groupId = group.id;
             layer.appendChild(zone);
         }
-
-        // Update Geometry
         Object.assign(zone.style, CoordHelper.toPercent(group.coords, dim));
-
-        // Update Text (Only if content changes or new)
         const newTitle = group.title || '';
         const newDesc = group.description || '';
         const combinedContent = `${newTitle}|${newDesc}`;
-        
         if (isNew || zone.dataset.contentHash !== combinedContent) {
-            zone.innerHTML = ''; // Clear old text
+            zone.innerHTML = ''; 
             if (newTitle || newDesc) {
                 zone.appendChild(this.createTextLayer(newTitle, newDesc));
             }
@@ -176,72 +178,50 @@ export class UIRenderer {
 
     syncItemDOM(item, group, layer, dim, activeIds) {
         if (!item.coords) return;
-
         const domId = `btn-${item.id}`;
         activeIds.add(domId);
-
         let button = document.getElementById(domId);
         let isNew = false;
-
         if (!button) {
             isNew = true;
             button = document.createElement('div');
             button.className = 'click-zone item-zone';
             button.id = domId;
             layer.appendChild(button);
-            
-            // One-time Setup
             this.setupItemEvents(button, item, group);
         }
-        
-        // Update Attributes
         button.dataset.itemId = item.id;
         button.dataset.groupId = group ? group.id : '';
-
-        // Update Geometry
         Object.assign(button.style, CoordHelper.toPercent(item.coords, dim));
 
-        // --- Handle Static vs Interactive State Changes ---
         const isStatic = (item.selectable === false);
         if (button.classList.contains('static-info') !== isStatic) {
             button.classList.toggle('static-info', isStatic);
-            // Re-bind events if type changed? Usually cleaner to just update class
-            // But static items ignore clicks via CSS pointer-events (mostly)
         }
 
-        // --- Content Update ---
         const newTitle = item.title || '';
         const newDesc = item.description || '';
         const isMulti = (item.max_quantity !== undefined && item.max_quantity > 1) || (item.min_quantity !== undefined && item.min_quantity < 0);
-        
         const contentHash = `${newTitle}|${newDesc}|${isMulti}`;
 
         if (isNew || button.dataset.contentHash !== contentHash) {
-            // Rebuild inner HTML structure
             button.innerHTML = '';
-            
             if (newTitle || newDesc) {
                 button.appendChild(this.createTextLayer(newTitle, newDesc));
             }
-
             if (!isStatic && isMulti) {
                 button.classList.add('multi-select');
                 const controls = document.createElement('div');
                 controls.className = 'split-controls';
-                
                 const minusBtn = document.createElement('div');
                 minusBtn.className = 'split-btn minus';
-                // Direct assignment prevents listener duplication
                 minusBtn.onclick = (e) => { e.stopPropagation(); this.engine.deselect(item.id); };
-
                 const plusBtn = document.createElement('div');
                 plusBtn.className = 'split-btn plus';
                 plusBtn.onclick = (e) => { e.stopPropagation(); this.engine.select(item.id); };
-
                 controls.appendChild(minusBtn);
                 controls.appendChild(plusBtn);
                 button.appendChild(controls);
-
                 const badge = document.createElement('div');
                 badge.className = 'qty-badge';
                 badge.style.display = 'none'; 
@@ -249,24 +229,16 @@ export class UIRenderer {
             } else {
                 button.classList.remove('multi-select');
             }
-            
             button.dataset.contentHash = contentHash;
         }
         
-        // Always ensure tooltip is attached/updated
-        // TooltipManager handles updates internally usually, but we ensure it knows the current data
-        // Optimization: Tooltip only needs attach on mouseenter, which is stable. 
-        // We only re-attach if it's new to ensure listeners are there.
         if (isNew) {
             this.tooltip.attach(button, item, group);
         }
     }
 
     setupItemEvents(button, item, group) {
-        // Main Click
         button.onclick = (e) => {
-             // If multi-select, click is handled by split-btns, but background click logic?
-             // Usually background click toggles for single items.
              const currentItem = this.engine.findItem(button.dataset.itemId);
              const isMulti = (currentItem.max_quantity !== undefined && currentItem.max_quantity > 1);
              if (!isMulti && currentItem.selectable !== false) {
@@ -278,12 +250,10 @@ export class UIRenderer {
     syncBudgetBadges(page, layer, dim) {
         const layout = page.layout || [];
         const activeBadges = new Set();
-
         layout.forEach(element => {
             if (element.type === 'group' && element.rules?.budget) {
                 const badgeId = `budget-${element.id}`;
                 activeBadges.add(badgeId);
-                
                 let badge = document.getElementById(badgeId);
                 if (!badge) {
                     badge = document.createElement('div');
@@ -291,20 +261,15 @@ export class UIRenderer {
                     badge.id = badgeId;
                     layer.appendChild(badge);
                 }
-                
-                // Position
                 const style = CoordHelper.toPercent(element.coords, dim);
                 const leftVal = parseFloat(style.left);
                 const widthVal = parseFloat(style.width);
                 const topVal = parseFloat(style.top);
                 badge.style.left = (leftVal + widthVal / 2) + '%';
                 badge.style.top = topVal + '%';
-
                 this.updateBudgetBadge(element);
             }
         });
-
-        // Cleanup
         Array.from(layer.getElementsByClassName('group-budget-badge')).forEach(el => {
             if (!activeBadges.has(el.id)) el.remove();
         });
@@ -325,7 +290,6 @@ export class UIRenderer {
         const bar = document.getElementById('points-bar');
         bar.innerHTML = '';
         const points = this.engine.config.points || [];
-
         points.forEach(p => {
             const div = document.createElement('div');
             div.className = 'currency';
@@ -338,8 +302,6 @@ export class UIRenderer {
         });
     }
 
-    // ==================== UPDATE UI ====================
-
     updateUI() {
         this.updateButtons();
         this.updatePointsBar();
@@ -351,8 +313,6 @@ export class UIRenderer {
             const itemId = el.dataset.itemId;
             const item = this.engine.findItem(itemId);
             if (!item) return;
-
-            // Skip static items for updates
             if (item.selectable === false) return;
 
             const qty = this.engine.state.selected.get(itemId) || 0;
@@ -388,7 +348,6 @@ export class UIRenderer {
                     badge.textContent = qty;
                     if (qty < 0) badge.classList.add('negative');
                     else badge.classList.remove('negative');
-                    
                     const displayStyle = (qty !== 0) ? 'flex' : 'none';
                     if (badge.style.display !== displayStyle) badge.style.display = displayStyle;
                 }
@@ -398,7 +357,6 @@ export class UIRenderer {
             if (hasDiceEffect) {
                 const rolledValue = this.engine.state.rollResults.get(itemId);
                 const currentBadge = el.querySelector('.roll-result-badge');
-
                 if (isSelected && rolledValue !== undefined) {
                     if (!el.dataset.hasAnimated && !isSpinning && !currentBadge) {
                         this.playRouletteAnimation(el, rolledValue, item);
@@ -421,33 +379,26 @@ export class UIRenderer {
     playRouletteAnimation(container, targetNumber, item) {
         if (container.classList.contains('spinning-active')) return;
         container.classList.add('spinning-active');
-
         const mask = document.createElement('div');
         mask.className = 'roulette-mask';
         const strip = document.createElement('div');
         strip.className = 'roulette-strip';
-        
         const containerHeight = container.offsetHeight;
         const itemHeight = Math.floor(containerHeight * 0.65); 
         const maskOffset = (containerHeight - itemHeight) / 2;
-
         const diceEffect = item.effects.find(e => e.type === 'roll_dice');
         const min = parseInt(diceEffect?.min) || 1;
         const max = parseInt(diceEffect?.max) || 20;
-
         const totalItems = 30 + Math.floor(Math.random() * 15);
         const numbers = [];
         for (let i = 0; i < totalItems; i++) {
             numbers.push(Math.floor(Math.random() * (max - min + 1)) + min);
         }
-        
         const targetIndex = totalItems - 3;
         numbers[targetIndex] = targetNumber;
-
         strip.innerHTML = numbers.map(n => 
             `<div class="roulette-item" style="height:${itemHeight}px; line-height:${itemHeight}px;">${n}</div>`
         ).join('');
-        
         mask.appendChild(strip);
         container.appendChild(mask);
 
@@ -455,20 +406,11 @@ export class UIRenderer {
             { name: 'standard', duration: 2000, bezier: 'cubic-bezier(0.1, 0.7, 0.1, 1)', type: 'direct' },
             { name: 'slam', duration: 1500, bezier: 'cubic-bezier(0.5, 0.0, 0.1, 1)', type: 'direct' },
             { name: 'heavy', duration: 2500, bezier: 'cubic-bezier(0, 0.95, 0.2, 1)', type: 'direct' },
-            { name: 'tease_top', duration: 2000, bezier: 'cubic-bezier(0.1, 1, 0.8, 1)', type: 'nudge', offsetPercent: 0.45 },
-            { name: 'tease_tiny', duration: 2200, bezier: 'cubic-bezier(0.1, 1, 0.6, 1)', type: 'nudge', offsetPercent: 0.2 },
-            { name: 'grind', duration: 2800, bezier: 'cubic-bezier(0.25, 1, 0.5, 1)', type: 'direct' }
         ];
-
         const profile = spinProfiles[Math.floor(Math.random() * spinProfiles.length)];
-
         const baseTargetY = -1 * (targetIndex * itemHeight) + maskOffset;
         let initialY = baseTargetY;
         
-        if (profile.type === 'nudge') {
-            initialY = baseTargetY + (itemHeight * profile.offsetPercent);
-        }
-
         strip.offsetHeight;
         strip.style.transition = `transform ${profile.duration}ms ${profile.bezier}`;
         strip.style.transform = `translateY(${initialY}px)`;
@@ -476,37 +418,24 @@ export class UIRenderer {
         const finalize = () => {
             const winnerEl = strip.querySelectorAll('.roulette-item')[targetIndex];
             if(winnerEl) winnerEl.classList.add('winner');
-
             setTimeout(() => {
                 mask.style.opacity = '0';
                 mask.style.transition = 'opacity 0.2s';
                 this.showPermanentBadge(container, targetNumber);
-                
                 container.dataset.hasAnimated = "true";
                 container.classList.remove('spinning-active');
                 setTimeout(() => mask.remove(), 200);
             }, 400);
         };
-
-        if (profile.type === 'nudge') {
-            setTimeout(() => {
-                strip.style.transition = 'transform 300ms cubic-bezier(0.5, 0, 0.5, 1)'; 
-                strip.style.transform = `translateY(${baseTargetY}px)`;
-                setTimeout(finalize, 300);
-            }, profile.duration - 50); 
-        } else {
-            setTimeout(finalize, profile.duration);
-        }
+        setTimeout(finalize, profile.duration);
     }
 
     showPermanentBadge(container, value, instant = false) {
         const old = container.querySelector('.roll-result-badge');
         if (old) old.remove();
-
         const badge = document.createElement('div');
         badge.className = 'roll-result-badge';
         badge.textContent = value;
-        
         if (!instant) {
             badge.classList.add('spawn-anim');
             container.appendChild(badge);
@@ -541,14 +470,12 @@ export class UIRenderer {
     updateBudgetBadge(group) {
         const badge = document.getElementById(`budget-${group.id}`);
         if (!badge) return;
-
         const budgetState = this.engine.state.budgets[group.id];
         if (!budgetState) {
             const budget = group.rules.budget;
             badge.textContent = `${budget.name || budget.currency}: ${budget.amount}/${budget.amount}`;
             return;
         }
-
         const { total, remaining } = budgetState;
         const budget = group.rules.budget;
         badge.textContent = `${budget.name || budget.currency}: ${remaining}/${total}`;

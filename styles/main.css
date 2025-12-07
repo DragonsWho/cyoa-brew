@@ -8,6 +8,15 @@ body { margin: 0; padding: 0 0 120px 0; background: #1a1a1a; color: #eee; font-f
 #loading { transition: opacity 0.3s; }
 #loading.hidden { opacity: 0; pointer-events: none; }
 
+/* === VARIABLES === */
+:root {
+    --sel-border-c: #00ff00;
+    --sel-border-w: 2px;
+    --sel-radius: 12px;
+    --sel-shadow-c: #00ff00;
+    --sel-shadow-w: 15px;
+}
+
 /* === CONTROLS === */
 .bottom-tools { 
     position: fixed; bottom: 0; left: 0; z-index: 2500; 
@@ -36,7 +45,15 @@ body { margin: 0; padding: 0 0 120px 0; background: #1a1a1a; color: #eee; font-f
     transition: all 0.2s; overflow: visible; display: flex; flex-direction: column; justify-content: flex-end; 
 }
 .click-zone:hover { background: rgba(255,255,255,0.07); box-shadow: 0 0 10px rgba(255,255,255,0.1); }
-.click-zone.selected { background: rgba(0,255,0,0.1); box-shadow: 0 0 15px 2px #0f0, inset 0 0 20px 5px rgba(0,255,0,0.3); }
+
+/* === SELECTED STATE (Dynamic Vars) === */
+.click-zone.selected { 
+    background: rgba(0,255,0,0.1); 
+    border: var(--sel-border-w) solid var(--sel-border-c);
+    border-radius: var(--sel-radius);
+    box-shadow: 0 0 var(--sel-shadow-w) var(--sel-shadow-c), inset 0 0 20px 5px rgba(0,255,0,0.2); 
+}
+
 .click-zone.disabled { cursor: not-allowed; background-image: repeating-linear-gradient(45deg, rgba(0,0,0,0.4), rgba(0,0,0,0.4) 10px, rgba(50,50,50,0.6) 10px, rgba(50,50,50,0.6) 20px); box-shadow: 0 0 15px 5px #000, inset 0 0 20px 10px rgba(0,0,0,0.8); }
 .click-zone.maxed { background: rgba(0,255,0,0.05); cursor: default; }
 
@@ -111,7 +128,7 @@ body.text-mode .text-content { display: block; pointer-events: auto; }
 #tooltip .debug-info { margin-top: 10px; padding-top: 10px; border-top: 1px dashed #555; color: #777; font-size: 0.75em; font-family: monospace; }
 #tooltip .mod-applied { color: #4db8ff; font-size: 0.85em; font-weight: normal; margin-left: 6px; font-family: monospace;}
 
-/* === SEPARATOR (Hidden by default, shown by editor.css) === */
+/* === SEPARATOR === */
 .page-separator { display: none; }
 
 @media (max-width: 768px) { .bottom-tools { gap: 0; padding: 10px 5px; } .ctrl-btn { padding: 6px; } #points-bar { gap: 20px; padding: 10px; } }

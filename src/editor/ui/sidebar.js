@@ -6,6 +6,7 @@
 import { createChoicePanel } from './choice-panel.js';
 import { createGroupPanel } from './group-panel.js';
 import { createSettingsPanel } from './settings-panel.js';
+import { createAiPanelHTML } from './ai-panel.js';
 
 export const SidebarMixin = {
     // ==================== CREATE SIDEBAR ====================
@@ -13,7 +14,6 @@ export const SidebarMixin = {
     createEditorUI() {
         if (document.getElementById('editor-sidebar')) return;
         
-        // Split Guide
         if (!document.getElementById('editor-split-guide')) {
             const guide = document.createElement('div');
             guide.id = 'editor-split-guide';
@@ -34,6 +34,7 @@ export const SidebarMixin = {
                 <button class="tab-btn" data-tab="choice" onclick="CYOA.editor.switchTab('choice')">Choice</button>
                 <button class="tab-btn" data-tab="group" onclick="CYOA.editor.switchTab('group')">Group</button>
                 <button class="tab-btn" data-tab="settings" onclick="CYOA.editor.switchTab('settings')">Settings</button>
+                <button class="tab-btn" data-tab="ai" onclick="CYOA.editor.switchTab('ai')" title="AI Tools">AI Tools</button>
                 <button class="close-tab-btn" onclick="CYOA.controls.toggleEditMode()">✕</button>
             </div>
             
@@ -48,6 +49,7 @@ export const SidebarMixin = {
                 ${createChoicePanel()}
                 ${createGroupPanel()}
                 ${createSettingsPanel()}
+                ${createAiPanelHTML()}
             </div>
             
             <!-- Modals -->
@@ -70,7 +72,6 @@ export const SidebarMixin = {
         // Setup listeners
         this.setupAllListeners();
         
-        // Mouse wheel scrolling for page nav
         const navScroll = document.getElementById('editor-page-nav-scroll');
         if (navScroll) {
             navScroll.addEventListener('wheel', (e) => {
@@ -79,7 +80,6 @@ export const SidebarMixin = {
             });
         }
         
-        // Context menu
         if (this.setupContextMenu) {
              this.setupContextMenu(); 
         }
@@ -115,7 +115,6 @@ export const SidebarMixin = {
             });
         }
 
-        // Add New Page Button at the end
         html += `
             <div class="nav-page-btn nav-add-btn" 
                  onclick="document.getElementById('add-page-image-input').click()" 
@@ -126,7 +125,6 @@ export const SidebarMixin = {
         
         container.innerHTML = html;
         
-        // Ensure active page is visible
         setTimeout(() => {
             const activeEl = container.querySelector('.nav-page-btn.active');
             if (activeEl) activeEl.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
@@ -162,10 +160,10 @@ export const SidebarMixin = {
             }
         } else if (tabName === 'settings') {
             this.updateSettingsInputs(); 
+        } else if (tabName === 'ai') {
+            // Setup for AI tab if needed
         }
     },
-
-    // ==================== ACCORDION ====================
 
     toggleAccordion(header) {
         header.classList.toggle('collapsed');

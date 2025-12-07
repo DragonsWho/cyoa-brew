@@ -1,18 +1,15 @@
 /**
  * src/ui/editor/core.js
  * CYOA Editor - Visual editing mode
- * Fully Modular Architecture (Refactored)
  */
 
 import { RuleBuilder } from '../ui/rule-builder.js';
 import { AutoDetector } from './utils/autodetect.js'; 
 import { HistoryManager } from './history.js';
 
-// Geometry & Input (unchanged)
 import { EditorGeometryMixin } from './geometry.js';
 import { EditorInputMixin } from './input.js';
 
-// Actions (split into 6 modules)
 import { CRUDMixin } from './actions/crud.js';
 import { MovementMixin } from './actions/movement.js';
 import { AlignmentMixin } from './actions/alignment.js';
@@ -20,15 +17,14 @@ import { SplittingMixin } from './actions/splitting.js';
 import { ClipboardMixin } from './actions/clipboard.js';
 import { NavigationMixin } from './actions/navigation.js';
 
-// UI (split into 6 modules)
 import { SidebarMixin } from './ui/sidebar.js';
 import { ChoicePanelMixin } from './ui/choice-panel.js';
 import { GroupPanelMixin } from './ui/group-panel.js';
 import { SettingsPanelMixin } from './ui/settings-panel.js';
+import { StyleSettingsMixin } from './ui/style-panel.js'; // NEW
 import { ListenersMixin } from './ui/listeners.js';
 import { SelectionMixin } from './ui/selection.js';
 
-// Integrations
 import { LLMCoreMixin } from './integrations/llm/core.js';
 import { ManualModeMixin } from './integrations/llm/manual-mode.js';
 import { ResponseHandlerMixin } from './integrations/llm/response-handler.js';
@@ -37,7 +33,6 @@ import { SAMCoreMixin } from './integrations/sam/core.js';
 import { SAMListenersMixin } from './integrations/sam/ui-listeners.js';
 import { AuditChatMixin } from './integrations/llm/audit-chat.js';
 
-// IO & Menus & Helpers
 import { EditorIOMixin } from './io.js';
 import { EditorMenusMixin } from './menus.js'; 
 import { EditorHelpersMixin } from './utils/helpers.js';
@@ -56,13 +51,11 @@ export class CYOAEditor {
         this.activePageIndex = 0;
         this.activeTab = 'choice'; 
         
-        // Helpers for UI measurement
         this.measureContext = document.createElement('canvas').getContext('2d');
         this.mirrorDiv = document.createElement('div');
         this.mirrorDiv.style.cssText = 'position:absolute; visibility:hidden; height:auto; overflow:hidden; white-space:pre-wrap; word-wrap:break-word;';
         document.body.appendChild(this.mirrorDiv);
 
-        // Drag & Resize State
         this.isDragging = false;
         this.isResizing = false;
         this.resizeMode = null; 
@@ -72,22 +65,17 @@ export class CYOAEditor {
         this.handleSize = 15; 
         this.dragContext = null;
         
-        // Marquee Selection State
         this.isMarqueeSelecting = false;
         this.marqueeStart = { x: 0, y: 0 };
         this.marqueeBox = null;
 
-        // Creation Drag State (Z/X drawing)
         this.creationState = null;
 
-        // Split State
         this.splitState = null;
 
-        // Context Menu & Clipboard State
         this.contextMenuContext = null; 
         this.clipboard = null;
         
-        // Input Flags
         this.transformMode = 'move'; 
         this.zoomLevel = 1; 
         this.isHoldingZ = false;
@@ -96,7 +84,6 @@ export class CYOAEditor {
         this.enabled = false;
         this.triggerLabelCheck = null;
 
-        // LLM Config
         this.llmConfig = {
             provider: 'openrouter', 
             baseUrl: 'https://openrouter.ai/api/v1',
@@ -140,16 +127,14 @@ export class CYOAEditor {
     }
 }
 
-// ==================== APPLY MIXINS ====================
-
-// 1. Utilities (Must be applied first)
+// 1. Utilities
 Object.assign(CYOAEditor.prototype, EditorHelpersMixin);
 Object.assign(CYOAEditor.prototype, EditorGeometryMixin);
 
 // 2. IO
 Object.assign(CYOAEditor.prototype, EditorIOMixin);
 
-// 3. Actions (6 modules)
+// 3. Actions
 Object.assign(CYOAEditor.prototype, CRUDMixin);
 Object.assign(CYOAEditor.prototype, MovementMixin);
 Object.assign(CYOAEditor.prototype, AlignmentMixin);
@@ -160,11 +145,12 @@ Object.assign(CYOAEditor.prototype, NavigationMixin);
 // 4. Input
 Object.assign(CYOAEditor.prototype, EditorInputMixin);
 
-// 5. UI (6 modules)
+// 5. UI
 Object.assign(CYOAEditor.prototype, SidebarMixin);
 Object.assign(CYOAEditor.prototype, ChoicePanelMixin);
 Object.assign(CYOAEditor.prototype, GroupPanelMixin);
 Object.assign(CYOAEditor.prototype, SettingsPanelMixin);
+Object.assign(CYOAEditor.prototype, StyleSettingsMixin); // NEW
 Object.assign(CYOAEditor.prototype, ListenersMixin);
 Object.assign(CYOAEditor.prototype, SelectionMixin);
 

@@ -17,6 +17,7 @@ export const ListenersMixin = {
         this.setupLoadListener();
         this.setupAddPageListener();
         this.setupSettingsListeners();
+        this.setupStyleListeners(); // NEW
     },
 
     // ==================== CHOICE PANEL ====================
@@ -30,22 +31,37 @@ export const ListenersMixin = {
         }
     },
 
+    setupStyleListeners() {
+        const attachStyleListener = (id, prop) => {
+            const el = document.getElementById(id);
+            if (el) {
+                el.addEventListener('input', (e) => {
+                    this.updateStyle(prop, e.target.value);
+                });
+            }
+        };
+
+        attachStyleListener('style-border-color', 'borderColor');
+        attachStyleListener('style-border-width', 'borderWidth');
+        attachStyleListener('style-border-radius', 'borderRadius');
+        attachStyleListener('style-shadow-color', 'shadowColor');
+        attachStyleListener('style-shadow-width', 'shadowWidth');
+    },
+
     setupChoiceListeners() {
-        // --- Selectable Checkbox Handler (Logic Inverted) ---
+        // Selectable Checkbox Handler
         const selCheck = document.getElementById('edit-selectable');
         if (selCheck) {
             selCheck.addEventListener('change', (e) => {
                 if (!this.selectedItem) return;
                 
-                // Checked means "Static / Not Selectable"
                 if (e.target.checked) {
                     this.selectedItem.selectable = false;
                 } else {
-                    // Unchecked means "Interactive" (default)
                     delete this.selectedItem.selectable;
                 }
                 
-                this.renderer.renderLayout(); // Re-render to apply CSS classes
+                this.renderer.renderLayout(); 
                 this.updateCodePreview();
             });
         }
@@ -54,7 +70,6 @@ export const ListenersMixin = {
             if (!this.selectedItem) return;
             if (isNum) val = parseInt(val) || 0;
             
-            // === Min/Max Validation ===
             if (key === 'min_quantity') {
                 const currentMax = this.selectedItem.max_quantity !== undefined ? this.selectedItem.max_quantity : 1;
                 if (val > currentMax) {
@@ -81,7 +96,6 @@ export const ListenersMixin = {
                 this.selectedItem[key] = val; 
             }
 
-            // Cleanup defaults
             if (key === 'max_quantity' || key === 'min_quantity') {
                 if (key === 'max_quantity' && val <= 1) delete this.selectedItem.max_quantity;
                 if (key === 'min_quantity' && val === 0) delete this.selectedItem.min_quantity;
@@ -102,8 +116,6 @@ export const ListenersMixin = {
             el.addEventListener('input', (e) => update(realKey, e.target.value, isNum));
         });
     },
-
-    // ==================== GROUP PANEL ====================
 
     setupGroupListeners() {
         const update = (key, val, isNum) => {
@@ -133,8 +145,6 @@ export const ListenersMixin = {
             el.addEventListener('input', (e) => update(realKey, e.target.value, isNum));
         });
     },
-
-    // ==================== JSON EDITORS ====================
 
     setupJsonListeners() {
         const choiceJson = document.getElementById('edit-raw-json');
@@ -169,8 +179,6 @@ export const ListenersMixin = {
             });
         }
     },
-
-    // ==================== FILE UPLOAD ====================
 
     setupAddPageListener() {
         const input = document.getElementById('add-page-image-input');
@@ -233,7 +241,6 @@ export const ListenersMixin = {
                 this.selectedGroup = null;
                 this.activePageIndex = 0;
                 
-                // Refresh UI including notes
                 this.updateSettingsInputs(); 
                 
             } catch (err) {
@@ -243,8 +250,6 @@ export const ListenersMixin = {
             }
         });
     },
-
-    // ==================== AUTO-HIDING LABELS ====================
 
     setupLabelAutoHiding() {
         const checkCollision = (input) => {
@@ -265,8 +270,6 @@ export const ListenersMixin = {
         this.triggerLabelCheck = attach;
         setTimeout(attach, 500); 
     },
-
-    // ==================== CODE PREVIEW UPDATE ====================
 
     updateCodePreview() {
         if (this.selectedItem && this.selectedItems.length <= 1) {
