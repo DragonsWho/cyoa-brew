@@ -1,7 +1,7 @@
 /**
  * src\ui\renderer.js
  * UI Renderer - Handles all visual rendering
- * Updated: Specificity fix for Fancy CSS in Preview Mode
+ * Updated: Specificity fix for Fancy CSS (Rainbow) in Preview Mode (using ID selector)
  */
 
 import { CoordHelper } from '../utils/coords.js';
@@ -96,15 +96,16 @@ export class UIRenderer {
         
         let content = '';
         
-        // UPDATE: Increased Specificity (html body ...) AND !important
-        // This ensures fancy styles (like border-image) win against the default preview styles.
+        // UPDATE: Using ID selector #game-wrapper gives very high specificity (100+).
+        // This ensures these rules defeat the 'body.editor-preview-active...' rules (specificity ~40)
+        // allowing border-image and complex shadows to show in Preview Mode.
         
         if (activeCss) {
-            content += `html body .click-zone.selected { ${this.forceImportant(activeCss)} } `;
+            content += `#game-wrapper .click-zone.selected { ${this.forceImportant(activeCss)} } `;
         }
         
         if (disabledCss) {
-            content += `html body .click-zone.disabled { ${this.forceImportant(disabledCss)} } `;
+            content += `#game-wrapper .click-zone.disabled { ${this.forceImportant(disabledCss)} } `;
         }
         
         styleTag.textContent = content;
