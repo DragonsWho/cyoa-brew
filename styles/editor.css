@@ -117,7 +117,7 @@ body.edit-mode-active #game-wrapper { margin-right: 340px; transition: margin-ri
 /* UPDATED CLOSE BUTTON STYLE */
 .page-close {
     position: absolute; right: 2px; top: 50%; transform: translateY(-50%);
-    font-size: 18px; line-height: 1; color: #ff5252; 
+    font-size: 20px; line-height: 1; color: #1f1f1f; 
     background: transparent;
     width: 24px; height: 24px; border-radius: 4px;
     display: flex; align-items: center; justify-content: center;
@@ -126,7 +126,7 @@ body.edit-mode-active #game-wrapper { margin-right: 340px; transition: margin-ri
 }
 .page-close:hover { 
     opacity: 1; 
-    background: rgba(229, 57, 53, 0.25); /* Reddish tint on hover */
+    background: rgba(92, 92, 92, 0.5); /* Reddish tint on hover */
 }
 
 .nav-divider { color: #444; font-size: 16px; user-select: none; }
