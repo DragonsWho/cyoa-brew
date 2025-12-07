@@ -116,21 +116,48 @@ export class GameEngine {
 
         // Init Style Defaults if missing
         if (!this.config.style) {
-            this.config.style = {
-                borderColor: '#00ff00',
-                borderWidth: 3,
-                borderRadius: 12,
-                shadowColor: '#00ff00',
-                shadowWidth: 15,
-                shape: 'rounded' // rounded, sharp
-            };
-        } else {
-            // Ensure all properties exist (migration)
-            this.config.style.borderColor = this.config.style.borderColor || '#00ff00';
-            this.config.style.borderWidth = this.config.style.borderWidth !== undefined ? this.config.style.borderWidth : 3;
-            this.config.style.borderRadius = this.config.style.borderRadius !== undefined ? this.config.style.borderRadius : 12;
-            this.config.style.shadowColor = this.config.style.shadowColor || '#00ff00';
-            this.config.style.shadowWidth = this.config.style.shadowWidth !== undefined ? this.config.style.shadowWidth : 15;
+            this.config.style = {};
+        }
+
+        const s = this.config.style;
+
+        // === ACTIVE STYLE DEFAULTS ===
+        s.borderColor = s.borderColor || '#00ff00';
+        s.borderWidth = s.borderWidth !== undefined ? s.borderWidth : 3;
+        
+        const defaultRad = s.borderRadius !== undefined ? s.borderRadius : 12;
+        if (s.radiusTL === undefined) s.radiusTL = defaultRad;
+        if (s.radiusTR === undefined) s.radiusTR = defaultRad;
+        if (s.radiusBR === undefined) s.radiusBR = defaultRad;
+        if (s.radiusBL === undefined) s.radiusBL = defaultRad;
+        
+        s.shadowColor = s.shadowColor || '#00ff00';
+        s.shadowWidth = s.shadowWidth !== undefined ? s.shadowWidth : 15;
+        
+        s.bodyColor = s.bodyColor || '#00ff00';
+        s.bodyOpacity = s.bodyOpacity !== undefined ? s.bodyOpacity : 0.1;
+        s.bodyImage = s.bodyImage || '';
+        s.customCss = s.customCss || '';
+
+        // === DISABLED STYLE DEFAULTS ===
+        s.disabledBorderColor = s.disabledBorderColor || '#555555';
+        s.disabledBorderWidth = s.disabledBorderWidth !== undefined ? s.disabledBorderWidth : 0;
+        
+        if (s.disabledRadiusTL === undefined) s.disabledRadiusTL = defaultRad;
+        if (s.disabledRadiusTR === undefined) s.disabledRadiusTR = defaultRad;
+        if (s.disabledRadiusBR === undefined) s.disabledRadiusBR = defaultRad;
+        if (s.disabledRadiusBL === undefined) s.disabledRadiusBL = defaultRad;
+
+        s.disabledShadowColor = s.disabledShadowColor || '#000000';
+        s.disabledShadowWidth = s.disabledShadowWidth !== undefined ? s.disabledShadowWidth : 0;
+
+        s.disabledBodyColor = s.disabledBodyColor || '#000000';
+        s.disabledBodyOpacity = s.disabledBodyOpacity !== undefined ? s.disabledBodyOpacity : 0.5;
+        s.disabledBodyImage = s.disabledBodyImage || '';
+        
+        // Default striping for disabled cards (legacy look)
+        if (s.disabledCustomCss === undefined) {
+            s.disabledCustomCss = 'background-image: repeating-linear-gradient(45deg, rgba(0,0,0,0.4), rgba(0,0,0,0.4) 10px, rgba(50,50,50,0.6) 10px, rgba(50,50,50,0.6) 20px);';
         }
     }
 

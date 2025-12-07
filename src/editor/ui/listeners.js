@@ -17,7 +17,7 @@ export const ListenersMixin = {
         this.setupLoadListener();
         this.setupAddPageListener();
         this.setupSettingsListeners();
-        this.setupStyleListeners(); // NEW
+        this.setupStyleListeners();
     },
 
     // ==================== CHOICE PANEL ====================
@@ -41,11 +41,61 @@ export const ListenersMixin = {
             }
         };
 
+        // --- Active Style ---
         attachStyleListener('style-border-color', 'borderColor');
         attachStyleListener('style-border-width', 'borderWidth');
-        attachStyleListener('style-border-radius', 'borderRadius');
+        attachStyleListener('style-radius-tl', 'radiusTL');
+        attachStyleListener('style-radius-tr', 'radiusTR');
+        attachStyleListener('style-radius-br', 'radiusBR');
+        attachStyleListener('style-radius-bl', 'radiusBL');
         attachStyleListener('style-shadow-color', 'shadowColor');
         attachStyleListener('style-shadow-width', 'shadowWidth');
+        attachStyleListener('style-body-color', 'bodyColor');
+        attachStyleListener('style-body-opacity', 'bodyOpacity');
+        attachStyleListener('style-custom-css', 'customCss');
+
+        // --- Disabled Style ---
+        attachStyleListener('style-disabled-border-color', 'disabledBorderColor');
+        attachStyleListener('style-disabled-border-width', 'disabledBorderWidth');
+        attachStyleListener('style-disabled-radius-tl', 'disabledRadiusTL');
+        attachStyleListener('style-disabled-radius-tr', 'disabledRadiusTR');
+        attachStyleListener('style-disabled-radius-br', 'disabledRadiusBR');
+        attachStyleListener('style-disabled-radius-bl', 'disabledRadiusBL');
+        attachStyleListener('style-disabled-shadow-color', 'disabledShadowColor');
+        attachStyleListener('style-disabled-shadow-width', 'disabledShadowWidth');
+        attachStyleListener('style-disabled-body-color', 'disabledBodyColor');
+        attachStyleListener('style-disabled-body-opacity', 'disabledBodyOpacity');
+        attachStyleListener('style-disabled-custom-css', 'disabledCustomCss');
+
+        // Image Upload (Active)
+        const imgInput = document.getElementById('style-bg-image-input');
+        if (imgInput) {
+            imgInput.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (evt) => {
+                    this.updateStyle('bodyImage', evt.target.result);
+                };
+                reader.readAsDataURL(file);
+                imgInput.value = ''; 
+            });
+        }
+
+        // Image Upload (Disabled)
+        const disImgInput = document.getElementById('style-disabled-bg-image-input');
+        if (disImgInput) {
+            disImgInput.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (evt) => {
+                    this.updateStyle('disabledBodyImage', evt.target.result);
+                };
+                reader.readAsDataURL(file);
+                disImgInput.value = ''; 
+            });
+        }
     },
 
     setupChoiceListeners() {

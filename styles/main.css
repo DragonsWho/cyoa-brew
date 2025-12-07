@@ -10,11 +10,31 @@ body { margin: 0; padding: 0 0 120px 0; background: #1a1a1a; color: #eee; font-f
 
 /* === VARIABLES === */
 :root {
+    /* --- ACTIVE STATE --- */
     --sel-border-c: #00ff00;
     --sel-border-w: 2px;
-    --sel-radius: 12px;
+    --sel-radius-tl: 12px;
+    --sel-radius-tr: 12px;
+    --sel-radius-br: 12px;
+    --sel-radius-bl: 12px;
     --sel-shadow-c: #00ff00;
     --sel-shadow-w: 15px;
+    --sel-bg-color: #00ff00;
+    --sel-bg-opacity: 0.1;
+    --sel-bg-image: none;
+
+    /* --- DISABLED STATE --- */
+    --dis-border-c: #333333;
+    --dis-border-w: 0px;
+    --dis-radius-tl: 12px;
+    --dis-radius-tr: 12px;
+    --dis-radius-br: 12px;
+    --dis-radius-bl: 12px;
+    --dis-shadow-c: #000000;
+    --dis-shadow-w: 0px;
+    --dis-bg-color: #000000;
+    --dis-bg-opacity: 0.5;
+    --dis-bg-image: none;
 }
 
 /* === CONTROLS === */
@@ -48,13 +68,55 @@ body { margin: 0; padding: 0 0 120px 0; background: #1a1a1a; color: #eee; font-f
 
 /* === SELECTED STATE (Dynamic Vars) === */
 .click-zone.selected { 
-    background: rgba(0,255,0,0.1); 
+    background-color: transparent;
     border: var(--sel-border-w) solid var(--sel-border-c);
-    border-radius: var(--sel-radius);
-    box-shadow: 0 0 var(--sel-shadow-w) var(--sel-shadow-c), inset 0 0 20px 5px rgba(0,255,0,0.2); 
+    border-top-left-radius: var(--sel-radius-tl);
+    border-top-right-radius: var(--sel-radius-tr);
+    border-bottom-right-radius: var(--sel-radius-br);
+    border-bottom-left-radius: var(--sel-radius-bl);
+    box-shadow: 0 0 var(--sel-shadow-w) var(--sel-shadow-c), inset 0 0 20px 5px rgba(0,255,0,0.2);
 }
 
-.click-zone.disabled { cursor: not-allowed; background-image: repeating-linear-gradient(45deg, rgba(0,0,0,0.4), rgba(0,0,0,0.4) 10px, rgba(50,50,50,0.6) 10px, rgba(50,50,50,0.6) 20px); box-shadow: 0 0 15px 5px #000, inset 0 0 20px 10px rgba(0,0,0,0.8); }
+.click-zone.selected::after {
+    content: ''; position: absolute; inset: 0;
+    background-color: var(--sel-bg-color);
+    background-image: var(--sel-bg-image);
+    background-size: cover; background-position: center; background-repeat: no-repeat;
+    opacity: var(--sel-bg-opacity);
+    z-index: -1; pointer-events: none;
+    border-top-left-radius: calc(var(--sel-radius-tl) - var(--sel-border-w));
+    border-top-right-radius: calc(var(--sel-radius-tr) - var(--sel-border-w));
+    border-bottom-right-radius: calc(var(--sel-radius-br) - var(--sel-border-w));
+    border-bottom-left-radius: calc(var(--sel-radius-bl) - var(--sel-border-w));
+}
+
+/* === DISABLED STATE (Dynamic Vars) === */
+.click-zone.disabled { 
+    cursor: not-allowed;
+    background-color: transparent;
+    border: var(--dis-border-w) solid var(--dis-border-c);
+    border-top-left-radius: var(--dis-radius-tl);
+    border-top-right-radius: var(--dis-radius-tr);
+    border-bottom-right-radius: var(--dis-radius-br);
+    border-bottom-left-radius: var(--dis-radius-bl);
+    box-shadow: 0 0 var(--dis-shadow-w) var(--dis-shadow-c);
+    /* Remove old static styles */
+    background-image: none; 
+}
+
+.click-zone.disabled::after {
+    content: ''; position: absolute; inset: 0;
+    background-color: var(--dis-bg-color);
+    background-image: var(--dis-bg-image);
+    background-size: cover; background-position: center; background-repeat: no-repeat;
+    opacity: var(--dis-bg-opacity);
+    z-index: -1; pointer-events: none;
+    border-top-left-radius: calc(var(--dis-radius-tl) - var(--dis-border-w));
+    border-top-right-radius: calc(var(--dis-radius-tr) - var(--dis-border-w));
+    border-bottom-right-radius: calc(var(--dis-radius-br) - var(--dis-border-w));
+    border-bottom-left-radius: calc(var(--dis-radius-bl) - var(--dis-border-w));
+}
+
 .click-zone.maxed { background: rgba(0,255,0,0.05); cursor: default; }
 
 /* --- STATIC INFO CARDS (Non-clickable) --- */

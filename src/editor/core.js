@@ -21,7 +21,7 @@ import { SidebarMixin } from './ui/sidebar.js';
 import { ChoicePanelMixin } from './ui/choice-panel.js';
 import { GroupPanelMixin } from './ui/group-panel.js';
 import { SettingsPanelMixin } from './ui/settings-panel.js';
-import { StyleSettingsMixin } from './ui/style-panel.js'; // NEW
+import { StyleSettingsMixin } from './ui/style-panel.js'; // Ensure this is imported
 import { ListenersMixin } from './ui/listeners.js';
 import { SelectionMixin } from './ui/selection.js';
 
@@ -150,7 +150,7 @@ Object.assign(CYOAEditor.prototype, SidebarMixin);
 Object.assign(CYOAEditor.prototype, ChoicePanelMixin);
 Object.assign(CYOAEditor.prototype, GroupPanelMixin);
 Object.assign(CYOAEditor.prototype, SettingsPanelMixin);
-Object.assign(CYOAEditor.prototype, StyleSettingsMixin); // NEW
+Object.assign(CYOAEditor.prototype, StyleSettingsMixin); // Added
 Object.assign(CYOAEditor.prototype, ListenersMixin);
 Object.assign(CYOAEditor.prototype, SelectionMixin);
 

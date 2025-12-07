@@ -156,6 +156,87 @@ body.edit-mode-active .page-separator { display: flex; }
 .input-group textarea + .input-label { bottom: 6px; right: 8px; }
 .input-label.label-hidden { opacity: 0 !important; }
 
+/* === MINIMALIST STYLE PANEL INPUTS === */
+.style-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 8px;
+    padding: 0 5px;
+    flex-wrap: nowrap;
+}
+.style-label {
+    min-width: 50px;
+    color: #eee;
+    font-size: 0.9rem;
+    font-weight: bold;
+    flex-shrink: 0;
+}
+.style-input {
+    background: #333;
+    color: #fff;
+    border: 1px solid #444; /* Standard thin border */
+    border-radius: 4px;
+    padding: 2px 4px;
+    height: 30px;
+    font-size: 0.85rem;
+    text-align: center;
+    box-sizing: border-box;
+}
+.style-input:focus { outline: none; border-color: #4CAF50; }
+
+/* --- Remove Number Spinners (Arrows) --- */
+.style-input::-webkit-outer-spin-button,
+.style-input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+.style-input[type=number] {
+    -moz-appearance: textfield; /* Firefox */
+}
+
+/* --- Square Inputs (Color & Width) --- */
+.square-input {
+    width: 32px;
+    padding: 2px;
+    flex-shrink: 0;
+}
+.style-input[type="color"] {
+    cursor: pointer;
+    padding: 0;
+}
+
+/* The requested "Thick White Border" class */
+.thick-border {
+    border: 2px solid #fff;
+}
+
+/* Corner Visual Hints (20% white brackets) */
+.input-corner-tl, .input-corner-tr, .input-corner-br, .input-corner-bl {
+    width: 28px; /* Slightly narrower to fit 4 */
+    background-color: #333;
+    background-repeat: no-repeat;
+    /* Draw 2px thick white lines */
+    background-image: linear-gradient(#fff, #fff), linear-gradient(#fff, #fff);
+}
+
+.input-corner-tl {
+    background-size: 30% 2px, 2px 30%; /* Horizontal, Vertical */
+    background-position: top left, top left;
+}
+.input-corner-tr {
+    background-size: 30% 2px, 2px 30%;
+    background-position: top right, top right;
+}
+.input-corner-br {
+    background-size: 30% 2px, 2px 30%;
+    background-position: bottom right, bottom right;
+}
+.input-corner-bl {
+    background-size: 30% 2px, 2px 30%;
+    background-position: bottom left, bottom left;
+}
+
 .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; width: 100%; }
 .row-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; width: 100%; }
 .row-4 .input-group input { text-align: center; padding: 6px 2px; }

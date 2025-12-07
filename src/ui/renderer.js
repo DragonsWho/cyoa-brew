@@ -41,15 +41,59 @@ export class UIRenderer {
 
         const root = document.documentElement;
         
-        // CSS Variables for .click-zone.selected
+        // --- ACTIVE STYLE VARIABLES ---
         root.style.setProperty('--sel-border-c', style.borderColor || '#00ff00');
-        root.style.setProperty('--sel-border-w', `${style.borderWidth || 3}px`);
-        root.style.setProperty('--sel-radius', `${style.borderRadius || 12}px`);
+        root.style.setProperty('--sel-border-w', `${style.borderWidth !== undefined ? style.borderWidth : 3}px`);
+        root.style.setProperty('--sel-radius-tl', `${style.radiusTL !== undefined ? style.radiusTL : 12}px`);
+        root.style.setProperty('--sel-radius-tr', `${style.radiusTR !== undefined ? style.radiusTR : 12}px`);
+        root.style.setProperty('--sel-radius-br', `${style.radiusBR !== undefined ? style.radiusBR : 12}px`);
+        root.style.setProperty('--sel-radius-bl', `${style.radiusBL !== undefined ? style.radiusBL : 12}px`);
         root.style.setProperty('--sel-shadow-c', style.shadowColor || '#00ff00');
-        root.style.setProperty('--sel-shadow-w', `${style.shadowWidth || 15}px`);
+        root.style.setProperty('--sel-shadow-w', `${style.shadowWidth !== undefined ? style.shadowWidth : 15}px`);
+        root.style.setProperty('--sel-bg-color', style.bodyColor || '#00ff00');
+        root.style.setProperty('--sel-bg-opacity', style.bodyOpacity !== undefined ? style.bodyOpacity : 0.1);
         
-        // Inset shadow opacity is derived
-        // Note: We use a hardcoded alpha for inset in CSS, but color comes from var
+        if (style.bodyImage) {
+            root.style.setProperty('--sel-bg-image', `url("${style.bodyImage}")`);
+        } else {
+            root.style.setProperty('--sel-bg-image', 'none');
+        }
+
+        // --- DISABLED STYLE VARIABLES ---
+        root.style.setProperty('--dis-border-c', style.disabledBorderColor || '#333333');
+        root.style.setProperty('--dis-border-w', `${style.disabledBorderWidth !== undefined ? style.disabledBorderWidth : 0}px`);
+        root.style.setProperty('--dis-radius-tl', `${style.disabledRadiusTL !== undefined ? style.disabledRadiusTL : 12}px`);
+        root.style.setProperty('--dis-radius-tr', `${style.disabledRadiusTR !== undefined ? style.disabledRadiusTR : 12}px`);
+        root.style.setProperty('--dis-radius-br', `${style.disabledRadiusBR !== undefined ? style.disabledRadiusBR : 12}px`);
+        root.style.setProperty('--dis-radius-bl', `${style.disabledRadiusBL !== undefined ? style.disabledRadiusBL : 12}px`);
+        root.style.setProperty('--dis-shadow-c', style.disabledShadowColor || '#000000');
+        root.style.setProperty('--dis-shadow-w', `${style.disabledShadowWidth !== undefined ? style.disabledShadowWidth : 0}px`);
+        root.style.setProperty('--dis-bg-color', style.disabledBodyColor || '#000000');
+        root.style.setProperty('--dis-bg-opacity', style.disabledBodyOpacity !== undefined ? style.disabledBodyOpacity : 0.5);
+
+        if (style.disabledBodyImage) {
+            root.style.setProperty('--dis-bg-image', `url("${style.disabledBodyImage}")`);
+        } else {
+            root.style.setProperty('--dis-bg-image', 'none');
+        }
+
+        // Custom CSS Overrides
+        this.applyCustomCss(style.customCss, style.disabledCustomCss);
+    }
+
+    applyCustomCss(activeCss, disabledCss) {
+        let styleTag = document.getElementById('custom-card-style');
+        if (!styleTag) {
+            styleTag = document.createElement('style');
+            styleTag.id = 'custom-card-style';
+            document.head.appendChild(styleTag);
+        }
+        
+        let content = '';
+        if (activeCss) content += `.click-zone.selected { ${activeCss} } `;
+        if (disabledCss) content += `.click-zone.disabled { ${disabledCss} } `;
+        
+        styleTag.textContent = content;
     }
 
     // ==================== PAGES ====================
