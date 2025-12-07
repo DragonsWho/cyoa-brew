@@ -139,6 +139,11 @@ export const SidebarMixin = {
     // ==================== TAB SWITCHING ====================
 
     switchTab(tabName) {
+        // --- NEW: Reset Preview Mode when switching tabs ---
+        if (this.activeTab === 'settings' && tabName !== 'settings') {
+            this.togglePreviewMode(false);
+        }
+
         this.activeTab = tabName;
         document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.tab === tabName));
         document.querySelectorAll('.tab-content').forEach(content => content.style.display = 'none');

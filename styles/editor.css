@@ -28,6 +28,85 @@ body.edit-mode-choice .info-zone { pointer-events: none; }
 body.edit-mode-group .info-zone { pointer-events: auto; cursor: move; z-index: 2000; } 
 body.edit-mode-group .item-zone { pointer-events: none; opacity: 0.5; }
 
+/* === PREVIEW MODE OVERRIDES (FIXED VISUALS) === */
+
+/* 1. Reset DEBUG styles for non-active items */
+body.editor-preview-active.show-zones .click-zone:not(.selected):not(.disabled) {
+    border: none !important;
+    background-color: transparent !important;
+    box-shadow: none !important;
+}
+
+/* 2. Hide Editor UI Elements */
+body.editor-preview-active.show-zones .click-zone::after { display: none !important; } /* Hide ID label */
+body.editor-preview-active.show-zones .info-zone { border: none !important; background: transparent !important; }
+body.editor-preview-active .editor-selected::before { display: none !important; } /* Hide Title Notch */
+body.editor-preview-active .editor-selected { 
+    background-image: none !important; /* Hide Selection Triangles */
+    box-shadow: none !important; /* Hide Selection Glow (replaced below) */
+}
+
+/* 3. Restore Game Interactivity */
+body.editor-preview-active .click-zone,
+body.editor-preview-active .item-zone {
+    pointer-events: auto !important;
+    cursor: pointer !important;
+    opacity: 1 !important;
+}
+body.editor-preview-active .info-zone { pointer-events: none !important; }
+
+/* 4. FORCE Game Styles for Selected Items (Override Editor Red Border) */
+/* Update: Added inner shadow variable logic */
+body.editor-preview-active.show-zones .click-zone.selected {
+    border: var(--sel-border-w) solid var(--sel-border-c) !important;
+    border-top-left-radius: var(--sel-radius-tl) !important;
+    border-top-right-radius: var(--sel-radius-tr) !important;
+    border-bottom-right-radius: var(--sel-radius-br) !important;
+    border-bottom-left-radius: var(--sel-radius-bl) !important;
+    background-color: transparent !important; /* Must be transparent so ::after shows through */
+    
+    /* Reconstruct box-shadow using vars, matching main.css structure */
+    box-shadow: 0 0 var(--sel-shadow-w) var(--sel-shadow-c), inset 0 0 var(--sel-inset-w) 5px var(--sel-inset-c) !important;
+    
+    /* Disable Transition for geometry to prevent square-to-round glitch */
+    transition: box-shadow 0.2s, opacity 0.2s !important;
+}
+
+/* IMPORTANT: Ensure pseudo-element (glow) is visible and correctly layered */
+body.editor-preview-active.show-zones .click-zone.selected::after {
+    display: block !important;
+    content: '' !important;
+    background-color: var(--sel-bg-color) !important;
+    opacity: var(--sel-bg-opacity) !important;
+    z-index: -1 !important;
+}
+
+/* 5. FORCE Game Styles for Disabled Items */
+body.editor-preview-active.show-zones .click-zone.disabled {
+    border: var(--dis-border-w) solid var(--dis-border-c) !important;
+    border-top-left-radius: var(--dis-radius-tl) !important;
+    border-top-right-radius: var(--dis-radius-tr) !important;
+    border-bottom-right-radius: var(--dis-radius-br) !important;
+    border-bottom-left-radius: var(--dis-radius-bl) !important;
+    background-color: transparent !important;
+    box-shadow: 0 0 var(--dis-shadow-w) var(--dis-shadow-c) !important;
+    cursor: not-allowed !important;
+    
+    /* Disable Transition for geometry */
+    transition: box-shadow 0.2s, opacity 0.2s !important;
+}
+
+body.editor-preview-active.show-zones .click-zone.disabled::after {
+    display: block !important;
+    content: '' !important;
+    background-color: var(--dis-bg-color) !important;
+    background-image: var(--dis-bg-image) !important; /* Ensure image (stripes) shows */
+    background-size: cover !important;
+    opacity: var(--dis-bg-opacity) !important;
+    z-index: -1 !important;
+}
+
+
 /* === SELECTION (Borders, Triangles, Notch) === */
 .item-zone.editor-selected { 
     border: 2px solid #FFD700 !important; z-index: 3000 !important; color: #FFD700; 

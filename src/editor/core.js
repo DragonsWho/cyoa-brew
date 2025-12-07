@@ -1,6 +1,7 @@
 /**
  * src/ui/editor/core.js
  * CYOA Editor - Visual editing mode
+ * Updated: Disable Preview Mode when editor is closed
  */
 
 import { RuleBuilder } from '../ui/rule-builder.js';
@@ -21,7 +22,7 @@ import { SidebarMixin } from './ui/sidebar.js';
 import { ChoicePanelMixin } from './ui/choice-panel.js';
 import { GroupPanelMixin } from './ui/group-panel.js';
 import { SettingsPanelMixin } from './ui/settings-panel.js';
-import { StyleSettingsMixin } from './ui/style-panel.js'; // Ensure this is imported
+import { StyleSettingsMixin } from './ui/style-panel.js'; 
 import { ListenersMixin } from './ui/listeners.js';
 import { SelectionMixin } from './ui/selection.js';
 
@@ -119,6 +120,10 @@ export class CYOAEditor {
 
         this.setZoom(1);
 
+        // --- NEW: Reset Preview Mode ---
+        // Prevents ghost preview state when re-opening editor
+        document.body.classList.remove('editor-preview-active');
+
         this.removeEventListeners();
         document.querySelectorAll('.item-zone, .info-zone').forEach(el => {
             el.classList.remove('editable', 'editor-selected');
@@ -150,7 +155,7 @@ Object.assign(CYOAEditor.prototype, SidebarMixin);
 Object.assign(CYOAEditor.prototype, ChoicePanelMixin);
 Object.assign(CYOAEditor.prototype, GroupPanelMixin);
 Object.assign(CYOAEditor.prototype, SettingsPanelMixin);
-Object.assign(CYOAEditor.prototype, StyleSettingsMixin); // Added
+Object.assign(CYOAEditor.prototype, StyleSettingsMixin); 
 Object.assign(CYOAEditor.prototype, ListenersMixin);
 Object.assign(CYOAEditor.prototype, SelectionMixin);
 

@@ -134,6 +134,10 @@ export class GameEngine {
         s.shadowColor = s.shadowColor || '#00ff00';
         s.shadowWidth = s.shadowWidth !== undefined ? s.shadowWidth : 15;
         
+        // NEW: Inner Shadow (Glow) Defaults - preserving legacy green look
+        s.insetShadowColor = s.insetShadowColor || 'rgba(0, 255, 0, 0.2)';
+        s.insetShadowWidth = s.insetShadowWidth !== undefined ? s.insetShadowWidth : 20;
+        
         s.bodyColor = s.bodyColor || '#00ff00';
         s.bodyOpacity = s.bodyOpacity !== undefined ? s.bodyOpacity : 0.1;
         s.bodyImage = s.bodyImage || '';

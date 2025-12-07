@@ -2,7 +2,7 @@
  * src\ui\editor\input.js
  * Editor Input Mixin - Handles mouse and keyboard input
  * Updated: Drag-to-Create Logic for Z/X + Redo Support
- * Fix: Prevent clicks on Audit Window and Scrollbars from affecting selection
+ * Updated: Preview Mode protection (disables editor interaction)
  */
 
 import { CoordHelper } from '../utils/coords.js';
@@ -34,6 +34,10 @@ export const EditorInputMixin = {
 
     handleKeyDown(e) {
         if (!this.enabled) return;
+        
+        // PREVIEW MODE: Block editor hotkeys, allow basics
+        if (document.body.classList.contains('editor-preview-active')) return;
+
         if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
 
         const code = e.code;
@@ -206,6 +210,9 @@ export const EditorInputMixin = {
 
     handleMouseDown(e) {
         if (!this.enabled) return;
+        
+        // PREVIEW MODE: Let events pass through to game logic (click zones)
+        if (document.body.classList.contains('editor-preview-active')) return;
         
         // --- UI & SCROLLBAR PROTECTION ---
         // Prevent clicks on editor UI overlays from triggering workspace actions
@@ -386,6 +393,7 @@ export const EditorInputMixin = {
 
     handleMouseMove(e) {
         if (!this.enabled) return;
+        if (document.body.classList.contains('editor-preview-active')) return;
         
         if (this.splitState) {
             this.updateSplitGuideFromMouse(e);
@@ -397,8 +405,6 @@ export const EditorInputMixin = {
             const { startX, startY, obj, containerRect, scaleX, scaleY, dim } = this.creationState;
             
             // Calculate current coords relative to start
-            // Need to update containerRect occasionally if scrolling? 
-            // For now assume static drag or small scroll. Better: recalc relative to page.
             const pageEl = document.getElementById(`page-${this.creationState.pageIndex}`);
             const rect = pageEl.getBoundingClientRect();
             
@@ -511,6 +517,7 @@ export const EditorInputMixin = {
 
     handleMouseUp(e) {
         if (!this.enabled) return;
+        if (document.body.classList.contains('editor-preview-active')) return;
 
         // === FINISH CREATION ===
         if (this.creationState && this.creationState.active) {

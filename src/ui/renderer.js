@@ -1,6 +1,7 @@
 /**
  * src\ui\renderer.js
  * UI Renderer - Handles all visual rendering
+ * Updated: Specificity fix for Fancy CSS in Preview Mode
  */
 
 import { CoordHelper } from '../utils/coords.js';
@@ -53,6 +54,10 @@ export class UIRenderer {
         root.style.setProperty('--sel-bg-color', style.bodyColor || '#00ff00');
         root.style.setProperty('--sel-bg-opacity', style.bodyOpacity !== undefined ? style.bodyOpacity : 0.1);
         
+        // New: Inner Shadow (Glow)
+        root.style.setProperty('--sel-inset-c', style.insetShadowColor || 'rgba(0, 255, 0, 0.2)');
+        root.style.setProperty('--sel-inset-w', `${style.insetShadowWidth !== undefined ? style.insetShadowWidth : 20}px`);
+        
         if (style.bodyImage) {
             root.style.setProperty('--sel-bg-image', `url("${style.bodyImage}")`);
         } else {
@@ -90,10 +95,31 @@ export class UIRenderer {
         }
         
         let content = '';
-        if (activeCss) content += `.click-zone.selected { ${activeCss} } `;
-        if (disabledCss) content += `.click-zone.disabled { ${disabledCss} } `;
+        
+        // UPDATE: Increased Specificity (html body ...) AND !important
+        // This ensures fancy styles (like border-image) win against the default preview styles.
+        
+        if (activeCss) {
+            content += `html body .click-zone.selected { ${this.forceImportant(activeCss)} } `;
+        }
+        
+        if (disabledCss) {
+            content += `html body .click-zone.disabled { ${this.forceImportant(disabledCss)} } `;
+        }
         
         styleTag.textContent = content;
+    }
+
+    // Helper to ensure custom CSS properties win
+    forceImportant(cssText) {
+        if (!cssText) return '';
+        return cssText.split(';')
+            .map(rule => {
+                if (!rule.trim()) return '';
+                if (rule.toLowerCase().includes('!important')) return rule;
+                return rule + ' !important';
+            })
+            .join(';');
     }
 
     // ==================== PAGES ====================

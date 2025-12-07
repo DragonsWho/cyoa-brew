@@ -22,6 +22,10 @@ body { margin: 0; padding: 0 0 120px 0; background: #1a1a1a; color: #eee; font-f
     --sel-bg-color: #00ff00;
     --sel-bg-opacity: 0.1;
     --sel-bg-image: none;
+    
+    /* NEW: Inner Glow (Inset Shadow) */
+    --sel-inset-c: rgba(0, 255, 0, 0.2);
+    --sel-inset-w: 20px;
 
     /* --- DISABLED STATE --- */
     --dis-border-c: #333333;
@@ -74,7 +78,8 @@ body { margin: 0; padding: 0 0 120px 0; background: #1a1a1a; color: #eee; font-f
     border-top-right-radius: var(--sel-radius-tr);
     border-bottom-right-radius: var(--sel-radius-br);
     border-bottom-left-radius: var(--sel-radius-bl);
-    box-shadow: 0 0 var(--sel-shadow-w) var(--sel-shadow-c), inset 0 0 20px 5px rgba(0,255,0,0.2);
+    /* Updated shadow to use inset vars */
+    box-shadow: 0 0 var(--sel-shadow-w) var(--sel-shadow-c), inset 0 0 var(--sel-inset-w) 5px var(--sel-inset-c);
 }
 
 .click-zone.selected::after {

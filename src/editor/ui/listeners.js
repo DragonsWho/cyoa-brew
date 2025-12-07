@@ -1,6 +1,7 @@
 /**
- * src/ui/editor/ui/listeners.js
+ * src/editor/ui/listeners.js
  * Event Listener Setup for All UI Elements
+ * Updated: Added listeners for Inset Shadow (Inner Glow)
  */
 import { ProjectStorage } from '../../utils/storage.js';
 
@@ -50,6 +51,11 @@ export const ListenersMixin = {
         attachStyleListener('style-radius-bl', 'radiusBL');
         attachStyleListener('style-shadow-color', 'shadowColor');
         attachStyleListener('style-shadow-width', 'shadowWidth');
+        
+        // NEW: Inset Shadow Listeners
+        attachStyleListener('style-inset-color', 'insetShadowColor');
+        attachStyleListener('style-inset-width', 'insetShadowWidth');
+
         attachStyleListener('style-body-color', 'bodyColor');
         attachStyleListener('style-body-opacity', 'bodyOpacity');
         attachStyleListener('style-custom-css', 'customCss');
