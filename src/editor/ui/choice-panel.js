@@ -3,6 +3,8 @@
  * Choice/Item Editing Panel HTML
  */
 
+import { imageCropper } from '../utils/image-tools.js';
+
 export function createChoicePanel() {
     return `
         <div id="tab-content-choice" class="tab-content" style="display:none;">
@@ -54,10 +56,27 @@ export function createChoicePanel() {
                         </div>
                     </div>
                     
-                    <!-- UPDATED SELECTABLE TOGGLE -->
-                    <div class="input-group" style="display: flex; flex-direction: row; align-items: center; justify-content: flex-start; padding: 8px 5px; background: transparent; border: none;">
-                        <input type="checkbox" id="edit-selectable" style="width: auto; margin: 0 8px 0 0; cursor: pointer;">
-                        <label for="edit-selectable" style="position: static; color: #ccc; font-size: 0.85rem; cursor: pointer; text-transform: none; pointer-events: auto;">Static (Not Selectable)</label>
+                    <!-- SPECIAL FLAGS -->
+                    <div style="display: flex; gap: 10px; margin-bottom: 8px;">
+                        <div class="input-group" style="flex:1; display: flex; align-items: center; padding: 4px 5px; background: transparent; border: none;">
+                            <input type="checkbox" id="edit-selectable" style="width: auto; margin: 0 8px 0 0; cursor: pointer;">
+                            <label for="edit-selectable" style="color: #ccc; font-size: 0.8rem; cursor: pointer;">Static</label>
+                        </div>
+                        <div class="input-group" style="flex:1; display: flex; align-items: center; padding: 4px 5px; background: transparent; border: none;">
+                            <input type="checkbox" id="edit-visual-card" style="width: auto; margin: 0 8px 0 0; cursor: pointer;">
+                            <label for="edit-visual-card" style="color: #4CAF50; font-size: 0.8rem; cursor: pointer; font-weight:bold;">Visual Card</label>
+                        </div>
+                    </div>
+
+                    <!-- VISUAL CARD IMAGE (Only visible if visual card is checked) -->
+                    <div id="visual-card-options" style="display:none; margin-bottom: 10px; background: #222; padding: 8px; border-radius: 4px; border: 1px solid #444;">
+                         <div style="display:flex; gap:10px; align-items:center;">
+                             <div id="vc-img-preview" style="width: 40px; height: 40px; background: #000; background-size: cover; background-position: center; border: 1px solid #555;"></div>
+                             <div style="flex:1;">
+                                <button class="full-width-btn" style="margin-top:0; font-size:0.8rem;" onclick="document.getElementById('vc-image-upload').click()">🖼️ Upload & Crop Image</button>
+                                <input type="file" id="vc-image-upload" accept="image/*" style="display:none;">
+                             </div>
+                         </div>
                     </div>
 
                     <div class="row-2">
@@ -113,6 +132,9 @@ export function createChoicePanel() {
 }
 
 export const ChoicePanelMixin = {
+    // Inject image cropper
+    imageCropper: imageCropper,
+
     selectChoice(item, element) {
         this.selectedItem = item;
         this.selectedItems = [item];
@@ -155,11 +177,24 @@ export const ChoicePanelMixin = {
         document.getElementById('edit-tags').value = (item.tags || []).join(', ');
         ['x','y','w','h'].forEach(k => { document.getElementById(`edit-${k}`).value = Math.round(item.coords?.[k] || 0); });
         
-        // UPDATE: Check logic inverted
-        // Checked = Static (selectable: false)
+        // Static Checkbox
         const selCheck = document.getElementById('edit-selectable');
-        if (selCheck) {
-            selCheck.checked = (item.selectable === false);
+        if (selCheck) selCheck.checked = (item.selectable === false);
+
+        // Visual Card Logic
+        const vcCheck = document.getElementById('edit-visual-card');
+        const vcOptions = document.getElementById('visual-card-options');
+        const vcPreview = document.getElementById('vc-img-preview');
+        
+        if (vcCheck) {
+            const isVc = !!item.isVisualCard;
+            vcCheck.checked = isVc;
+            if (isVc) {
+                vcOptions.style.display = 'block';
+                vcPreview.style.backgroundImage = item.cardImage ? `url('${item.cardImage}')` : 'none';
+            } else {
+                vcOptions.style.display = 'none';
+            }
         }
 
         const el = document.getElementById(`btn-${item.id}`);

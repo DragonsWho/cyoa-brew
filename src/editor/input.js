@@ -1,8 +1,7 @@
 /**
  * src\ui\editor\input.js
  * Editor Input Mixin - Handles mouse and keyboard input
- * Updated: Drag-to-Create Logic for Z/X + Redo Support
- * Updated: Preview Mode protection (disables editor interaction)
+ * Updated: Fix selection bug by ensuring UI refreshes on repeated clicks
  */
 
 import { CoordHelper } from '../utils/coords.js';
@@ -215,14 +214,11 @@ export const EditorInputMixin = {
         if (document.body.classList.contains('editor-preview-active')) return;
         
         // --- UI & SCROLLBAR PROTECTION ---
-        // Prevent clicks on editor UI overlays from triggering workspace actions
         if (e.target.closest('#editor-sidebar')) return;
         if (e.target.closest('.modal-content')) return;
         if (e.target.closest('#editor-context-menu')) return;
-        if (e.target.closest('#audit-chat-window')) return; // Added Audit Chat protection
+        if (e.target.closest('#audit-chat-window')) return; 
 
-        // Prevent clicks on Main Window Scrollbars from triggering workspace actions
-        // (Checks if click is outside the viewport client area)
         if (e.clientX >= document.documentElement.clientWidth || 
             e.clientY >= document.documentElement.clientHeight) {
             return;
@@ -236,21 +232,18 @@ export const EditorInputMixin = {
             if (isZ || isX) {
                 e.preventDefault();
                 
-                // 1. Calculate Start Coords
                 const pageIndex = this.activePageIndex;
                 const pageEl = document.getElementById(`page-${pageIndex}`);
                 const dim = this.renderer.pageDimensions[pageIndex];
                 
                 if (pageEl && dim) {
                     const rect = pageEl.getBoundingClientRect();
-                    // RelX in Image Pixels
                     const scaleX = dim.w / rect.width;
                     const scaleY = dim.h / rect.height;
                     
                     const relX = (e.clientX - rect.left) * scaleX;
                     const relY = (e.clientY - rect.top) * scaleY;
 
-                    // 2. Start Creation
                     const type = isX ? 'group' : 'item';
                     if (isX) this.switchTab('group');
                     else this.switchTab('choice');
@@ -331,8 +324,15 @@ export const EditorInputMixin = {
                             this.selectedItem = item; 
                         }
                     } else {
-                        if (!this.selectedItems.includes(item)) { this.selectChoice(item, target); } 
-                        else { this.selectedItem = item; }
+                        if (!this.selectedItems.includes(item)) { 
+                            this.selectChoice(item, target); 
+                        } else { 
+                            // ⚡ FIX: Force refresh UI if clicking an already selected item
+                            // This fixes the issue where visual cards sometimes don't activate the sidebar controls
+                            this.selectedItem = item; 
+                            this.switchTab('choice');
+                            this.updateChoiceInputs();
+                        }
                     }
                     this.refreshSelectionVisuals();
                     this.switchTab('choice');

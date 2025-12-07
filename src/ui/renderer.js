@@ -1,7 +1,6 @@
 /**
  * src\ui\renderer.js
  * UI Renderer - Handles all visual rendering
- * Updated: Specificity fix for Fancy CSS (Rainbow) in Preview Mode (using ID selector)
  */
 
 import { CoordHelper } from '../utils/coords.js';
@@ -26,11 +25,16 @@ export class UIRenderer {
         console.log('🎨 Renderer initialized');
     }
 
+    // Force refresh helper
+    clearStateCache() {
+        this.buttonStateCache.clear();
+    }
+
     async renderAll() {
         await this.renderPages();
         this.renderLayout();
         this.renderPointsBar();
-        this.applyGlobalStyles(); // Apply custom CSS variables
+        this.applyGlobalStyles(); 
         console.log('✅ All elements rendered');
     }
 
@@ -42,21 +46,22 @@ export class UIRenderer {
 
         const root = document.documentElement;
         
-        // --- ACTIVE STYLE VARIABLES ---
+        // --- ACTIVE STYLE ---
         root.style.setProperty('--sel-border-c', style.borderColor || '#00ff00');
         root.style.setProperty('--sel-border-w', `${style.borderWidth !== undefined ? style.borderWidth : 3}px`);
         root.style.setProperty('--sel-radius-tl', `${style.radiusTL !== undefined ? style.radiusTL : 12}px`);
         root.style.setProperty('--sel-radius-tr', `${style.radiusTR !== undefined ? style.radiusTR : 12}px`);
         root.style.setProperty('--sel-radius-br', `${style.radiusBR !== undefined ? style.radiusBR : 12}px`);
         root.style.setProperty('--sel-radius-bl', `${style.radiusBL !== undefined ? style.radiusBL : 12}px`);
+        
         root.style.setProperty('--sel-shadow-c', style.shadowColor || '#00ff00');
         root.style.setProperty('--sel-shadow-w', `${style.shadowWidth !== undefined ? style.shadowWidth : 15}px`);
-        root.style.setProperty('--sel-bg-color', style.bodyColor || '#00ff00');
-        root.style.setProperty('--sel-bg-opacity', style.bodyOpacity !== undefined ? style.bodyOpacity : 0.1);
         
-        // New: Inner Shadow (Glow)
         root.style.setProperty('--sel-inset-c', style.insetShadowColor || 'rgba(0, 255, 0, 0.2)');
         root.style.setProperty('--sel-inset-w', `${style.insetShadowWidth !== undefined ? style.insetShadowWidth : 20}px`);
+        
+        root.style.setProperty('--sel-bg-color', style.bodyColor || '#00ff00');
+        root.style.setProperty('--sel-bg-opacity', style.bodyOpacity !== undefined ? style.bodyOpacity : 0.1);
         
         if (style.bodyImage) {
             root.style.setProperty('--sel-bg-image', `url("${style.bodyImage}")`);
@@ -64,7 +69,15 @@ export class UIRenderer {
             root.style.setProperty('--sel-bg-image', 'none');
         }
 
-        // --- DISABLED STYLE VARIABLES ---
+        // --- VISUAL CARD STYLE ---
+        root.style.setProperty('--vis-bg-color', style.visualBgColor || '#222222');
+        root.style.setProperty('--vis-title-color', style.visualTitleColor || '#ffffff');
+        root.style.setProperty('--vis-text-color', style.visualTextColor || '#cccccc');
+        root.style.setProperty('--vis-border-color', style.visualBorderColor || '#444444');
+        root.style.setProperty('--vis-border-w', `${style.visualBorderWidth !== undefined ? style.visualBorderWidth : 1}px`);
+        root.style.setProperty('--vis-radius', `${style.visualRadius !== undefined ? style.visualRadius : 8}px`);
+
+        // --- DISABLED STYLE ---
         root.style.setProperty('--dis-border-c', style.disabledBorderColor || '#333333');
         root.style.setProperty('--dis-border-w', `${style.disabledBorderWidth !== undefined ? style.disabledBorderWidth : 0}px`);
         root.style.setProperty('--dis-radius-tl', `${style.disabledRadiusTL !== undefined ? style.disabledRadiusTL : 12}px`);
@@ -82,7 +95,6 @@ export class UIRenderer {
             root.style.setProperty('--dis-bg-image', 'none');
         }
 
-        // Custom CSS Overrides
         this.applyCustomCss(style.customCss, style.disabledCustomCss);
     }
 
@@ -95,15 +107,9 @@ export class UIRenderer {
         }
         
         let content = '';
-        
-        // UPDATE: Using ID selector #game-wrapper gives very high specificity (100+).
-        // This ensures these rules defeat the 'body.editor-preview-active...' rules (specificity ~40)
-        // allowing border-image and complex shadows to show in Preview Mode.
-        
         if (activeCss) {
             content += `#game-wrapper .click-zone.selected { ${this.forceImportant(activeCss)} } `;
         }
-        
         if (disabledCss) {
             content += `#game-wrapper .click-zone.disabled { ${this.forceImportant(disabledCss)} } `;
         }
@@ -111,7 +117,6 @@ export class UIRenderer {
         styleTag.textContent = content;
     }
 
-    // Helper to ensure custom CSS properties win
     forceImportant(cssText) {
         if (!cssText) return '';
         return cssText.split(';')
@@ -133,7 +138,6 @@ export class UIRenderer {
         const pages = this.engine.config.pages || [];
         
         if (pages.length === 0) {
-            console.warn('No pages defined in config');
             return;
         }
 
@@ -171,7 +175,6 @@ export class UIRenderer {
                 };
 
                 img.onerror = () => {
-                    console.warn(`Failed to load image for page ${index}`);
                     this.pageDimensions[index] = { w: 1920, h: 1080 };
                     resolve();
                 };
@@ -253,6 +256,8 @@ export class UIRenderer {
         activeIds.add(domId);
         let button = document.getElementById(domId);
         let isNew = false;
+        
+        // Create element if not exists
         if (!button) {
             isNew = true;
             button = document.createElement('div');
@@ -261,38 +266,119 @@ export class UIRenderer {
             layer.appendChild(button);
             this.setupItemEvents(button, item, group);
         }
+        
+        // Update basic attributes
         button.dataset.itemId = item.id;
         button.dataset.groupId = group ? group.id : '';
         Object.assign(button.style, CoordHelper.toPercent(item.coords, dim));
 
+        // Handle Visual Card CSS Class
+        if (item.isVisualCard) {
+            if (!button.classList.contains('visual-card')) button.classList.add('visual-card');
+        } else {
+            if (button.classList.contains('visual-card')) button.classList.remove('visual-card');
+        }
+
+        // Handle Static Info CSS Class
         const isStatic = (item.selectable === false);
         if (button.classList.contains('static-info') !== isStatic) {
             button.classList.toggle('static-info', isStatic);
         }
 
+        // Content Hashing to prevent unnecessary re-renders of inner HTML
         const newTitle = item.title || '';
         const newDesc = item.description || '';
         const isMulti = (item.max_quantity !== undefined && item.max_quantity > 1) || (item.min_quantity !== undefined && item.min_quantity < 0);
-        const contentHash = `${newTitle}|${newDesc}|${isMulti}`;
+        const cardImage = item.cardImage || '';
+        const costStr = this.getCostString(item);
+        
+        const contentHash = `${newTitle}|${newDesc}|${isMulti}|${item.isVisualCard}|${cardImage.length}|${costStr}`;
 
         if (isNew || button.dataset.contentHash !== contentHash) {
             button.innerHTML = '';
-            if (newTitle || newDesc) {
-                button.appendChild(this.createTextLayer(newTitle, newDesc));
+            
+            // --- RENDER VISUAL CARD ---
+            if (item.isVisualCard) {
+                // RENDER SPECIAL CARD STRUCTURE
+                
+                // 1. Image (Changed to <img> tag for correct cropping proportions)
+                if (item.cardImage) {
+                    const img = document.createElement('img');
+                    img.className = 'vc-image';
+                    img.src = item.cardImage;
+                    button.appendChild(img);
+                } else {
+                    // Placeholder if no image but visual card
+                    const imgDiv = document.createElement('div');
+                    imgDiv.className = 'vc-image'; 
+                    button.appendChild(imgDiv);
+                }
+                
+                // 2. Content Container
+                const contentDiv = document.createElement('div');
+                contentDiv.className = 'vc-content';
+                
+                // 3. Title (Centered via CSS)
+                if (newTitle) {
+                    const titleDiv = document.createElement('div');
+                    titleDiv.className = 'vc-title';
+                    titleDiv.textContent = newTitle;
+                    contentDiv.appendChild(titleDiv);
+                }
+
+                // 4. Cost Line (Separate line under title, small font, centered)
+                if (costStr) {
+                    const costDiv = document.createElement('div');
+                    costDiv.className = 'vc-cost';
+                    costDiv.innerHTML = costStr; 
+                    contentDiv.appendChild(costDiv);
+                }
+
+                // 5. Requirements (Tiny line)
+                const reqString = this.getTinyReqString(item);
+                if (reqString) {
+                    const reqDiv = document.createElement('div');
+                    reqDiv.className = 'vc-req';
+                    reqDiv.textContent = reqString;
+                    contentDiv.appendChild(reqDiv);
+                }
+
+                // 6. Body
+                if (newDesc) {
+                    const bodyDiv = document.createElement('div');
+                    bodyDiv.className = 'vc-body';
+                    bodyDiv.innerHTML = newDesc.replace(/\n/g, '<br>');
+                    contentDiv.appendChild(bodyDiv);
+                }
+                
+                button.appendChild(contentDiv);
+
             }
+            // --- RENDER STANDARD CARD ---
+            else {
+                if (newTitle || newDesc) {
+                    button.appendChild(this.createTextLayer(newTitle, newDesc));
+                }
+            }
+
+            // Multi-select controls
             if (!isStatic && isMulti) {
                 button.classList.add('multi-select');
                 const controls = document.createElement('div');
                 controls.className = 'split-controls';
+                
                 const minusBtn = document.createElement('div');
                 minusBtn.className = 'split-btn minus';
                 minusBtn.onclick = (e) => { e.stopPropagation(); this.engine.deselect(item.id); };
+                
                 const plusBtn = document.createElement('div');
                 plusBtn.className = 'split-btn plus';
                 plusBtn.onclick = (e) => { e.stopPropagation(); this.engine.select(item.id); };
+                
                 controls.appendChild(minusBtn);
                 controls.appendChild(plusBtn);
                 button.appendChild(controls);
+                
                 const badge = document.createElement('div');
                 badge.className = 'qty-badge';
                 badge.style.display = 'none'; 
@@ -300,6 +386,7 @@ export class UIRenderer {
             } else {
                 button.classList.remove('multi-select');
             }
+            
             button.dataset.contentHash = contentHash;
         }
         
@@ -355,6 +442,27 @@ export class UIRenderer {
             ${cleanDesc ? `<span>${cleanDesc}</span>` : ''}
         `;
         return div;
+    }
+
+    getTinyReqString(item) {
+        let parts = [];
+        if (item.requirements) {
+            item.requirements.forEach(r => {
+                if(!r.includes('(')) parts.push(`Req: ${r}`);
+            });
+        }
+        return parts.join(' • ');
+    }
+
+    getCostString(item) {
+        if (!item.cost || item.cost.length === 0) return '';
+        let parts = [];
+        item.cost.forEach(c => {
+            const val = c.value !== undefined ? c.value : (c.base || 0);
+            const valStr = val > 0 ? `+${val}` : val;
+            parts.push(`${valStr} ${c.currency}`);
+        });
+        return parts.join(' • ');
     }
 
     renderPointsBar() {
@@ -423,135 +531,12 @@ export class UIRenderer {
                     if (badge.style.display !== displayStyle) badge.style.display = displayStyle;
                 }
             } 
-
-            const hasDiceEffect = item.effects && item.effects.some(e => e.type === 'roll_dice');
-            if (hasDiceEffect) {
-                const rolledValue = this.engine.state.rollResults.get(itemId);
-                const currentBadge = el.querySelector('.roll-result-badge');
-                if (isSelected && rolledValue !== undefined) {
-                    if (!el.dataset.hasAnimated && !isSpinning && !currentBadge) {
-                        this.playRouletteAnimation(el, rolledValue, item);
-                    } else if (el.dataset.hasAnimated && !currentBadge && !isSpinning) {
-                        this.showPermanentBadge(el, rolledValue, true);
-                    }
-                } else {
-                    if (currentBadge) currentBadge.remove();
-                    if (isSpinning) {
-                        const mask = el.querySelector('.roulette-mask');
-                        if (mask) mask.remove();
-                        el.classList.remove('spinning-active');
-                    }
-                    delete el.dataset.hasAnimated;
-                }
-            }
         });
     }
 
-    playRouletteAnimation(container, targetNumber, item) {
-        if (container.classList.contains('spinning-active')) return;
-        container.classList.add('spinning-active');
-        const mask = document.createElement('div');
-        mask.className = 'roulette-mask';
-        const strip = document.createElement('div');
-        strip.className = 'roulette-strip';
-        const containerHeight = container.offsetHeight;
-        const itemHeight = Math.floor(containerHeight * 0.65); 
-        const maskOffset = (containerHeight - itemHeight) / 2;
-        const diceEffect = item.effects.find(e => e.type === 'roll_dice');
-        const min = parseInt(diceEffect?.min) || 1;
-        const max = parseInt(diceEffect?.max) || 20;
-        const totalItems = 30 + Math.floor(Math.random() * 15);
-        const numbers = [];
-        for (let i = 0; i < totalItems; i++) {
-            numbers.push(Math.floor(Math.random() * (max - min + 1)) + min);
-        }
-        const targetIndex = totalItems - 3;
-        numbers[targetIndex] = targetNumber;
-        strip.innerHTML = numbers.map(n => 
-            `<div class="roulette-item" style="height:${itemHeight}px; line-height:${itemHeight}px;">${n}</div>`
-        ).join('');
-        mask.appendChild(strip);
-        container.appendChild(mask);
-
-        const spinProfiles = [
-            { name: 'standard', duration: 2000, bezier: 'cubic-bezier(0.1, 0.7, 0.1, 1)', type: 'direct' },
-            { name: 'slam', duration: 1500, bezier: 'cubic-bezier(0.5, 0.0, 0.1, 1)', type: 'direct' },
-            { name: 'heavy', duration: 2500, bezier: 'cubic-bezier(0, 0.95, 0.2, 1)', type: 'direct' },
-        ];
-        const profile = spinProfiles[Math.floor(Math.random() * spinProfiles.length)];
-        const baseTargetY = -1 * (targetIndex * itemHeight) + maskOffset;
-        let initialY = baseTargetY;
-        
-        strip.offsetHeight;
-        strip.style.transition = `transform ${profile.duration}ms ${profile.bezier}`;
-        strip.style.transform = `translateY(${initialY}px)`;
-
-        const finalize = () => {
-            const winnerEl = strip.querySelectorAll('.roulette-item')[targetIndex];
-            if(winnerEl) winnerEl.classList.add('winner');
-            setTimeout(() => {
-                mask.style.opacity = '0';
-                mask.style.transition = 'opacity 0.2s';
-                this.showPermanentBadge(container, targetNumber);
-                container.dataset.hasAnimated = "true";
-                container.classList.remove('spinning-active');
-                setTimeout(() => mask.remove(), 200);
-            }, 400);
-        };
-        setTimeout(finalize, profile.duration);
-    }
-
-    showPermanentBadge(container, value, instant = false) {
-        const old = container.querySelector('.roll-result-badge');
-        if (old) old.remove();
-        const badge = document.createElement('div');
-        badge.className = 'roll-result-badge';
-        badge.textContent = value;
-        if (!instant) {
-            badge.classList.add('spawn-anim');
-            container.appendChild(badge);
-            requestAnimationFrame(() => {
-                badge.classList.remove('spawn-anim');
-            });
-        } else {
-            container.appendChild(badge);
-        }
-    }
-
-    updatePointsBar() {
-        for (const currencyId in this.engine.state.currencies) {
-            const span = document.querySelector(`#curr-${currencyId} span`);
-            if (span) {
-                const value = this.engine.state.currencies[currencyId];
-                span.textContent = value;
-                span.parentElement.classList.toggle('negative', value < 0);
-            }
-        }
-    }
-
-    updateBudgets() {
-        for (const groupId in this.engine.state.budgets) {
-            const group = this.engine.findGroup(groupId);
-            if (group) {
-                this.updateBudgetBadge(group);
-            }
-        }
-    }
-
-    updateBudgetBadge(group) {
-        const badge = document.getElementById(`budget-${group.id}`);
-        if (!badge) return;
-        const budgetState = this.engine.state.budgets[group.id];
-        if (!budgetState) {
-            const budget = group.rules.budget;
-            badge.textContent = `${budget.name || budget.currency}: ${budget.amount}/${budget.amount}`;
-            return;
-        }
-        const { total, remaining } = budgetState;
-        const budget = group.rules.budget;
-        badge.textContent = `${budget.name || budget.currency}: ${remaining}/${total}`;
-        badge.classList.toggle('empty', remaining === 0);
-    }
-    
-    renderButtons() { this.renderLayout(); }
+    playRouletteAnimation(container,targetNumber,item){if(container.classList.contains('spinning-active'))return;container.classList.add('spinning-active');const mask=document.createElement('div');mask.className='roulette-mask';const strip=document.createElement('div');strip.className='roulette-strip';const containerHeight=container.offsetHeight;const itemHeight=Math.floor(containerHeight*0.65);const maskOffset=(containerHeight-itemHeight)/2;const diceEffect=item.effects.find(e=>e.type==='roll_dice');const min=parseInt(diceEffect?.min)||1;const max=parseInt(diceEffect?.max)||20;const totalItems=30+Math.floor(Math.random()*15);const numbers=[];for(let i=0;i<totalItems;i++){numbers.push(Math.floor(Math.random()*(max-min+1))+min);}const targetIndex=totalItems-3;numbers[targetIndex]=targetNumber;strip.innerHTML=numbers.map(n=>`<div class="roulette-item" style="height:${itemHeight}px; line-height:${itemHeight}px;">${n}</div>`).join('');mask.appendChild(strip);container.appendChild(mask);const spinProfiles=[{name:'standard',duration:2000,bezier:'cubic-bezier(0.1, 0.7, 0.1, 1)',type:'direct'},{name:'slam',duration:1500,bezier:'cubic-bezier(0.5, 0.0, 0.1, 1)',type:'direct'},{name:'heavy',duration:2500,bezier:'cubic-bezier(0, 0.95, 0.2, 1)',type:'direct'},];const profile=spinProfiles[Math.floor(Math.random()*spinProfiles.length)];const baseTargetY=-1*(targetIndex*itemHeight)+maskOffset;let initialY=baseTargetY;strip.offsetHeight;strip.style.transition=`transform ${profile.duration}ms ${profile.bezier}`;strip.style.transform=`translateY(${initialY}px)`;const finalize=()=>{const winnerEl=strip.querySelectorAll('.roulette-item')[targetIndex];if(winnerEl)winnerEl.classList.add('winner');setTimeout(()=>{mask.style.opacity='0';mask.style.transition='opacity 0.2s';this.showPermanentBadge(container,targetNumber);container.dataset.hasAnimated="true";container.classList.remove('spinning-active');setTimeout(()=>mask.remove(),200);},400);};setTimeout(finalize,profile.duration);}
+    showPermanentBadge(container,value,instant=false){const old=container.querySelector('.roll-result-badge');if(old)old.remove();const badge=document.createElement('div');badge.className='roll-result-badge';badge.textContent=value;if(!instant){badge.classList.add('spawn-anim');container.appendChild(badge);requestAnimationFrame(()=>{badge.classList.remove('spawn-anim');});}else{container.appendChild(badge);}}
+    updatePointsBar(){for(const currencyId in this.engine.state.currencies){const span=document.querySelector(`#curr-${currencyId} span`);if(span){const value=this.engine.state.currencies[currencyId];span.textContent=value;span.parentElement.classList.toggle('negative',value<0);}}}
+    updateBudgets(){for(const groupId in this.engine.state.budgets){const group=this.engine.findGroup(groupId);if(group){this.updateBudgetBadge(group);}}}
+    updateBudgetBadge(group){const badge=document.getElementById(`budget-${group.id}`);if(!badge)return;const budgetState=this.engine.state.budgets[group.id];if(!budgetState){const budget=group.rules.budget;badge.textContent=`${budget.name||budget.currency}: ${budget.amount}/${budget.amount}`;return;}const {total,remaining}=budgetState;const budget=group.rules.budget;badge.textContent=`${budget.name||budget.currency}: ${remaining}/${total}`;badge.classList.toggle('empty',remaining===0);}
 }

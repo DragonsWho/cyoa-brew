@@ -92,56 +92,95 @@ export class ProjectStorage {
      * Save project as ZIP (JSON + Images)
      * @param {Object} config 
      */
-    static async saveZip(config) {
-        let JSZip;
-       try { 
-            // Vite автоматически найдет 'jszip' в установленных пакетах
-            const module = await import('jszip'); 
-            JSZip = module.default; 
-        } catch (e) { 
-            throw new Error("Could not load JSZip library.");
-        }
-
-        const zip = new JSZip();
-        
-        // Prepare config (clone + inject meta)
-        const configToSave = this.prepareConfigForSave(config);
-        
-        // Handle Image Logic for ZIP
-        // We replace the absolute/base64 path in the JSON with a relative "image.png"
-        // so the ZIP is portable.
-        const dataUrl = config.config?.meta?.pages?.[0] || config.meta?.pages?.[0];
-        
-        // Update the JSON that goes INTO the zip to point to the local file
-        configToSave.meta.pages[0] = "image.png"; 
-
-        zip.file("project.json", JSON.stringify(configToSave, null, 2));
-
-        if (dataUrl && dataUrl.startsWith('data:image')) {
-            const resp = await fetch(dataUrl);
-            const blob = await resp.blob();
-            zip.file("image.png", blob);
-        } else if (dataUrl) {
-            try {
-                const resp = await fetch(dataUrl);
-                const blob = await resp.blob();
-                zip.file("image.png", blob);
-            } catch(e) {
-                console.warn("Could not zip linked image:", e);
-            }
-        }
-
-        const content = await zip.generateAsync({type:"blob"});
-        const url = URL.createObjectURL(content);
-        
-        const filename = (config.meta?.title || 'cyoa_package').replace(/[^a-z0-9]/gi, '_').toLowerCase();
-
-        const a = document.createElement('a'); 
-        a.href = url; 
-        a.download = `${filename}.zip`; 
-        a.click(); 
-        URL.revokeObjectURL(url);
+static async saveZip(config) {
+    let JSZip;
+    try {
+        const module = await import('jszip');
+        JSZip = module.default;
+    } catch (e) {
+        throw new Error("JSZip library not available. Is it installed? (npm i jszip)");
     }
+
+    const zip = new JSZip();
+
+    // 1. Подготавливаем конфиг с метой
+    const configToSave = this.prepareConfigForSave(JSON.parse(JSON.stringify(config)));
+
+    // 2. Перебираем ВСЕ страницы и собираем изображения
+    const pages = configToSave.pages || [];
+
+    for (let i = 0; i < pages.length; i++) {
+        const page = pages[i];
+        if (!page.image) continue;
+
+        let blob = null;
+        let filename = null;
+
+        // Генерируем безопасное имя файла
+        const safeName = (page.id || page.title || `page_${i + 1}`)
+            .replace(/[^a-zA-Z0-9_-]/g, '_')
+            .substring(0, 50); // ограничение длины
+
+        if (page.image.startsWith('data:')) {
+            // Data-URL → конвертируем в Blob
+            try {
+                const response = await fetch(page.image);
+                blob = await response.blob();
+                filename = `${safeName}.png`;
+            } catch (e) {
+                console.warn(`Failed to fetch data URL for page ${i}:`, e);
+                continue;
+            }
+        } else if (page.image.startsWith('http')) {
+            // Внешняя ссылка — пытаемся скачать
+            try {
+                const response = await fetch(page.image);
+                if (!response.ok) throw new Error("Network error");
+                blob = await response.blob();
+                const ext = page.image.split('.').pop().split(/[\?\#]/)[0].toLowerCase();
+                filename = `${safeName}.${ext === 'jpg' ? 'jpg' : 'png'}`;
+            } catch (e) {
+                console.warn(`Could not download image: ${page.image}`, e);
+                // Оставляем ссылку как есть — игрок сам скачает при загрузке
+                continue;
+            }
+        } else {
+            // Локальный путь или что-то странное — просто пропускаем
+            continue;
+        }
+
+        if (blob && filename) {
+            zip.file(`images/${filename}`, blob);
+            // Заменяем в конфиге на относительный путь
+            page.image = `images/${filename}`;
+        }
+    }
+
+    // 3. Сохраняем JSON в ZIP
+    zip.file("project.json", JSON.stringify(configToSave, null, 2));
+
+    // 4. Генерируем и скачиваем
+    try {
+        const content = await zip.generateAsync({ type: "blob" });
+        const url = URL.createObjectURL(content);
+
+        const title = (configToSave.meta?.title || "cyoa_project")
+            .replace(/[^a-z0-9]/gi, '_')
+            .toLowerCase();
+
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${title}.zip`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+
+        URL.revokeObjectURL(url);
+    } catch (err) {
+        console.error("ZIP generation failed:", err);
+        throw new Error("Failed to generate ZIP: " + err.message);
+    }
+}
 
     // --- Helpers ---
 

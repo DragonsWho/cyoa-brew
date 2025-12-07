@@ -134,7 +134,6 @@ export class GameEngine {
         s.shadowColor = s.shadowColor || '#00ff00';
         s.shadowWidth = s.shadowWidth !== undefined ? s.shadowWidth : 15;
         
-        // NEW: Inner Shadow (Glow) Defaults - preserving legacy green look
         s.insetShadowColor = s.insetShadowColor || 'rgba(0, 255, 0, 0.2)';
         s.insetShadowWidth = s.insetShadowWidth !== undefined ? s.insetShadowWidth : 20;
         
@@ -142,6 +141,14 @@ export class GameEngine {
         s.bodyOpacity = s.bodyOpacity !== undefined ? s.bodyOpacity : 0.1;
         s.bodyImage = s.bodyImage || '';
         s.customCss = s.customCss || '';
+
+        // === SPECIAL VISUAL CARD DEFAULTS ===
+        s.visualBgColor = s.visualBgColor || '#222222';
+        s.visualTitleColor = s.visualTitleColor || '#ffffff';
+        s.visualTextColor = s.visualTextColor || '#cccccc';
+        s.visualBorderColor = s.visualBorderColor || '#444444';
+        s.visualBorderWidth = s.visualBorderWidth !== undefined ? s.visualBorderWidth : 1;
+        s.visualRadius = s.visualRadius !== undefined ? s.visualRadius : 8;
 
         // === DISABLED STYLE DEFAULTS ===
         s.disabledBorderColor = s.disabledBorderColor || '#555555';
@@ -159,7 +166,6 @@ export class GameEngine {
         s.disabledBodyOpacity = s.disabledBodyOpacity !== undefined ? s.disabledBodyOpacity : 0.5;
         s.disabledBodyImage = s.disabledBodyImage || '';
         
-        // Default striping for disabled cards (legacy look)
         if (s.disabledCustomCss === undefined) {
             s.disabledCustomCss = 'background-image: repeating-linear-gradient(45deg, rgba(0,0,0,0.4), rgba(0,0,0,0.4) 10px, rgba(50,50,50,0.6) 10px, rgba(50,50,50,0.6) 20px);';
         }

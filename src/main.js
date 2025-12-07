@@ -1,12 +1,6 @@
 /**
  * src\main.js
  * CYOA Interactive System - Main Entry Point
- * 
- * This file initializes the entire system:
- * 1. Loads config from JSON
- * 2. Creates game engine
- * 3. Creates UI renderer
- * 4. Sets up controls
  */
 
 import '../styles/main.css';
@@ -15,15 +9,16 @@ import '../styles/themes.css';
 import { GameEngine } from './core/engine.js';
 import { UIRenderer } from './ui/renderer.js';
 import { ControlPanel } from './ui/controls.js';
+import { BuildManager } from './ui/build-manager.js';
 
 // Global state
-let engine, renderer, controls;
+let engine, renderer, controls, buildManager;
 
 async function init() {
     console.log('🚀 Starting CYOA Interactive System...');
     
     try {
-        const response = await fetch('config/test_config.json');
+        const response = await fetch('config/project.json');
         
         if (!response.ok) {
             throw new Error(`Config not found (${response.status})`);
@@ -35,6 +30,13 @@ async function init() {
         engine = new GameEngine(config);
         renderer = new UIRenderer(engine);
         controls = new ControlPanel(engine, renderer);
+        buildManager = new BuildManager(engine, renderer);
+
+        // Bind Build Button
+        const buildBtn = document.getElementById('build-toggle');
+        if (buildBtn) {
+            buildBtn.addEventListener('click', () => buildManager.open());
+        }
 
         await renderer.renderAll();
          
@@ -77,11 +79,6 @@ window.CYOA = {
     get controls() { return controls; },
     get editor() { return controls?.editor; },
     get state() { return engine?.state; },
-    get config() { return engine?.config; }
+    get config() { return engine?.config; },
+    get buildManager() { return buildManager; }
 };
-
-console.log('💡 Debug commands available:');
-console.log('  CYOA.engine.select("item_id")  - Select an item');
-console.log('  CYOA.engine.reset()            - Reset everything');
-console.log('  CYOA.editor.enable()           - Enable editor');
-console.log('  CYOA.state                     - View current state');

@@ -15,35 +15,45 @@ body.editor-interacting .info-zone { transition: none !important; }
 }
 
 /* === BASE EDITOR STYLES (When NOT in Preview Mode) === */
-/* Using high specificity to override custom user CSS */
 
+/* Override styles for visual debugging */
 body.show-zones:not(.editor-preview-active) #game-wrapper .click-zone { 
     border: 2px solid rgba(255,0,0,0.5) !important; 
     background-color: rgba(255,0,0,0.05) !important;
-    background-image: none !important; /* Kill custom backgrounds */
+    background-image: none !important; 
     border-radius: 0 !important; 
-    box-shadow: none !important; /* Kill custom shadows */
+    box-shadow: none !important; 
     opacity: 1 !important;
 }
 
+/* ID Label */
 body.show-zones:not(.editor-preview-active) #game-wrapper .click-zone::after { 
     content: attr(id); position: absolute; top: 0; left: 0; 
     background: red; color: white; font-size: 10px; padding: 1px 3px; 
     pointer-events: none; display: block !important;
     border-radius: 0 !important;
-    /* Reset any decorative ::after styles from main.css */
     width: auto !important; height: auto !important; inset: auto !important;
     box-shadow: none !important; border: none !important; opacity: 1 !important;
+    z-index: 5000 !important;
 }
 
+/* Group Zones */
 body.show-zones:not(.editor-preview-active) #game-wrapper .info-zone { 
     border: 2px dashed rgba(255,165,0,0.4) !important; 
     background-color: rgba(255,165,0,0.1) !important; 
 }
 
-/* Hide budget badges in editor mode to avoid clutter */
 body.show-zones:not(.editor-preview-active) .group-budget-badge {
     opacity: 0.5; pointer-events: none;
+}
+
+/* === INTERACTION FIXES === */
+
+/* IMPORTANT: Fix clicking on Visual Cards in Editor */
+/* Disable pointer events on ALL children of item-zones in edit mode. 
+   This ensures clicks hit the parent .item-zone div, which has the event listener. */
+body.edit-mode-choice .item-zone * {
+    pointer-events: none !important;
 }
 
 /* Edit Interaction Modes */
@@ -52,25 +62,31 @@ body.edit-mode-choice .info-zone { pointer-events: none; }
 body.edit-mode-group .info-zone { pointer-events: auto; cursor: move; z-index: 2000; } 
 body.edit-mode-group .item-zone { pointer-events: none; opacity: 0.5; }
 
-/* === PREVIEW MODE OVERRIDES (FIXED VISUALS) === */
+/* === PREVIEW MODE OVERRIDES === */
 
-/* 1. Reset DEBUG styles for non-active items */
 body.editor-preview-active.show-zones .click-zone:not(.selected):not(.disabled) {
     border: none !important;
     background-color: transparent !important;
     box-shadow: none !important;
 }
 
-/* 2. Hide Editor UI Elements */
-body.editor-preview-active.show-zones .click-zone::after { display: none !important; } /* Hide ID label */
-body.editor-preview-active.show-zones .info-zone { border: none !important; background: transparent !important; }
-body.editor-preview-active .editor-selected::before { display: none !important; } /* Hide Title Notch */
-body.editor-preview-active .editor-selected { 
-    background-image: none !important; /* Hide Selection Triangles */
-    box-shadow: none !important; /* Hide Selection Glow (replaced below) */
+/* Restore Visual Card Styles in Preview Mode (override editor "red border") */
+body.editor-preview-active.show-zones .click-zone.visual-card:not(.selected):not(.disabled) {
+    background-color: var(--vis-bg-color) !important;
+    border: var(--vis-border-w) solid var(--vis-border-color) !important;
+    border-radius: var(--vis-radius) !important;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.3) !important;
 }
 
-/* 3. Restore Game Interactivity */
+body.editor-preview-active.show-zones .click-zone::after { display: none !important; } 
+body.editor-preview-active.show-zones .info-zone { border: none !important; background: transparent !important; }
+body.editor-preview-active .editor-selected::before { display: none !important; } 
+body.editor-preview-active .editor-selected { 
+    background-image: none !important; 
+    box-shadow: none !important; 
+}
+
+/* Restore Interactivity in Preview */
 body.editor-preview-active .click-zone,
 body.editor-preview-active .item-zone {
     pointer-events: auto !important;
@@ -79,36 +95,37 @@ body.editor-preview-active .item-zone {
 }
 body.editor-preview-active .info-zone { pointer-events: none !important; }
 
-/* 4. FORCE Game Styles for Selected Items (Override Editor Red Border) */
-/* Update: Added inner shadow variable logic */
+/* Force Selection Styles in Preview */
 body.editor-preview-active.show-zones .click-zone.selected {
     border: var(--sel-border-w) solid var(--sel-border-c) !important;
     border-top-left-radius: var(--sel-radius-tl) !important;
     border-top-right-radius: var(--sel-radius-tr) !important;
     border-bottom-right-radius: var(--sel-radius-br) !important;
     border-bottom-left-radius: var(--sel-radius-bl) !important;
-    background-color: transparent !important; /* Must be transparent so ::after shows through */
-    
-    /* Reconstruct box-shadow using vars, matching main.css structure */
+    background-color: transparent !important;
     box-shadow: 0 0 var(--sel-shadow-w) var(--sel-shadow-c), inset 0 0 var(--sel-inset-w) 5px var(--sel-inset-c) !important;
-    
-    /* Disable Transition for geometry to prevent square-to-round glitch */
     transition: box-shadow 0.2s, opacity 0.2s !important;
 }
 
-/* IMPORTANT: Ensure pseudo-element (glow) is visible and correctly layered */
+/* Special handling for Visual Card Selection in Preview */
+body.editor-preview-active.show-zones .click-zone.visual-card.selected {
+    background-color: var(--vis-bg-color) !important;
+    border-width: var(--vis-border-w) !important; /* Keep original width */
+    border-color: var(--sel-border-c) !important; /* Change color */
+    box-shadow: 0 0 var(--sel-shadow-w) var(--sel-shadow-c) !important;
+}
+
 body.editor-preview-active.show-zones .click-zone.selected::after {
     display: block !important;
     content: '' !important;
     background-color: var(--sel-bg-color) !important;
     opacity: var(--sel-bg-opacity) !important;
-    z-index: -1 !important;
-    /* Reset positioning just in case */
-    position: absolute !important; inset: 0 !important; width: 100% !important; height: 100% !important;
+    z-index: 1 !important; 
+    position: absolute !important; inset: 0 !important;
     border-radius: inherit !important;
 }
 
-/* 5. FORCE Game Styles for Disabled Items */
+/* Force Disabled Styles in Preview */
 body.editor-preview-active.show-zones .click-zone.disabled {
     border: var(--dis-border-w) solid var(--dis-border-c) !important;
     border-top-left-radius: var(--dis-radius-tl) !important;
@@ -118,8 +135,6 @@ body.editor-preview-active.show-zones .click-zone.disabled {
     background-color: transparent !important;
     box-shadow: 0 0 var(--dis-shadow-w) var(--dis-shadow-c) !important;
     cursor: not-allowed !important;
-    
-    /* Disable Transition for geometry */
     transition: box-shadow 0.2s, opacity 0.2s !important;
 }
 
@@ -127,15 +142,14 @@ body.editor-preview-active.show-zones .click-zone.disabled::after {
     display: block !important;
     content: '' !important;
     background-color: var(--dis-bg-color) !important;
-    background-image: var(--dis-bg-image) !important; /* Ensure image (stripes) shows */
+    background-image: var(--dis-bg-image) !important;
     background-size: cover !important;
     opacity: var(--dis-bg-opacity) !important;
     z-index: -1 !important;
     border-radius: inherit !important;
 }
 
-
-/* === SELECTION (Borders, Triangles, Notch) === */
+/* === SELECTION UI === */
 .item-zone.editor-selected { 
     border: 2px solid #FFD700 !important; z-index: 3000 !important; color: #FFD700; 
 }
@@ -146,7 +160,6 @@ body.editor-preview-active.show-zones .click-zone.disabled::after {
 
 .editor-selected {
     box-shadow: 0 0 0 2px #000, 0 0 20px rgba(0,0,0,0.5) !important;
-    /* Corner Triangles */
     background-image: 
         linear-gradient(135deg, currentColor 8px, transparent 8px),
         linear-gradient(225deg, currentColor 8px, transparent 8px),
@@ -154,24 +167,20 @@ body.editor-preview-active.show-zones .click-zone.disabled::after {
         linear-gradient(45deg, currentColor 8px, transparent 8px) !important;
     background-position: top left, top right, bottom right, bottom left !important;
     background-size: 14px 14px !important; background-repeat: no-repeat !important;
-    transform-origin: center; will-change: top, left, width, height;
 }
 
-.click-zone.editor-selected, .info-zone.editor-selected { transition: none !important; }
-.click-zone.editor-selected::before, .info-zone.editor-selected::before { transition: none !important; }
-
-/* Title Notch */
+/* Notch */
 .editor-selected::before {
     content: attr(data-editor-title); position: absolute; top: 0; left: 50%; transform: translateX(-50%);
     background: #d32f2f; color: white; font-size: 11px; font-weight: bold; padding: 2px 8px; height: 18px;
     min-width: 60px; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     max-width: 90%; border-bottom-left-radius: 6px; border-bottom-right-radius: 6px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.5); pointer-events: none; z-index: 3001; line-height: 14px; border-top: none;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.5); pointer-events: none; z-index: 3001; line-height: 14px;
 }
 
 .click-zone.dragging { transition: none !important; z-index: 9999 !important; pointer-events: none; opacity: 0.8; }
 
-/* === EDITOR SIDEBAR & UI === */
+/* === SIDEBAR & UI === */
 .editor-sidebar { background: #1a1a1a; width: 340px; position: fixed; right: 0; top: 0; bottom: 0; z-index: 4000; display: flex; flex-direction: column; box-shadow: -5px 0 20px rgba(0,0,0,0.5); border-left: 1px solid #333; }
 body.edit-mode-active #game-wrapper { margin-right: 340px; transition: margin-right 0.3s; }
 
@@ -179,265 +188,48 @@ body.edit-mode-active #game-wrapper { margin-right: 340px; transition: margin-ri
 .tab-btn { flex: 1; background: #111; border: none; color: #888; padding: 12px 0; cursor: pointer; font-weight: bold; font-size: 0.9rem; border-bottom: 2px solid transparent; transition: all 0.2s; }
 .tab-btn:hover { color: #ccc; background: #181818; }
 .tab-btn.active { color: #fff; background: #1a1a1a; border-bottom: 2px solid #4CAF50; }
-.close-tab-btn { background: #d32f2f; color: white; border: none; width: 40px; flex-shrink: 0; cursor: pointer; font-size: 16px; font-weight: bold; display: flex; align-items: center; justify-content: center; }
-.close-tab-btn:hover { background: #b71c1c; }
+.close-tab-btn { background: #d32f2f; color: white; border: none; width: 40px; flex-shrink: 0; cursor: pointer; }
 
-/* === NEW: Page Navigation Bar === */
-.editor-page-nav-container {
-    display: flex; align-items: stretch; background: #1f1f1f; 
-    border-bottom: 1px solid #333; height: 36px; flex-shrink: 0; user-select: none;
-}
-.nav-scroll-area {
-    flex: 1; display: flex; overflow-x: auto; overflow-y: hidden;
-    scrollbar-width: none; /* Firefox */
-    -ms-overflow-style: none; /* IE/Edge */
-    align-items: center;
-}
-.nav-scroll-area::-webkit-scrollbar { display: none; }
+.editor-page-nav-container { display: flex; background: #1f1f1f; border-bottom: 1px solid #333; height: 36px; flex-shrink: 0; }
+.nav-scroll-area { flex: 1; display: flex; overflow-x: auto; scrollbar-width: none; align-items: center; }
+.nav-arrow { background: #252525; border: none; color: #aaa; width: 24px; cursor: pointer; }
+.nav-page-btn { display: flex; align-items: center; padding: 0 12px; color: #888; cursor: pointer; height: 100%; transition: all 0.2s; position: relative; }
+.nav-page-btn.active { background: #2e7d32; color: #fff; padding-right: 30px; }
+.page-close { position: absolute; right: 2px; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+.nav-add-btn { color: #4CAF50; font-weight: bold; }
 
-.nav-arrow {
-    background: #252525; border: none; color: #aaa; width: 24px; cursor: pointer;
-    font-size: 16px; font-weight: bold; flex-shrink: 0; z-index: 2;
-    transition: background 0.2s; border-right: 1px solid #333;
-}
-.nav-arrow:last-child { border-right: none; border-left: 1px solid #333; }
-.nav-arrow:hover { background: #333; color: white; }
+.sidebar-scroll-content { flex: 1; overflow-y: auto; padding: 15px 0 40px 0; }
+.editor-section { padding: 5px 2px 5px 10px; border-bottom: 1px solid #222; }
+.input-group { background: #252525; border: 1px solid #333; border-radius: 4px; position: relative; margin-bottom: 5px; }
+.input-group input, .input-group textarea, .input-group select { width: 100%; background: transparent; border: none; color: #eee; padding: 6px 8px; font-size: 0.9rem; display: block; }
+.input-label { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); color: #555; font-size: 0.75rem; pointer-events: none; font-weight: 600; }
+.input-label.label-hidden { opacity: 0; }
 
-.nav-page-btn {
-    display: flex; align-items: center; justify-content: center;
-    padding: 0 12px; color: #888; cursor: pointer; height: 100%;
-    font-size: 1.1rem; font-family: monospace; position: relative;
-    transition: all 0.2s; min-width: 40px;
-}
-.nav-page-btn:hover { background: #2a2a2a; color: #ccc; }
-.nav-page-btn.active { 
-    background: #2e7d32; color: #fff; font-weight: bold;
-    padding-right: 30px; /* Make space for the absolute close button */
-}
-.nav-add-btn {
-    color: #4CAF50; font-weight: bold;
-}
-.nav-add-btn:hover {
-    background: #1b5e20; color: #fff;
-}
+.style-row { display: flex; gap: 6px; margin-bottom: 8px; align-items: center; padding: 0 5px; }
+.style-label { min-width: 50px; color: #eee; font-size: 0.9rem; font-weight: bold; }
+.style-input { background: #333; color: #fff; border: 1px solid #444; border-radius: 4px; height: 30px; text-align: center; }
+.square-input { width: 32px; padding: 2px; }
+.thick-border { border: 2px solid #fff; }
 
-/* UPDATED CLOSE BUTTON STYLE */
-.page-close {
-    position: absolute; right: 2px; top: 50%; transform: translateY(-50%);
-    font-size: 20px; line-height: 1; color: #1f1f1f; 
-    background: transparent;
-    width: 24px; height: 24px; border-radius: 4px;
-    display: flex; align-items: center; justify-content: center;
-    opacity: 0.9; cursor: pointer; font-weight: bold;
-    transition: all 0.15s; margin: 0;
-}
-.page-close:hover { 
-    opacity: 1; 
-    background: rgba(92, 92, 92, 0.5); /* Reddish tint on hover */
-}
+.input-corner-tl { background-image: linear-gradient(#fff,#fff), linear-gradient(#fff,#fff); background-size: 30% 2px, 2px 30%; background-position: top left; background-repeat: no-repeat; }
+.input-corner-tr { background-image: linear-gradient(#fff,#fff), linear-gradient(#fff,#fff); background-size: 30% 2px, 2px 30%; background-position: top right; background-repeat: no-repeat; }
+.input-corner-br { background-image: linear-gradient(#fff,#fff), linear-gradient(#fff,#fff); background-size: 30% 2px, 2px 30%; background-position: bottom right; background-repeat: no-repeat; }
+.input-corner-bl { background-image: linear-gradient(#fff,#fff), linear-gradient(#fff,#fff); background-size: 30% 2px, 2px 30%; background-position: bottom left; background-repeat: no-repeat; }
 
-.nav-divider { color: #444; font-size: 16px; user-select: none; }
-
-/* === WORKSPACE VISUALS === */
-.page-separator {
-    background: #2e7d32; color: #fff; padding: 2px 10px; font-size: 12px; font-weight: bold;
-    text-transform: uppercase; position: absolute; top: 0; left: 0; right: 0; height: 20px;
-    align-items: center; justify-content: center; z-index: 2000;
-    border-bottom: 2px solid #1b5e20; opacity: 0.9;
-    pointer-events: none;
-    /* Visible ONLY when edit-mode-active class is present on body */
-}
-body.edit-mode-active .page-separator { display: flex; }
-
-
-.sidebar-scroll-content { flex: 1; overflow-y: auto; overflow-x: hidden; padding-bottom: 40px; padding-top: 15px; scrollbar-gutter: stable; scrollbar-width: thin; scrollbar-color: #444 transparent; }
-.editor-section { padding: 5px 2px 5px 10px; width: 100%; box-sizing: border-box; border-bottom: 1px solid #222; }
-.info-text { background: #252525; padding: 15px; border-radius: 4px; color: #aaa; font-size: 0.9rem; line-height: 1.4; text-align: center; margin: 10px; }
-
-.input-group { position: relative; margin-bottom: 5px; width: 100%; background: #252525; border: 1px solid #333; border-radius: 4px; transition: border-color 0.2s; }
-.input-group:focus-within { border-color: #4CAF50; background: #2a2a2a; }
-.input-group input, .input-group textarea, .input-group select { width: 100%; background: transparent; border: none; color: #eee; padding: 6px 8px; font-size: 0.9rem; z-index: 2; position: relative; font-family: inherit; resize: vertical; display: block; }
-.input-group input:focus, .input-group textarea:focus { outline: none; }
-.input-label { position: absolute; right: 8px; color: #555; font-size: 0.75rem; pointer-events: none; font-weight: 600; text-transform: uppercase; z-index: 1; transition: opacity 0.2s; white-space: nowrap; }
-.input-group input + .input-label { top: 50%; transform: translateY(-50%); }
-.input-group textarea + .input-label { bottom: 6px; right: 8px; }
-.input-label.label-hidden { opacity: 0 !important; }
-
-/* === MINIMALIST STYLE PANEL INPUTS === */
-.style-row {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    margin-bottom: 8px;
-    padding: 0 5px;
-    flex-wrap: nowrap;
-}
-.style-label {
-    min-width: 50px;
-    color: #eee;
-    font-size: 0.9rem;
-    font-weight: bold;
-    flex-shrink: 0;
-}
-.style-input {
-    background: #333;
-    color: #fff;
-    border: 1px solid #444; /* Standard thin border */
-    border-radius: 4px;
-    padding: 2px 4px;
-    height: 30px;
-    font-size: 0.85rem;
-    text-align: center;
-    box-sizing: border-box;
-}
-.style-input:focus { outline: none; border-color: #4CAF50; }
-
-/* --- Remove Number Spinners (Arrows) --- */
-.style-input::-webkit-outer-spin-button,
-.style-input::-webkit-inner-spin-button {
-    -webkit-appearance: none;
-    margin: 0;
-}
-.style-input[type=number] {
-    -moz-appearance: textfield; /* Firefox */
-}
-
-/* --- Square Inputs (Color & Width) --- */
-.square-input {
-    width: 32px;
-    padding: 2px;
-    flex-shrink: 0;
-}
-.style-input[type="color"] {
-    cursor: pointer;
-    padding: 0;
-}
-
-/* The requested "Thick White Border" class */
-.thick-border {
-    border: 2px solid #fff;
-}
-
-/* Corner Visual Hints (20% white brackets) */
-.input-corner-tl, .input-corner-tr, .input-corner-br, .input-corner-bl {
-    width: 28px; /* Slightly narrower to fit 4 */
-    background-color: #333;
-    background-repeat: no-repeat;
-    /* Draw 2px thick white lines */
-    background-image: linear-gradient(#fff, #fff), linear-gradient(#fff, #fff);
-}
-
-.input-corner-tl {
-    background-size: 30% 2px, 2px 30%; /* Horizontal, Vertical */
-    background-position: top left, top left;
-}
-.input-corner-tr {
-    background-size: 30% 2px, 2px 30%;
-    background-position: top right, top right;
-}
-.input-corner-br {
-    background-size: 30% 2px, 2px 30%;
-    background-position: bottom right, bottom right;
-}
-.input-corner-bl {
-    background-size: 30% 2px, 2px 30%;
-    background-position: bottom left, bottom left;
-}
-
-.row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; width: 100%; }
-.row-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; width: 100%; }
-.row-4 .input-group input { text-align: center; padding: 6px 2px; }
-.row-4 .input-label { display: none; }
-.accordion-header { cursor: pointer; padding: 6px 0; display: flex; justify-content: space-between; color: #4CAF50; font-weight: bold; border-bottom: 1px solid #222; user-select: none; font-size: 0.9em; }
-.accordion-header::after { content: '▼'; font-size: 0.8em; transition: transform 0.2s; }
-.accordion-header.collapsed::after { transform: rotate(-90deg); }
-.accordion-content { display: block; overflow: hidden; padding: 5px 0; }
+.row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.row-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+.accordion-header { cursor: pointer; padding: 6px 0; color: #4CAF50; font-weight: bold; border-bottom: 1px solid #222; }
 .accordion-content.collapsed { display: none; }
-.row-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 5px; }
-.action-btn { width: 100%; padding: 10px; border-radius: 4px; cursor: pointer; font-weight: bold; color: white; border: none; font-size: 0.9rem; }
-.btn-delete { background: #500; border: 1px solid #700; }
-.btn-delete:hover { background: #700; }
-.btn-add { background: #333; border: 1px solid #444; }
-.btn-add:hover { background: #444; }
-.primary-btn { background: #2e7d32; color: white; border: none; width: 100%; padding: 10px; border-radius: 4px; font-weight: bold; }
+.full-width-btn { width: 100%; padding: 8px; background: #333; border: 1px solid #444; color: #ccc; cursor: pointer; border-radius: 4px; margin-top: 5px; font-weight: bold; }
+.action-btn { width: 100%; padding: 10px; border-radius: 4px; cursor: pointer; font-weight: bold; color: white; border: none; }
+.btn-delete { background: #500; }
 
-.compact-list { display: flex; flex-direction: column; gap: 6px; width: 100%; }
-.compact-row { display: grid; grid-template-columns: 35% 1fr 24px; gap: 4px; align-items: center; }
-.compact-row select, .compact-row input { background: #222; border: 1px solid #333; color: #ddd; padding: 4px; border-radius: 3px; width: 100%; }
-.icon-btn { background: #d32f2f; color: white; border: none; border-radius: 3px; width: 24px; height: 24px; cursor: pointer; }
-.full-width-btn { width: 100%; padding: 8px; background: #333; border: 1px solid #444; color: #ccc; cursor: pointer; border-radius: 4px; margin-top: 5px; font-weight: bold; font-size: 0.85rem; }
-.code-editor { width: 100%; height: 200px; background: #111; color: #0f0; font-family: monospace; font-size: 0.8rem; border: 1px solid #333; border-radius: 4px; padding: 5px; box-sizing: border-box; resize: vertical; }
-.code-editor:focus { outline: none !important; border-color: #4CAF50; box-shadow: none; }
-::-webkit-resizer { background: linear-gradient(135deg, transparent 70%, #666 70%); }
-::-webkit-scrollbar { width: 8px; height: 8px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #444; border-radius: 4px; }
-::-webkit-scrollbar-thumb:hover { background: #666; }
+.custom-context-menu { position: fixed; background: #1f1f1f; border: 1px solid #444; z-index: 6000; min-width: 160px; display: none; }
+.menu-item { padding: 8px 15px; cursor: pointer; color: #eee; }
+.menu-item:hover { background: #4CAF50; }
 
-.modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); z-index: 5000; display: flex; align-items: center; justify-content: center; }
-.modal-content { background: #1a1a1a; padding: 20px; border: 1px solid #444; border-radius: 8px; width: 80%; max-width: 600px; box-shadow: 0 10px 30px #000; display: flex; flex-direction: column; max-height: 90vh; }
-.modal-content h3 { margin-top: 0; color: #4CAF50; border-bottom: 1px solid #333; padding-bottom: 10px; }
-
-/* === CONTEXT MENU === */
-.custom-context-menu {
-    position: fixed; background: #1f1f1f; border: 1px solid #444; border-radius: 4px;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.8); z-index: 6000; min-width: 160px; padding: 5px 0; overflow: hidden;
-}
-.custom-context-menu .menu-label { padding: 5px 15px; font-size: 0.7rem; color: #666; text-transform: uppercase; font-weight: bold; pointer-events: none; letter-spacing: 0.5px; }
-.custom-context-menu .menu-item { padding: 8px 15px; font-size: 0.9rem; color: #eee; cursor: pointer; transition: background 0.15s; display: flex; align-items: center; }
-.custom-context-menu .menu-item:hover { background: #4CAF50; color: white; }
-.custom-context-menu .menu-divider { height: 1px; background: #333; margin: 4px 0; }
-
-@media (max-width: 1200px) { .editor-sidebar { width: 100%; max-width: 340px; } body.edit-mode-active #game-wrapper { margin-right: 0; } }
-
-/* ==========================================================================
-   AUDIT CHAT WINDOW STYLES (Included from previous context)
-   ========================================================================== */
-.audit-chat-window { position: fixed; bottom: 20px; right: 360px; width: 420px; height: 520px; background: #1a1a1a; border: 1px solid #444; border-radius: 12px; display: none; flex-direction: column; z-index: 5000; box-shadow: 0 10px 50px rgba(0,0,0,0.8); resize: both; overflow: hidden; min-width: 320px; min-height: 200px; }
-.audit-chat-window.dragging { transition: none !important; opacity: 0.95; box-shadow: 0 20px 60px rgba(0,0,0,0.9); }
-.audit-chat-window.minimized { height: auto !important; min-height: auto; resize: none; }
-.audit-chat-window.minimized .audit-body, .audit-chat-window.minimized .audit-debug-panel { display: none; }
-.audit-header { padding: 10px 12px; background: linear-gradient(135deg, #2e7d32, #1b5e20); color: white; font-weight: bold; border-radius: 12px 12px 0 0; display: flex; justify-content: space-between; align-items: center; cursor: move; user-select: none; flex-shrink: 0; }
-.audit-title { font-size: 0.9rem; display: flex; align-items: center; gap: 6px; }
-.audit-header-controls { display: flex; gap: 6px; align-items: center; }
-.audit-ctrl-btn { background: rgba(255,255,255,0.15); border: none; color: white; width: 26px; height: 26px; border-radius: 6px; cursor: pointer; font-size: 12px; display: flex; align-items: center; justify-content: center; transition: background 0.15s; }
-.audit-ctrl-btn:hover { background: rgba(255,255,255,0.3); }
-.audit-ctrl-btn.close:hover { background: #d32f2f; }
-.audit-body { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-height: 0; }
-.audit-messages { flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 10px; min-height: 0; }
-.audit-msg { max-width: 90%; padding: 10px 14px; border-radius: 14px; font-size: 0.85rem; line-height: 1.5; word-wrap: break-word; }
-.audit-msg.user { align-self: flex-end; background: linear-gradient(135deg, #3d5a80, #2d4a70); color: white; border-radius: 14px 14px 4px 14px; }
-.audit-msg.ai { align-self: flex-start; background: #2a2a2a; color: #ddd; border: 1px solid #333; border-radius: 14px 14px 14px 4px; }
-.audit-msg.ai.thinking { color: #888; font-style: italic; opacity: 0.8; }
-.audit-msg.system { align-self: center; background: #333; color: #aaa; font-size: 0.75rem; padding: 6px 14px; border-radius: 10px; }
-.audit-msg.error { align-self: center; background: rgba(211, 47, 47, 0.2); color: #ff6b6b; border: 1px solid #d32f2f; font-size: 0.85rem; padding: 8px 14px; border-radius: 10px; }
-.audit-msg code { background: #111; padding: 2px 6px; border-radius: 4px; font-family: monospace; font-size: 0.85em; }
-.audit-input-area { padding: 10px; border-top: 1px solid #333; display: flex; gap: 8px; background: #222; border-radius: 0 0 12px 12px; flex-shrink: 0; }
-.audit-input-area textarea { flex: 1; background: #111; border: 1px solid #333; color: white; padding: 10px 12px; border-radius: 8px; resize: none; font-family: inherit; font-size: 0.85rem; line-height: 1.4; transition: border-color 0.2s; }
-.audit-input-area textarea:focus { outline: none; border-color: #4CAF50; }
-.audit-input-area textarea:disabled { opacity: 0.5; cursor: not-allowed; }
-#audit-send-btn { background: linear-gradient(135deg, #4CAF50, #388E3C); border: none; color: white; width: 44px; border-radius: 8px; cursor: pointer; font-size: 16px; transition: transform 0.1s, box-shadow 0.2s; display: flex; align-items: center; justify-content: center; }
-#audit-send-btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3); }
-#audit-send-btn:disabled { background: #444; cursor: not-allowed; transform: none; }
-.audit-actions-block { background: #111; border: 1px solid #333; border-left: 3px solid #FFD700; border-radius: 8px; padding: 10px; margin-top: 8px; }
-.actions-header { color: #FFD700; font-size: 0.85rem; margin-bottom: 8px; }
-.actions-list { list-style: none; padding: 0; margin: 0 0 10px 0; }
-.action-item { display: flex; align-items: flex-start; gap: 8px; padding: 5px 0; color: #bbb; font-size: 0.8rem; border-bottom: 1px solid #222; }
-.action-item:last-child { border-bottom: none; }
-.action-icon { flex-shrink: 0; }
-.apply-fixes-btn { background: linear-gradient(135deg, #FFD700, #FFA000); color: #111; border: none; padding: 10px 14px; border-radius: 8px; cursor: pointer; font-weight: bold; width: 100%; font-size: 0.85rem; transition: transform 0.1s, box-shadow 0.2s; }
-.apply-fixes-btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 4px 15px rgba(255, 215, 0, 0.3); }
-.apply-fixes-btn:disabled { cursor: default; transform: none; }
-.apply-fixes-btn.applied { background: #4CAF50; color: white; }
-.apply-fixes-btn.has-errors { background: #FF9800; }
-.manual-prompt-box, .manual-response-box { margin-top: 10px; }
-.manual-prompt-box textarea, .manual-response-box textarea { width: 100%; background: #111; border: 1px solid #333; color: #aaa; padding: 8px; border-radius: 6px; font-family: monospace; font-size: 0.7rem; resize: vertical; min-height: 60px; }
-.manual-prompt-box textarea { max-height: 120px; }
-.manual-response-box textarea { color: #fff; }
-.copy-prompt-btn, .apply-response-btn { width: 100%; margin-top: 6px; padding: 8px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 0.8rem; transition: background 0.2s; }
-.copy-prompt-btn { background: #444; color: #fff; }
-.copy-prompt-btn:hover { background: #555; }
-.copy-prompt-btn.copied { background: #4CAF50; }
-.apply-response-btn { background: linear-gradient(135deg, #4CAF50, #388E3C); color: white; }
-.apply-response-btn:hover { background: linear-gradient(135deg, #66BB6A, #43A047); }
-@media (max-width: 900px) { .audit-chat-window { right: 10px; bottom: 10px; width: calc(100vw - 20px); max-width: 420px; } }
+/* Audit Chat (Minified) */
+.audit-chat-window { position: fixed; bottom: 20px; right: 360px; background: #1a1a1a; border: 1px solid #444; z-index: 5000; display: none; flex-direction: column; width: 420px; height: 520px; }
+.audit-header { padding: 10px; background: #2e7d32; color: #fff; display: flex; justify-content: space-between; cursor: move; }
+.audit-messages { flex: 1; overflow-y: auto; padding: 10px; }
+.audit-input-area { padding: 10px; background: #222; border-top: 1px solid #333; display: flex; gap: 5px; }
