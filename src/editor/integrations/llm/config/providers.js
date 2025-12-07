@@ -18,13 +18,15 @@ export const LLM_PROVIDERS = {
     openrouter: {
         name: 'OpenRouter',
         baseUrl: 'https://openrouter.ai/api/v1',
-        defaultModel: 'google/gemini-2.0-flash-exp:free',
+        defaultModel: 'google/gemini-3-pro-preview',
         fallbackModels: [
-            'google/gemini-2.0-flash-exp:free',
-            'google/gemini-2.0-pro-exp-02-05:free',
-            'openai/gpt-4o',
-            'anthropic/claude-3.5-sonnet',
-            'deepseek/deepseek-r1:free'
+            'google/gemini-3-pro-preview',
+            'google/gemini-2.5-flash',
+            'openai/gpt-5.1',
+            'x-ai/grok-4.1-fast',
+            'anthropic/claude-sonnet-4.5',
+            'deepseek/deepseek-chat-v3-0324',
+            'z-ai/glm-4.6',
         ],
         supportsVision: true,
         supportsModelFetch: true,

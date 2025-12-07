@@ -1,10 +1,19 @@
 /**
  * src/editor/integrations/llm/audit-chat.js
  * Interactive Audit Chat Logic with Caching, Debug & Token Tracking
+ * Updated: Selective Apply (Checkboxes), Instant Debug Copy, Material UI Icons
  */
 
-// Import the prompt (now includes tools reference)
+// Import the prompt
 import { AUDIT_CHAT_SYSTEM_PROMPT } from './config/prompts.js';
+
+// SVG Icons matching Material UI style
+const ICONS = {
+    ASSIGNMENT: `<svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M19 3h-4.18C14.4 1.84 13.3 1 12 1c-1.3 0-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm2 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>`,
+    AUTO_AWESOME: `<svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M19 9l1.25-2.75L23 5l-2.75-1.25L19 1l-1.25 2.75L15 5l2.75 1.25L19 9zm-7.5.5L9 4 6.5 9.5 1 12l5.5 2.5L9 20l2.5-5.5L17 12l-5.5-2.5zM19 15l-1.25 2.75L15 19l2.75 1.25L19 23l1.25-2.75L23 19l-2.75-1.25L19 15z"/></svg>`,
+    CLOSE: `<svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>`,
+    MINIMIZE: `<svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M19 13H5v-2h14v2z"/></svg>`
+};
 
 export const AuditChatMixin = {
     auditHistory: [],
@@ -13,33 +22,34 @@ export const AuditChatMixin = {
     auditLastRequest: null,
 
     // ==================== UI CREATION ====================
-    // ... (код UI остался без изменений, скрыт для краткости) ...
     createAuditChatUI() {
         if (document.getElementById('audit-chat-window')) return;
 
         const chatHTML = `
             <div id="audit-chat-window" class="audit-chat-window">
                 <div class="audit-header" id="audit-drag-handle">
-                    <span class="audit-title">🕵️ Logic Auditor</span>
+                    <span class="audit-title" style="display:flex; align-items:center; gap:8px;">
+                        ${ICONS.AUTO_AWESOME} AI Editor
+                    </span>
                     <div class="audit-header-controls">
                         <span id="audit-token-counter" class="audit-token-counter" title="Tokens used">0 tk</span>
-                        <button class="audit-ctrl-btn" onclick="CYOA.editor.toggleAuditDebug()" title="Debug Log">🐛</button>
-                        <button class="audit-ctrl-btn" onclick="CYOA.editor.toggleAuditMinimize()" title="Minimize">─</button>
-                        <button class="audit-ctrl-btn close" onclick="CYOA.editor.closeAuditChat()" title="Close">✕</button>
+                        <button class="audit-ctrl-btn debug-btn" onclick="CYOA.editor.copyAuditDebugLog()" title="Copy Full Debug Log">
+                            ${ICONS.ASSIGNMENT}
+                        </button>
+                        <button class="audit-ctrl-btn" onclick="CYOA.editor.toggleAuditMinimize()" title="Minimize">
+                            ${ICONS.MINIMIZE}
+                        </button>
+                        <button class="audit-ctrl-btn close" onclick="CYOA.editor.closeAuditChat()" title="Close">
+                            ${ICONS.CLOSE}
+                        </button>
                     </div>
                 </div>
-                <div id="audit-debug-panel" class="audit-debug-panel" style="display:none;">
-                    <div class="debug-header">
-                        <span>📋 Last Request/Response</span>
-                        <button onclick="CYOA.editor.copyAuditDebugLog()" class="debug-copy-btn">Copy</button>
-                    </div>
-                    <textarea id="audit-debug-log" readonly></textarea>
-                </div>
+                <!-- REMOVED THE ACCORDION DEBUG PANEL -->
                 <div id="audit-body" class="audit-body">
                     <div id="audit-messages" class="audit-messages"></div>
                     <div class="audit-input-area">
                         <textarea id="audit-input" 
-                            placeholder="Ask to check balance, fix broken links, update cards..."
+                            placeholder="Ask to check balance, fix broken links..."
                             rows="2"
                             onkeydown="if(event.key==='Enter' && !event.shiftKey){event.preventDefault(); CYOA.editor.sendAuditMessage();}"></textarea>
                         <button id="audit-send-btn" onclick="CYOA.editor.sendAuditMessage()" title="Send">
@@ -54,45 +64,47 @@ export const AuditChatMixin = {
         this.initAuditDraggable();
     },
 
-    // ... (методы Debug/UI/Drag остались без изменений) ...
-
-    toggleAuditDebug() {
-        const panel = document.getElementById('audit-debug-panel');
-        if (panel) {
-            panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
-        }
-    },
+    // ==================== DEBUG & LOGGING ====================
 
     updateAuditDebugLog(requestData, responseData) {
         this.auditLastRequest = {
             timestamp: new Date().toISOString(),
-            request: requestData,
-            response: responseData
+            interaction: {
+                request_parameters: {
+                    url: requestData.url,
+                    model: requestData.model,
+                },
+                messages: requestData.messages, 
+                api_response: responseData
+            }
         };
-        
-        const log = document.getElementById('audit-debug-log');
-        if (log) {
-            log.value = JSON.stringify(this.auditLastRequest, null, 2);
-        }
     },
 
     copyAuditDebugLog() {
-        const log = document.getElementById('audit-debug-log');
-        if (!log?.value) {
-            alert('No debug data yet');
+        if (!this.auditLastRequest) {
+            // If no request yet, create a dummy state or alert
+            alert('No AI interaction data recorded yet.');
             return;
         }
+
+        const jsonStr = JSON.stringify(this.auditLastRequest, null, 2);
         
-        navigator.clipboard.writeText(log.value).then(() => {
-            const btn = document.querySelector('.debug-copy-btn');
+        navigator.clipboard.writeText(jsonStr).then(() => {
+            const btn = document.querySelector('.audit-ctrl-btn.debug-btn');
             if (btn) {
-                const orig = btn.textContent;
-                btn.textContent = '✓ Copied!';
-                setTimeout(() => btn.textContent = orig, 1500);
+                // Visual feedback
+                btn.style.color = '#4CAF50';
+                setTimeout(() => btn.style.color = '', 1000);
             }
-        }).catch(() => {
-            log.select();
+        }).catch(err => {
+            console.error('Failed to copy', err);
+            // Fallback
+            const ta = document.createElement('textarea');
+            ta.value = jsonStr;
+            document.body.appendChild(ta);
+            ta.select();
             document.execCommand('copy');
+            document.body.removeChild(ta);
         });
     },
 
@@ -120,6 +132,8 @@ export const AuditChatMixin = {
             counter.title = 'Tokens used';
         }
     },
+
+    // ==================== DRAG & DROP ====================
 
     initAuditDraggable() {
         const win = document.getElementById('audit-chat-window');
@@ -212,11 +226,13 @@ export const AuditChatMixin = {
         win.style.display = 'flex';
         win.classList.remove('minimized');
         
-        // Reset position
-        win.style.right = '360px';
-        win.style.bottom = '20px';
-        win.style.left = 'auto';
-        win.style.top = 'auto';
+        // Reset position to default if off screen or first run
+        if (!win.style.top || parseInt(win.style.top) < 0) {
+            win.style.right = '360px';
+            win.style.bottom = '20px';
+            win.style.left = 'auto';
+            win.style.top = 'auto';
+        }
         
         const msgContainer = document.getElementById('audit-messages');
         msgContainer.innerHTML = '';
@@ -224,12 +240,11 @@ export const AuditChatMixin = {
         // Reset state
         this.auditHistory = [];
         this.resetTokenCounter();
-        document.getElementById('audit-debug-log').value = '';
 
         // ⚠️ IMPORTANT: Sync config from UI before API call
         this.syncLlmConfigFromUI();
 
-        // Check for manual mode AFTER sync
+        // Check for manual mode
         if (this.llmConfig.provider === 'manual') {
             const cleanConfig = this.getCleanConfig();
             this.showAuditManualMode(JSON.stringify(cleanConfig, null, 2));
@@ -277,7 +292,7 @@ Be concise. If everything looks good, say so.`;
             const { text: responseText, usage } = await this.callLlmApiWithUsage(this.auditHistory);
             
             this.updateTokenCounter(usage);
-            msgContainer.innerHTML = '';
+            msgContainer.innerHTML = ''; // Clear "Analyzing..." message
             
             let result = this.parseAuditResponse(responseText);
             this.auditHistory.push({ role: 'assistant', content: responseText });
@@ -310,21 +325,12 @@ Be concise. If everything looks good, say so.`;
         } else if (modelSel?.value && modelSel.value !== '__custom__') {
             this.llmConfig.model = modelSel.value;
         }
-
-        console.log('🔑 Synced LLM config:', {
-            provider: this.llmConfig.provider,
-            model: this.llmConfig.model,
-            hasKey: !!this.llmConfig.apiKey,
-            keyLength: this.llmConfig.apiKey?.length || 0
-        });
     },
 
     // ==================== API CALL WITH USAGE TRACKING ====================
     
     async callLlmApiWithUsage(messages) {
         const { provider, baseUrl, apiKey, model } = this.llmConfig;
-        
-        // Import provider config
         const { LLM_PROVIDERS } = await import('./config/providers.js');
         const providerConfig = LLM_PROVIDERS[provider];
         
@@ -334,19 +340,36 @@ Be concise. If everything looks good, say so.`;
 
         const request = providerConfig.formatRequest(model, messages, apiKey, baseUrl);
         
-        // Store request for debug
+        // --- PREPARE FULL DEBUG LOG ---
+        let logMessages = null;
+        try {
+            logMessages = JSON.parse(JSON.stringify(messages));
+            if (Array.isArray(logMessages)) {
+                logMessages.forEach(msg => {
+                    if (Array.isArray(msg.content)) {
+                        msg.content.forEach(part => {
+                            if (part.type === 'image_url' && part.image_url?.url?.startsWith('data:')) {
+                                part.image_url.url = '<BASE64_IMAGE_DATA_TRUNCATED_FOR_LOG>';
+                            }
+                            if (part.inline_data && part.inline_data.data) {
+                                part.inline_data.data = '<BASE64_DATA_TRUNCATED_FOR_LOG>';
+                            }
+                            if (part.source && part.source.type === 'base64') {
+                                part.source.data = '<BASE64_DATA_TRUNCATED_FOR_LOG>';
+                            }
+                        });
+                    }
+                });
+            }
+        } catch (e) {
+            logMessages = messages;
+        }
+
         const debugRequest = {
             url: request.url,
             model: model,
-            messagesCount: messages.length,
-            // Don't log full messages, just structure
-            messagesSummary: messages.map(m => ({
-                role: m.role,
-                contentLength: typeof m.content === 'string' ? m.content.length : JSON.stringify(m.content).length
-            }))
+            messages: logMessages
         };
-
-        console.log(`📡 Calling ${provider} API:`, request.url, `Model: ${model}`);
         
         const response = await fetch(request.url, {
             method: 'POST',
@@ -356,15 +379,8 @@ Be concise. If everything looks good, say so.`;
 
         const data = await response.json();
 
-        // Update debug log
-        this.updateAuditDebugLog(debugRequest, {
-            status: response.status,
-            usage: data.usage || null,
-            // Truncate response for debug
-            responsePreview: data.choices?.[0]?.message?.content?.substring(0, 500) || 
-                            data.candidates?.[0]?.content?.parts?.[0]?.text?.substring(0, 500) ||
-                            'No content'
-        });
+        // Log FULL response to debug
+        this.updateAuditDebugLog(debugRequest, data);
 
         if (!response.ok) {
             const errorMsg = data.error?.message || data.error?.type || JSON.stringify(data);
@@ -379,11 +395,9 @@ Be concise. If everything looks good, say so.`;
 
     buildConfigContextMessage(configStr) {
         return `I'm loading a CYOA game configuration for audit. Here's the complete game data:
-
 \`\`\`json
 ${configStr}
 \`\`\`
-
 I'll ask you to find and fix issues. When suggesting fixes, use the action format specified in your instructions.`;
     },
 
@@ -391,8 +405,6 @@ I'll ask you to find and fix issues. When suggesting fixes, use the action forma
     
     showAuditManualMode(configStr) {
         const msgContainer = document.getElementById('audit-messages');
-        
-        // Use the imported constant which now contains the Rules
         const systemPrompt = AUDIT_CHAT_SYSTEM_PROMPT;
         
         const fullPrompt = `=== SYSTEM INSTRUCTIONS ===
@@ -405,15 +417,7 @@ I'll ask you to find and fix issues. When suggesting fixes, use the action forma
 
         === YOUR TASK ===
         Analyze this configuration. Find broken references, missing reciprocal incompatibilities, undefined currencies, and other logical issues.
-
-        Respond with JSON in this format:
-            {
-            "message": "Summary of what you found",
-            "actions": [
-                {"type": "update_item", "id": "item_id", "changes": {"field": "value"}},
-                {"type": "create_point", "data": {"id": "currency_id", "name": "Currency", "start": 0}}
-            ]
-        }`;
+        Respond with JSON format.`;
 
         msgContainer.innerHTML = `
             <div class="audit-msg system">📋 Manual Mode</div>
@@ -421,16 +425,12 @@ I'll ask you to find and fix issues. When suggesting fixes, use the action forma
                 <p><strong>Copy this prompt</strong> and paste into your LLM:</p>
                 <div class="manual-prompt-box">
                     <textarea id="audit-manual-prompt" readonly>${this.escapeHtml(fullPrompt)}</textarea>
-                    <button class="copy-prompt-btn" onclick="CYOA.editor.copyAuditPrompt()">
-                        📋 Copy Prompt
-                    </button>
+                    <button class="copy-prompt-btn" onclick="CYOA.editor.copyAuditPrompt()">📋 Copy Prompt</button>
                 </div>
                 <div class="manual-response-box">
                     <p><strong>Paste the response here:</strong></p>
                     <textarea id="audit-manual-response" placeholder='{"message": "...", "actions": [...]}'></textarea>
-                    <button class="apply-response-btn" onclick="CYOA.editor.applyManualAuditResponse()">
-                        ✅ Apply Response
-                    </button>
+                    <button class="apply-response-btn" onclick="CYOA.editor.applyManualAuditResponse()">✅ Apply Response</button>
                 </div>
             </div>
         `;
@@ -439,24 +439,9 @@ I'll ask you to find and fix issues. When suggesting fixes, use the action forma
     copyAuditPrompt() {
         const el = document.getElementById('audit-manual-prompt');
         if (!el) return;
-        
         el.select();
         el.setSelectionRange(0, 99999);
-        
-        navigator.clipboard.writeText(el.value).then(() => {
-            const btn = el.parentElement.querySelector('.copy-prompt-btn');
-            if (btn) {
-                const orig = btn.innerHTML;
-                btn.innerHTML = '✓ Copied!';
-                btn.classList.add('copied');
-                setTimeout(() => {
-                    btn.innerHTML = orig;
-                    btn.classList.remove('copied');
-                }, 2000);
-            }
-        }).catch(() => {
-            document.execCommand('copy');
-        });
+        navigator.clipboard.writeText(el.value);
     },
 
     applyManualAuditResponse() {
@@ -465,7 +450,6 @@ I'll ask you to find and fix issues. When suggesting fixes, use the action forma
             alert('Please paste the LLM response first');
             return;
         }
-
         try {
             const result = this.parseAuditResponse(textarea.value);
             this.auditHistory.push({ role: 'assistant', content: textarea.value });
@@ -487,14 +471,11 @@ I'll ask you to find and fix issues. When suggesting fixes, use the action forma
         this.appendAuditMessage('user', text);
         this.auditHistory.push({ role: 'user', content: text });
 
-        // Manual mode
         if (this.llmConfig.provider === 'manual') {
-            this.appendAuditMessage('system', 
-                '📋 Add this message to your conversation and paste the new response above.');
+            this.appendAuditMessage('system', '📋 Add this message to your conversation and paste the new response above.');
             return;
         }
 
-        // Re-sync config (in case user changed settings)
         this.syncLlmConfigFromUI();
 
         if (!this.llmConfig.apiKey) {
@@ -569,27 +550,34 @@ I'll ask you to find and fix issues. When suggesting fixes, use the action forma
         container.scrollTop = container.scrollHeight;
     },
 
+    // UPDATED: Now renders checkboxes
     renderActionsBlock(actions, container) {
         const wrapper = document.createElement('div');
         wrapper.className = 'audit-msg ai';
         
+        // Ensure actions have a safe ID for the list
+        const blockId = `act-block-${Date.now()}`;
         const actionsJson = encodeURIComponent(JSON.stringify(actions));
         
         wrapper.innerHTML = `
-            <div class="audit-actions-block">
+            <div class="audit-actions-block" id="${blockId}">
                 <div class="actions-header">
                     🔧 <strong>Suggested Fixes</strong> (${actions.length})
+                    <span style="font-size:0.7em; color:#888; font-weight:normal; float:right;">Uncheck to skip</span>
                 </div>
-                <ul class="actions-list">
+                <ul class="actions-list" style="list-style:none; padding:0;">
                     ${actions.map((a, i) => `
-                        <li class="action-item" data-index="${i}">
-                            <span class="action-icon">${this.getActionIcon(a.type)}</span>
-                            <span class="action-desc">${this.escapeHtml(this.formatActionDescription(a))}</span>
+                        <li class="action-item" style="display:flex; align-items:start; gap:8px; padding:6px 0; border-bottom:1px solid #333;">
+                            <input type="checkbox" id="chk-${blockId}-${i}" class="audit-action-checkbox" checked data-index="${i}" style="margin-top:4px;">
+                            <label for="chk-${blockId}-${i}" style="cursor:pointer; flex:1; font-size:0.85rem; line-height:1.4;">
+                                <span class="action-icon" style="margin-right:4px;">${this.getActionIcon(a.type)}</span>
+                                ${this.escapeHtml(this.formatActionDescription(a))}
+                            </label>
                         </li>
                     `).join('')}
                 </ul>
-                <button class="apply-fixes-btn" data-actions="${actionsJson}">
-                    ✅ Apply All Fixes
+                <button class="apply-fixes-btn" data-actions="${actionsJson}" data-block-id="${blockId}">
+                    ✅ Apply Selected Fixes
                 </button>
             </div>
         `;
@@ -634,44 +622,64 @@ I'll ask you to find and fix issues. When suggesting fixes, use the action forma
 
     formatMessageText(text) {
         if (typeof text !== 'string') return String(text);
-        
         let formatted = this.escapeHtml(text);
         formatted = formatted.replace(/\n/g, '<br>');
         formatted = formatted.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
         formatted = formatted.replace(/`([^`]+)`/g, '<code>$1</code>');
-        
         return formatted;
     },
 
     setAuditLoading(isLoading) {
         const sendBtn = document.getElementById('audit-send-btn');
         const input = document.getElementById('audit-input');
-        
         if (sendBtn) {
             sendBtn.disabled = isLoading;
             sendBtn.querySelector('.send-icon').style.display = isLoading ? 'none' : 'inline';
             sendBtn.querySelector('.loading-icon').style.display = isLoading ? 'inline' : 'none';
         }
-        if (input) {
-            input.disabled = isLoading;
-        }
+        if (input) input.disabled = isLoading;
     },
 
     // ==================== APPLY ACTIONS ====================
     
+    // UPDATED: Filters by Checked boxes
     applyAuditActions(btn) {
         const actionsStr = btn.dataset.actions;
-        if (!actionsStr) return;
+        const blockId = btn.dataset.blockId;
         
-        const actions = JSON.parse(decodeURIComponent(actionsStr));
+        if (!actionsStr || !blockId) return;
         
+        const allActions = JSON.parse(decodeURIComponent(actionsStr));
+        const container = document.getElementById(blockId);
+        if (!container) return;
+
+        // Filter: Get checked checkboxes
+        const checkboxes = container.querySelectorAll('.audit-action-checkbox');
+        const selectedActions = [];
+        
+        checkboxes.forEach(chk => {
+            if (chk.checked) {
+                const idx = parseInt(chk.dataset.index);
+                if (allActions[idx]) selectedActions.push(allActions[idx]);
+            } else {
+                // Visual feedback that it was skipped
+                chk.parentElement.style.opacity = '0.5';
+                chk.disabled = true;
+            }
+        });
+
+        if (selectedActions.length === 0) {
+            alert("No actions selected.");
+            return;
+        }
+
         this.history.push('audit_batch_fix');
         
         let success = 0;
         let failed = 0;
         const errors = [];
 
-        for (const action of actions) {
+        for (const action of selectedActions) {
             try {
                 const result = this.applySingleAction(action);
                 if (result) success++;
@@ -696,7 +704,7 @@ I'll ask you to find and fix issues. When suggesting fixes, use the action forma
         btn.classList.add('applied');
         
         if (failed === 0) {
-            btn.innerHTML = `✓ Applied ${success} fixes`;
+            btn.innerHTML = `✓ Applied ${success} selected fixes`;
         } else {
             btn.innerHTML = `⚠️ ${success} applied, ${failed} failed`;
             btn.classList.add('has-errors');
@@ -706,9 +714,9 @@ I'll ask you to find and fix issues. When suggesting fixes, use the action forma
 
     applySingleAction(action) {
         switch (action.type) {
-            case 'update_notes': { // NEW ACTION LOGIC
+            case 'update_notes': {
                 this.engine.config.notes = action.content;
-                this.updateSettingsInputs(); // Refresh UI
+                this.updateSettingsInputs();
                 return true;
             }
             case 'update_item': {
@@ -717,14 +725,12 @@ I'll ask you to find and fix issues. When suggesting fixes, use the action forma
                 Object.assign(item, action.changes);
                 return true;
             }
-            
             case 'update_group': {
                 const group = this.engine.findGroup(action.id);
                 if (!group) throw new Error(`Group not found: ${action.id}`);
                 Object.assign(group, action.changes);
                 return true;
             }
-            
             case 'create_point': {
                 if (!this.engine.config.points) this.engine.config.points = [];
                 const exists = this.engine.config.points.some(p => p.id === action.data.id);
@@ -732,7 +738,6 @@ I'll ask you to find and fix issues. When suggesting fixes, use the action forma
                 this.engine.config.points.push(action.data);
                 return true;
             }
-            
             case 'delete': {
                 if (action.targetType === 'item') {
                     const parent = this.findItemParent(action.id);
@@ -745,7 +750,6 @@ I'll ask you to find and fix issues. When suggesting fixes, use the action forma
                 }
                 return true;
             }
-            
             default:
                 console.warn('Unknown action type:', action.type);
                 return false;
