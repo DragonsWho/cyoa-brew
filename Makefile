@@ -94,29 +94,27 @@ ifndef v
 endif
 	@echo "📦 Preparing release..."
 
-	# 1. Проверяем, что рабочая директория чистая
+	# 1. Сначала проверяем статус (теперь это точно сработает первым)
 	@if [ -n "$$(git status --porcelain)" ]; then \
 		echo "❌ Error: Working directory is not clean. Commit your changes first."; \
 		exit 1; \
 	fi
 
-	# 2. Обновляем package.json, но не создаем тег/коммит (получаем новую версию в переменную)
-	$(eval NEW_VER := $(shell $(NPM) version $(v) --no-git-tag-version))
-
-	@echo "Update version to $(NEW_VER)..."
-
-	# 3. Обновляем src/constants.js (используем Node.js для надежной замены текста)
-	# Мы убираем букву 'v' из NEW_VER, так как в коде у тебя написано "1.0", а npm возвращает "v1.0"
-	@node -e "const fs = require('fs'); const path = 'src/constants.js'; let c = fs.readFileSync(path, 'utf8'); c = c.replace(/export const APP_VERSION = \".*\";/, 'export const APP_VERSION = \"' + '$(NEW_VER)'.replace(/^v/, '') + '\";'); fs.writeFileSync(path, c);"
-
-	# 4. Добавляем оба файла в индекс
-	git add package.json src/constants.js
-
-	# 5. Создаем коммит и тег
-	git commit -m "chore(release): $(NEW_VER)"
-	git tag $(NEW_VER)
-
-	# 6. Пушим на GitHub
-	git push && git push --tags
-
-	@echo "🚀 Version $(NEW_VER) released and pushed! GitHub Action will build it now."
+	# 2. Обновляем версию и сохраняем вывод в переменную BASH (а не Make)
+	# Мы используем $$() для подстановки команды в шелле
+	@NEW_VER=$$($(NPM) version $(v) --no-git-tag-version) && \
+	echo "Update version to $$NEW_VER..." && \
+	\
+	# 3. Обновляем src/constants.js
+	node -e "const fs = require('fs'); const path = 'src/constants.js'; let c = fs.readFileSync(path, 'utf8'); c = c.replace(/export const APP_VERSION = \".*\";/, 'export const APP_VERSION = \"' + '$$NEW_VER'.replace(/^v/, '') + '\";'); fs.writeFileSync(path, c);" && \
+	\
+	# 4. Добавляем файлы (включая lock-файл, который тоже меняется!)
+	git add package.json package-lock.json src/constants.js && \
+	\
+	# 5. Коммит и тег
+	git commit -m "chore(release): $$NEW_VER" && \
+	git tag $$NEW_VER && \
+	\
+	# 6. Пуш
+	git push && git push --tags && \
+	echo "🚀 Version $$NEW_VER released and pushed!"
