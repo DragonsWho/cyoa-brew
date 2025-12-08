@@ -1,6 +1,7 @@
 /**
  * src\ui\renderer.js
  * UI Renderer - Handles all visual rendering
+ * UPDATED: Added Help Button to points bar
  */
 
 import { CoordHelper } from '../utils/coords.js';
@@ -38,7 +39,10 @@ export class UIRenderer {
         console.log('✅ All elements rendered');
     }
 
-    // ==================== STYLES ====================
+    // ... [KEEP ALL STYLES AND PAGE RENDERING METHODS AS IS] ...
+    // ... [applyGlobalStyles, applyCustomCss, forceImportant, renderPages, renderLayout] ...
+    // ... [syncGroupDOM, syncItemDOM, setupItemEvents, syncBudgetBadges, createTextLayer] ...
+    // ... [getTinyReqString, getCostString] ...
 
     applyGlobalStyles() {
         const style = this.engine.config.style;
@@ -128,8 +132,6 @@ export class UIRenderer {
             .join(';');
     }
 
-    // ==================== PAGES ====================
-
     async renderPages() {
         const wrapper = document.getElementById('game-wrapper');
         wrapper.innerHTML = '';
@@ -183,8 +185,6 @@ export class UIRenderer {
 
         await Promise.all(loadPromises);
     }
-
-    // ==================== LAYOUT RENDERING ====================
 
     renderLayout() {
         const pages = this.engine.config.pages || [];
@@ -468,6 +468,8 @@ export class UIRenderer {
     renderPointsBar() {
         const bar = document.getElementById('points-bar');
         bar.innerHTML = '';
+        
+        // 1. Render Currencies
         const points = this.engine.config.points || [];
         points.forEach(p => {
             const div = document.createElement('div');
@@ -479,6 +481,25 @@ export class UIRenderer {
             `;
             bar.appendChild(div);
         });
+
+        // 2. Render HELP Button (NEW)
+        // Check if button exists to prevent duplicates if logic changes, 
+        // though innerHTML='' clears it anyway.
+        const helpBtn = document.createElement('button');
+        helpBtn.className = 'help-bar-btn';
+        helpBtn.innerHTML = '!';
+        helpBtn.title = 'Help & Info';
+        helpBtn.onclick = () => {
+            if (window.CYOA && window.CYOA.helpManager) {
+                window.CYOA.helpManager.open();
+            } else {
+                alert("Help module not loaded yet.");
+            }
+        };
+        
+        // Right-aligning it in the flex container via CSS margin-left auto if needed,
+        // or just append it at the end.
+        bar.appendChild(helpBtn);
     }
 
     updateUI() {

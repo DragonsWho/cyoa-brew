@@ -10,15 +10,15 @@ import { GameEngine } from './core/engine.js';
 import { UIRenderer } from './ui/renderer.js';
 import { ControlPanel } from './ui/controls.js';
 import { BuildManager } from './ui/build-manager.js';
+import { HelpManager } from './ui/help-manager.js'; // Import HelpManager
 
 // Global state
-let engine, renderer, controls, buildManager;
+let engine, renderer, controls, buildManager, helpManager;
 
 async function init() {
     console.log('🚀 Starting CYOA Interactive System...');
     
     try {
-        // ИЗМЕНЕНО: Теперь ищем project.json в корне (рядом с index.html)
         const response = await fetch('project.json');
         
         if (!response.ok) {
@@ -32,6 +32,7 @@ async function init() {
         renderer = new UIRenderer(engine);
         controls = new ControlPanel(engine, renderer);
         buildManager = new BuildManager(engine, renderer);
+        helpManager = new HelpManager(); // Initialize HelpManager
 
         // Bind Build Button
         const buildBtn = document.getElementById('build-toggle');
@@ -81,5 +82,7 @@ window.CYOA = {
     get editor() { return controls?.editor; },
     get state() { return engine?.state; },
     get config() { return engine?.config; },
-    get buildManager() { return buildManager; }
+    get buildManager() { return buildManager; },
+    get helpManager() { return helpManager; } // Export helpManager globally
 };
+ 
