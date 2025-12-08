@@ -1,6 +1,6 @@
 {
   "name": "cyoa-brew",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Script for automatically converting static CYOA into interactive ones",
   "main": "index.js",
   "directories": {
