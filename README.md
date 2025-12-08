@@ -34,7 +34,7 @@ This project uses **Vite**. Ensure you have [Node.js](https://nodejs.org/) insta
 
 1.  **Clone the repository:**
     ```bash
-    git clone https://github.com/DragonsWho/cyoabrew.git
+    git clone https://github.com/DragonsWho/cyoa-brew.git
     cd cyoa-brew
     ```
 
