@@ -1,0 +1,44 @@
+name: Create Release
+
+# Триггер: запускаться только когда пушим тег, начинающийся с 'v' (например, v1.0.0)
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      # 1. Скачиваем код репозитория
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 2. Устанавливаем Node.js
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20' # Или твою версию (18, 20, etc)
+
+      # 3. Устанавливаем зависимости (чистая установка)
+      - name: Install dependencies
+        run: npm ci
+
+      # 4. Собираем проект (создает папку dist)
+      - name: Build project
+        run: npm run build
+
+      # 5. Архивируем папку dist в zip файл
+      # (Пользователям удобнее качать один файл, чем папку)
+      - name: Archive production artifacts
+        run: zip -r build-v${{ github.ref_name }}.zip dist
+
+      # 6. Создаем релиз на GitHub и прикрепляем архив
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: build-v${{ github.ref_name }}.zip
+          generate_release_notes: true # Автоматически сгенерирует список изменений из коммитов
