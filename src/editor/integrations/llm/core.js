@@ -227,7 +227,8 @@ export const LLMCoreMixin = {
                 imageToSend = page.image;
             } 
             else if (mode === 'fill') {
-                const exampleJson = await this.loadStaticFile('/config/project.json');
+                // ИЗМЕНЕНО: Загружаем пример из корня, а не из config/
+                const exampleJson = await this.loadStaticFile('project.json');
                 
                 dataForPrompt.layout = page.layout;
                 dataForPrompt.toolsMd = TOOLS_REFERENCE_MD;

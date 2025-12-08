@@ -18,10 +18,11 @@ async function init() {
     console.log('🚀 Starting CYOA Interactive System...');
     
     try {
-        const response = await fetch('config/project.json');
+        // ИЗМЕНЕНО: Теперь ищем project.json в корне (рядом с index.html)
+        const response = await fetch('project.json');
         
         if (!response.ok) {
-            throw new Error(`Config not found (${response.status})`);
+            throw new Error(`Config not found (${response.status}). Ensure 'project.json' is in the root directory.`);
         }
         
         const config = await response.json();
@@ -62,7 +63,7 @@ async function init() {
                     <small>${error.message}</small><br><br>
                     <small style="color: #888;">
                         Check console (F12) for details<br>
-                        Make sure you're running via HTTP server
+                        Make sure 'project.json' exists next to index.html
                     </small>
                 </div>
             `;
