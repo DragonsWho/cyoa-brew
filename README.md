@@ -55,7 +55,7 @@ This project uses **Vite**. Ensure you have [Node.js](https://nodejs.org/) insta
     npm run build
     ```
     *   Compiles assets into the `dist/` folder.
-    *   This `dist` folder is what you distribute to users.
+    *   This `dist` folder is what you distribute to users. 
 
 ### Project Structure
 
