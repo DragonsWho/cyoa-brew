@@ -165,7 +165,7 @@ export const LLMCoreMixin = {
         return JSON.parse(jsonStr.substring(startIdx, endIdx));
     },
 
-    // ==================== MAIN ACTION RUNNER ====================
+ // ==================== MAIN ACTION RUNNER ====================
 
     async runLlmAction(mode) {
         // Sync editable prompts
@@ -203,18 +203,15 @@ export const LLMCoreMixin = {
             return;
         }
 
-        // Store original button state
+        // 1. Запоминаем кнопку, но ПОКА НЕ МЕНЯЕМ ЕЁ (чтобы не дергалось)
         const btn = document.activeElement;
         const originalText = btn?.innerHTML || '';
-        if (btn?.tagName === 'BUTTON') { 
-            btn.disabled = true; 
-            btn.innerHTML = '⏳ Processing...'; 
-        }
-
+        
         try {
             let dataForPrompt = {};
             let imageToSend = null;
 
+            // ... Подготовка данных (без изменений) ...
             if (mode === 'refine') {
                 this.sortAndRenameLayout(page.layout);
                 this.renderer.renderLayout();
@@ -227,9 +224,7 @@ export const LLMCoreMixin = {
                 imageToSend = page.image;
             } 
             else if (mode === 'fill') {
-                // ИЗМЕНЕНО: Загружаем пример из корня, а не из config/
                 const exampleJson = await this.loadStaticFile('project.json');
-                
                 dataForPrompt.layout = page.layout;
                 dataForPrompt.toolsMd = TOOLS_REFERENCE_MD;
                 dataForPrompt.exampleJson = exampleJson;
@@ -249,14 +244,18 @@ export const LLMCoreMixin = {
                 messages = this.addImageToMessages(messages, imageToSend, this.llmConfig.provider);
             }
 
-            // Manual mode handling
+            // 2. Manual mode handling: Просто показываем окно и выходим.
+            // Кнопку трогать не нужно, поэтому нет мерцания.
             if (this.llmConfig.provider === 'manual') {
                 this.showManualMode(mode, messages, imageToSend);
-                if (btn?.tagName === 'BUTTON') { 
-                    btn.disabled = false; 
-                    btn.innerHTML = originalText; 
-                }
-                return;
+                return; 
+            }
+
+            // 3. Если мы дошли сюда - значит будет долгий запрос к API.
+            // ВОТ ТЕПЕРЬ меняем текст кнопки.
+            if (btn?.tagName === 'BUTTON') { 
+                btn.disabled = true; 
+                btn.innerHTML = '⏳ Processing...'; 
             }
 
             const responseText = await this.callLlmApi(messages);
@@ -266,13 +265,13 @@ export const LLMCoreMixin = {
             alert(`LLM Error: ${e.message}`);
             console.error('LLM Error:', e);
         } finally {
+            // Восстанавливаем кнопку только если она была изменена (не manual режим)
             if (btn?.tagName === 'BUTTON' && this.llmConfig.provider !== 'manual') { 
                 btn.disabled = false; 
                 btn.innerHTML = originalText; 
             }
         }
     },
-
     // ==================== RESPONSE PROCESSING ====================
 
     processLlmResponse(text, mode) {

@@ -21,7 +21,7 @@ export function createStylePanelHTML() {
     return `
         <div class="editor-section" style="padding:0; border-bottom:1px solid #222;">
             <div class="accordion-header collapsed" onclick="CYOA.editor.toggleAccordion(this)" style="padding: 10px;">
-                <span>🎨 Card Styles & Presets</span>
+                <span>🎨 Card Styles</span>
             </div>
             
             <div class="accordion-content collapsed" style="padding: 0;">
@@ -30,8 +30,8 @@ export function createStylePanelHTML() {
                 <div style="background: #252525; padding: 8px 10px; border-bottom: 1px solid #333; display:flex; align-items:center; justify-content:space-between;">
                     <span style="color:#aaa; font-size:0.8rem;">Test interactions:</span>
                     <div style="display:flex; align-items:center; gap:6px;">
-                        <input type="checkbox" id="style-preview-mode" onchange="CYOA.editor.togglePreviewMode(this.checked)" style="cursor:pointer;" ${checkedAttr}>
-                        <label for="style-preview-mode" style="cursor:pointer; font-size:0.85rem; color:#fff;">Preview Mode</label>
+                        <input type="checkbox" id="style-preview-mode" onchange="CYOA.editor.togglePreviewMode(this.checked)" style="cursor:pointer;" ${checkedAttr} title="Toggle interactive preview mode to test hover/click states">
+                        <label for="style-preview-mode" style="cursor:pointer; font-size:0.85rem; color:#fff;" title="Toggle interactive preview mode to test hover/click states">Preview Mode</label>
                     </div>
                 </div>
 
@@ -41,23 +41,23 @@ export function createStylePanelHTML() {
                     
                     <div class="compact-list">
                         <!-- 1. ACTIVE TRANSPARENT -->
-                        <select id="preset-sel-std" class="style-input" style="width:100%; text-align:left; margin-bottom:4px;" onchange="CYOA.editor.applyPreset('std_active', this)">
+                        <select id="preset-sel-std" class="style-input" style="width:100%; text-align:left; margin-bottom:4px;" onchange="CYOA.editor.applyPreset('std_active', this)" title="Basic transparent selection styles">
                             ${stdActiveOpts}
                         </select>
-                        <select id="preset-sel-fancy" class="style-input" style="width:100%; text-align:left; margin-bottom:8px; border-color:#888;" onchange="CYOA.editor.applyPreset('fancy_active', this)">
+                        <select id="preset-sel-fancy" class="style-input" style="width:100%; text-align:left; margin-bottom:8px; border-color:#888;" onchange="CYOA.editor.applyPreset('fancy_active', this)" title="Advanced selection styles with CSS effects">
                             ${fancyActiveOpts}
                         </select>
                         
                         <!-- 2. VISUAL CARDS -->
-                        <select id="preset-sel-vis-std" class="style-input" style="width:100%; text-align:left; margin-bottom:4px; border-color:#2e7d32;" onchange="CYOA.editor.applyPreset('visual_std', this)">
+                        <select id="preset-sel-vis-std" class="style-input" style="width:100%; text-align:left; margin-bottom:4px; border-color:#2e7d32;" onchange="CYOA.editor.applyPreset('visual_std', this)" title="Standard styles for Visual Cards">
                             ${visStdOpts}
                         </select>
-                        <select id="preset-sel-vis-fancy" class="style-input" style="width:100%; text-align:left; margin-bottom:8px; border-color:#4CAF50;" onchange="CYOA.editor.applyPreset('visual_fancy', this)">
+                        <select id="preset-sel-vis-fancy" class="style-input" style="width:100%; text-align:left; margin-bottom:8px; border-color:#4CAF50;" onchange="CYOA.editor.applyPreset('visual_fancy', this)" title="Bold styles for Visual Cards">
                             ${visFancyOpts}
                         </select>
 
                         <!-- 3. DISABLED -->
-                        <select id="preset-sel-disabled" class="style-input" style="width:100%; text-align:left; border-color:#d32f2f;" onchange="CYOA.editor.applyPreset('disabled', this)">
+                        <select id="preset-sel-disabled" class="style-input" style="width:100%; text-align:left; border-color:#d32f2f;" onchange="CYOA.editor.applyPreset('disabled', this)" title="Styles for disabled/unavailable choices">
                             ${disOpts}
                         </select>
                     </div>
@@ -70,33 +70,33 @@ export function createStylePanelHTML() {
                     </div>
                     <div class="accordion-content collapsed">
                         <div class="style-row">
-                            <label class="style-label">Frame</label>
-                            <input type="color" id="style-border-color" class="style-input square-input" title="Frame Color">
-                            <input type="number" id="style-border-width" class="style-input square-input thick-border" min="0" max="20" title="Frame Thickness">
+                            <label class="style-label" title="Border/Frame settings for selected items">Frame</label>
+                            <input type="color" id="style-border-color" class="style-input square-input" title="Selection Border Color">
+                            <input type="number" id="style-border-width" class="style-input square-input thick-border" min="0" max="20" title="Border Thickness (px)">
                             <div style="display:flex; gap:2px; margin-left: auto;">
-                                <input type="number" id="style-radius-tl" class="style-input square-input input-corner-tl" min="0" max="100">
-                                <input type="number" id="style-radius-tr" class="style-input square-input input-corner-tr" min="0" max="100">
-                                <input type="number" id="style-radius-bl" class="style-input square-input input-corner-bl" min="0" max="100">
-                                <input type="number" id="style-radius-br" class="style-input square-input input-corner-br" min="0" max="100">
+                                <input type="number" id="style-radius-tl" class="style-input square-input input-corner-tl" min="0" max="100" title="Top-Left Radius">
+                                <input type="number" id="style-radius-tr" class="style-input square-input input-corner-tr" min="0" max="100" title="Top-Right Radius">
+                                <input type="number" id="style-radius-bl" class="style-input square-input input-corner-bl" min="0" max="100" title="Bottom-Left Radius">
+                                <input type="number" id="style-radius-br" class="style-input square-input input-corner-br" min="0" max="100" title="Bottom-Right Radius">
                             </div>
                         </div>
                         <div class="style-row">
-                            <label class="style-label">Shadow</label>
-                            <input type="color" id="style-shadow-color" class="style-input square-input">
-                            <input type="number" id="style-shadow-width" class="style-input square-input thick-border" min="0" max="100">
+                            <label class="style-label" title="Outer Glow or Drop Shadow">Shadow</label>
+                            <input type="color" id="style-shadow-color" class="style-input square-input" title="Shadow/Glow Color">
+                            <input type="number" id="style-shadow-width" class="style-input square-input thick-border" min="0" max="100" title="Shadow Size (px)">
                         </div>
                         <div class="style-row">
-                            <label class="style-label">In.Glow</label>
-                            <input type="color" id="style-inset-color" class="style-input square-input">
-                            <input type="number" id="style-inset-width" class="style-input square-input thick-border" min="0" max="100">
+                            <label class="style-label" title="Inner Glow (inside the border)">In.Glow</label>
+                            <input type="color" id="style-inset-color" class="style-input square-input" title="Inner Glow Color">
+                            <input type="number" id="style-inset-width" class="style-input square-input thick-border" min="0" max="100" title="Inner Glow Size (px)">
                         </div>
                         <div class="style-row">
-                            <label class="style-label">Body</label>
-                            <input type="color" id="style-body-color" class="style-input square-input">
-                            <input type="number" id="style-body-opacity" class="style-input square-input" style="width: 40px;" min="0" max="1" step="0.1">
-                            <button class="style-input square-input" onclick="document.getElementById('style-bg-image-input').click()">🖼️</button>
+                            <label class="style-label" title="Background overlay settings">Body</label>
+                            <input type="color" id="style-body-color" class="style-input square-input" title="Background Overlay Color">
+                            <input type="number" id="style-body-opacity" class="style-input square-input" min="0" max="1" step="0.1" title="Background Opacity (0.0 to 1.0)">
+                            <button class="style-input square-input" onclick="document.getElementById('style-bg-image-input').click()" title="Upload Background Pattern/Image">🖼️</button>
                             <input type="file" id="style-bg-image-input" accept="image/*" style="display:none;">
-                            <input type="text" id="style-custom-css" class="style-input thick-border" placeholder="css..." style="flex: 1;">
+                            <input type="text" id="style-custom-css" class="style-input" placeholder="css..." style="flex: 1; min-width: 0;" title="Custom CSS for selected state (e.g., filter: blur(2px))">
                         </div>
                     </div>
                 </div>
@@ -104,7 +104,7 @@ export function createStylePanelHTML() {
                 <!-- SPECIAL CARD STYLE EDITOR -->
                 <div class="editor-section" style="border-bottom: 1px solid #333; padding-left: 5px;">
                     <div class="accordion-header collapsed" onclick="CYOA.editor.toggleAccordion(this)" style="font-size: 0.85rem; color: #4CAF50; font-weight:bold;">
-                        🎴 Visual / Opaque Settings
+                        🎴 Visual Card Settings
                     </div>
                     <div class="accordion-content collapsed">
                         <div class="info-text" style="font-size:0.75rem; padding:5px; margin:5px 0;">
@@ -112,20 +112,20 @@ export function createStylePanelHTML() {
                         </div>
                          <div class="style-row">
                             <label class="style-label">Colors</label>
-                            <input type="color" id="style-vis-bg-color" class="style-input square-input" title="Card Background">
-                            <input type="color" id="style-vis-title-color" class="style-input square-input" title="Title Color">
-                            <input type="color" id="style-vis-text-color" class="style-input square-input" title="Text Color">
+                            <input type="color" id="style-vis-bg-color" class="style-input square-input" title="Card Background Color">
+                            <input type="color" id="style-vis-title-color" class="style-input square-input" title="Title Text Color">
+                            <input type="color" id="style-vis-text-color" class="style-input square-input" title="Body Text Color">
                         </div>
                         <div class="style-row">
                             <label class="style-label">Frame</label>
                             <input type="color" id="style-vis-border-color" class="style-input square-input" title="Border Color">
-                            <input type="number" id="style-vis-border-width" class="style-input square-input thick-border" min="0" max="10" title="Border Width">
-                            <input type="number" id="style-vis-radius" class="style-input square-input thick-border" min="0" max="30" title="Corner Radius">
+                            <input type="number" id="style-vis-border-width" class="style-input square-input thick-border" min="0" max="10" title="Border Width (px)">
+                            <input type="number" id="style-vis-radius" class="style-input square-input thick-border" min="0" max="30" title="Corner Radius (px)">
                         </div>
                         <!-- ADDED CSS FIELD FOR VISUAL CARDS -->
                         <div class="style-row">
                             <label class="style-label">CSS</label>
-                            <input type="text" id="style-vis-custom-css" class="style-input thick-border" placeholder="custom css (box-shadow, filters, etc)..." style="flex: 1;">
+                            <input type="text" id="style-vis-custom-css" class="style-input" placeholder="custom css..." style="flex: 1; min-width: 0;" title="Custom CSS for Visual Cards (e.g., box-shadow: 0 0 10px black)">
                         </div>
                     </div>
                 </div>
@@ -138,18 +138,18 @@ export function createStylePanelHTML() {
                     <div class="accordion-content collapsed">
                         <div class="style-row">
                             <label class="style-label">Frame</label>
-                            <input type="color" id="style-disabled-border-color" class="style-input square-input">
-                            <input type="number" id="style-disabled-border-width" class="style-input square-input thick-border" min="0" max="20">
+                            <input type="color" id="style-disabled-border-color" class="style-input square-input" title="Disabled Border Color">
+                            <input type="number" id="style-disabled-border-width" class="style-input square-input thick-border" min="0" max="20" title="Disabled Border Width">
                             <div style="display:flex; gap:2px; margin-left: auto;">
-                                <input type="number" id="style-disabled-radius-tl" class="style-input square-input input-corner-tl" min="0" max="100">
-                                <input type="number" id="style-disabled-radius-tr" class="style-input square-input input-corner-tr" min="0" max="100">
-                                <input type="number" id="style-disabled-radius-bl" class="style-input square-input input-corner-bl" min="0" max="100">
-                                <input type="number" id="style-disabled-radius-br" class="style-input square-input input-corner-br" min="0" max="100">
+                                <input type="number" id="style-disabled-radius-tl" class="style-input square-input input-corner-tl" min="0" max="100" title="Top-Left Radius">
+                                <input type="number" id="style-disabled-radius-tr" class="style-input square-input input-corner-tr" min="0" max="100" title="Top-Right Radius">
+                                <input type="number" id="style-disabled-radius-bl" class="style-input square-input input-corner-bl" min="0" max="100" title="Bottom-Left Radius">
+                                <input type="number" id="style-disabled-radius-br" class="style-input square-input input-corner-br" min="0" max="100" title="Bottom-Right Radius">
                             </div>
                         </div>
                         <div class="style-row">
                             <label class="style-label">CSS</label>
-                            <input type="text" id="style-disabled-custom-css" class="style-input thick-border" placeholder="custom css..." style="flex: 1;">
+                            <input type="text" id="style-disabled-custom-css" class="style-input" placeholder="custom css..." style="flex: 1; min-width: 0;" title="Custom CSS for Disabled State (e.g. filter: grayscale(100%); opacity: 0.5)">
                         </div>
                     </div>
                 </div>

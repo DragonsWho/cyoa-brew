@@ -70,7 +70,7 @@ export function createLlmPanelHTML() {
                     </div>
                     <textarea id="llm-user-prompt" class="code-editor" style="height:100px; font-family:monospace; font-size:0.75rem; color:#ddd; background:#0a0a0a;"></textarea>
                     <div style="display:flex; justify-content:space-between; margin-top:4px;">
-                        <span style="font-size:0.65rem; color:#555;">{{LAYOUT_JSON}}, {{CONFIG_JSON}}</span>
+                        <span style="font-size:0.65rem; color:#555;">Use {{LAYOUT_JSON}}, {{CONFIG_JSON}}</span>
                         <button id="llm-reset-prompts" style="font-size:0.65rem; background:#333; border:none; color:#888; padding:2px 6px; border-radius:2px; cursor:pointer;">Reset</button>
                     </div>
                 </div>

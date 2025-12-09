@@ -24,10 +24,10 @@ export function createAiPanelHTML() {
 
             <!-- SAM Auto-Detect (Moved from Settings) -->
             <div class="editor-section">
-                <div class="accordion-header collapsed" onclick="CYOA.editor.toggleAccordion(this)">🤖 Auto-Detect (SAM)</div>
+                <div class="accordion-header collapsed" onclick="CYOA.editor.toggleAccordion(this)">🤖 Auto-Detect Frames</div>
                 <div class="accordion-content collapsed">
                     <div class="info-text" style="font-size:0.75rem; margin:5px 0 10px 0; padding:8px;">
-                        Uses Roboflow to detect items in your image automatically.
+                        Automatically detect items in your image. You need a Roboflow API key!
                     </div>
                     <div class="input-group">
                         <input type="text" 
