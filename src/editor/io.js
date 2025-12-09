@@ -13,12 +13,52 @@ export const EditorIOMixin = {
         if (!confirm("Create new project? All unsaved changes will be lost.")) return;
         
         // Reset configuration to default empty state
+        // ИСПРАВЛЕНИЕ: Добавлен объект style с дефолтными значениями
         this.engine.config = {
             pages: [],
             points: [
                 { id: "points", name: "Points", start: 10 }
             ],
-            notes: ""
+            notes: "",
+            style: {
+                // Стандартные настройки (Зеленый стиль)
+                borderColor: "#00ff00",
+                borderWidth: 3,
+                radiusTL: 12,
+                radiusTR: 12,
+                radiusBR: 12,
+                radiusBL: 12,
+                shadowColor: "#00ff00",
+                shadowWidth: 15,
+                insetShadowColor: "rgba(0, 255, 0, 0.2)",
+                insetShadowWidth: 20,
+                bodyColor: "#00ff00",
+                bodyOpacity: 0.1,
+                bodyImage: "",
+                customCss: "",
+                
+                // Настройки Visual Card
+                visualBgColor: "#222222",
+                visualTitleColor: "#ffffff",
+                visualTextColor: "#cccccc",
+                visualBorderColor: "#444444",
+                visualBorderWidth: 1,
+                visualRadius: 8,
+
+                // Настройки Disabled
+                disabledBorderColor: "#555555",
+                disabledBorderWidth: 0,
+                disabledRadiusTL: 12,
+                disabledRadiusTR: 12,
+                disabledRadiusBR: 12,
+                disabledRadiusBL: 12,
+                disabledShadowColor: "#000000",
+                disabledShadowWidth: 0,
+                disabledBodyColor: "#000000",
+                disabledBodyOpacity: 0.5,
+                disabledBodyImage: "",
+                disabledCustomCss: ""
+            }
         };
 
         this.activePageIndex = 0;
@@ -29,12 +69,21 @@ export const EditorIOMixin = {
         // Rebuild and Render
         this.engine.buildMaps();
         this.engine.state.resetCurrencies();
+        
+        // Принудительно применяем стили после сброса
+        if (this.renderer.applyGlobalStyles) {
+            this.renderer.applyGlobalStyles();
+        }
+
         this.renderer.renderAll();
         
         // Update Editor UI
         this.renderPagesList();
         this.renderPointsList();
+        
+        // Обновляем инпуты настроек, чтобы в панели стилей появились значения
         if (this.updateSettingsInputs) this.updateSettingsInputs();
+        
         this.switchTab('settings'); // Switch to settings so user can add a page
     },
 
@@ -79,45 +128,35 @@ export const EditorIOMixin = {
             ctx.drawImage(img, 0, 0);
             
             // --- НАСТРОЙКИ ОТРИСОВКИ ---
-            // Делаем шрифт меньше (делим ширину на 100 вместо 60)
             const fontSize = Math.max(12, Math.min(28, Math.floor(canvas.width / 100)));
-            // Линия чуть тоньше
             const lineWidth = Math.max(2, Math.floor(fontSize / 6));
             
             const drawBox = (obj, isGroup) => {
                 if (!obj.coords) return;
                 const c = CoordHelper.toPixels(obj.coords, { w: canvas.width, h: canvas.height });
                 
-                // 1. Рисуем саму рамку
                 ctx.lineWidth = lineWidth;
-                ctx.strokeStyle = isGroup ? '#FFD700' : '#00FF00'; // Золотой для групп, Зеленый для предметов
+                ctx.strokeStyle = isGroup ? '#FFD700' : '#00FF00'; 
                 ctx.strokeRect(c.x, c.y, c.w, c.h);
                 
-                // 2. Подготовка текста ID
-                ctx.font = `bold ${fontSize}px monospace`; // Моноширинный шрифт лучше для OCR ID
+                ctx.font = `bold ${fontSize}px monospace`; 
                 let text = obj.id;
                 if (isGroup) text = `[G] ${text}`;
                 
-                // Измеряем текст для фона
                 const tm = ctx.measureText(text);
                 const padding = fontSize * 0.4;
                 const bgW = tm.width + (padding * 2);
                 const bgH = fontSize * 1.2;
 
-                // 3. Вычисляем позицию (Центр ВЕРХНЕЙ границы)
-                // Текст будет сидеть ровно на линии
                 const tx = c.x + (c.w / 2);
                 const ty = c.y; 
                 
-                // 4. Рисуем подложку (Черный фон), чтобы ID не сливался с картинкой
                 ctx.fillStyle = "rgba(0, 0, 0, 0.85)";
-                // Центрируем прямоугольник фона относительно tx, ty
                 ctx.fillRect(tx - (bgW / 2), ty - (bgH / 2), bgW, bgH);
                 
-                // 5. Рисуем текст
                 ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle'; // Важно: центрирование по вертикали
-                ctx.fillStyle = isGroup ? '#FFD700' : '#00FF00'; // Цвет текста совпадает с рамкой
+                ctx.textBaseline = 'middle'; 
+                ctx.fillStyle = isGroup ? '#FFD700' : '#00FF00'; 
                 ctx.fillText(text, tx, ty);
             };
             
