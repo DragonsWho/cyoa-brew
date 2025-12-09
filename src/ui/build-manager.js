@@ -97,22 +97,24 @@ export class BuildManager {
         setTimeout(() => btn.textContent = originalText, 1500);
     }
 
-    loadFromInput() {
+loadFromInput() {
         const idArea = document.getElementById('build-id-list');
         const rawText = idArea.value;
         
-        if (!rawText.trim()) return;
+        // УБРАЛИ ПРОВЕРКУ: if (!rawText.trim()) return; 
+        // Теперь мы продолжаем выполнение, даже если текст пустой.
 
-        // Split by comma, space, or newline and clean up
+        // Разбиваем строку. Если она пустая, ids будет просто пустым массивом [].
         const ids = rawText.split(/[\s,]+/).map(s => s.trim()).filter(s => s);
         
-        if (ids.length === 0) return;
+        // УБРАЛИ ПРОВЕРКУ: if (ids.length === 0) return;
+        // Нам нужно, чтобы код шел дальше и очистил стейт.
 
-        // 1. Reset current selection
+        // 1. Reset current selection (Сбрасываем состояние ВСЕГДА)
         this.engine.state.selected.clear();
         this.engine.restoreDefaults(); // Clear active effects
 
-        // 2. Add new selection
+        // 2. Add new selection (Цикл просто не запустится, если массив ids пуст)
         let loadedCount = 0;
         ids.forEach(id => {
             const item = this.engine.findItem(id);
@@ -123,7 +125,7 @@ export class BuildManager {
             }
         });
 
-        // 3. Recalculate logic
+        // 3. Recalculate logic (Пересчитываем пустое состояние)
         this.engine.recalculate();
         
         // 4. Force Visual Update
@@ -135,5 +137,12 @@ export class BuildManager {
 
         // 5. Refresh the modal list to show what loaded
         this.refreshData();
+
+        // Небольшой UX бонус: визуальное подтверждение на кнопке
+        const btn = document.getElementById('btn-load-ids');
+        const originalText = "📥 Load from Text"; // Или то, что там было
+        // Если загрузили 0, пишем "Cleared", иначе кол-во
+        btn.textContent = ids.length === 0 ? "✅ Cleared!" : `✅ Loaded (${loadedCount})`;
+        setTimeout(() => btn.textContent = originalText, 1500);
     }
 }
