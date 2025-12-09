@@ -147,15 +147,7 @@ export const VISUAL_STANDARD_PRESETS = [
     { name: "Subtle Grey", data: { visualBgColor: "#eeeeee", visualTitleColor: "#616161", visualTextColor: "#757575", visualBorderColor: "#e0e0e0", visualBorderWidth: 1, visualRadius: 8 } },
     { name: "Pink Note", data: { visualBgColor: "#fce4ec", visualTitleColor: "#880e4f", visualTextColor: "#ad1457", visualBorderColor: "#f48fb1", visualBorderWidth: 0, visualRadius: 0 } },
     { name: "Tech Blue", data: { visualBgColor: "#102027", visualTitleColor: "#4fc3f7", visualTextColor: "#29b6f6", visualBorderColor: "#0277bd", visualBorderWidth: 2, visualRadius: 0 } },
-    { name: "Gothic", data: { visualBgColor: "#212121", visualTitleColor: "#bdbdbd", visualTextColor: "#757575", visualBorderColor: "#424242", visualBorderWidth: 3, visualRadius: 20 } }
-];
-
-// =============================================================================
-// 4. VISUAL CARD FANCY (OPAQUE + BOLD STYLES) - ~30 Items
-// Focus: High Contrast, Rarity Tiers, Neon Borders, Unique Combinations.
-// Note: These rely on colors/borders since we don't have CSS field for Visual cards.
-// =============================================================================
-export const VISUAL_FANCY_PRESETS = [
+    { name: "Gothic", data: { visualBgColor: "#212121", visualTitleColor: "#bdbdbd", visualTextColor: "#757575", visualBorderColor: "#424242", visualBorderWidth: 3, visualRadius: 20 } },
     { name: "Cyberpunk Yellow", data: { visualBgColor: "#fcee0a", visualTitleColor: "#000000", visualTextColor: "#222222", visualBorderColor: "#000000", visualBorderWidth: 4, visualRadius: 0 } },
     { name: "Rarity: Common (Grey)", data: { visualBgColor: "#2d2d2d", visualTitleColor: "#ffffff", visualTextColor: "#aaaaaa", visualBorderColor: "#9e9e9e", visualBorderWidth: 2, visualRadius: 8 } },
     { name: "Rarity: Uncommon (Green)", data: { visualBgColor: "#1b2e1b", visualTitleColor: "#4caf50", visualTextColor: "#a5d6a7", visualBorderColor: "#4caf50", visualBorderWidth: 2, visualRadius: 8 } },
@@ -183,6 +175,418 @@ export const VISUAL_FANCY_PRESETS = [
     { name: "Toxic Waste", data: { visualBgColor: "#2e3b0b", visualTitleColor: "#ccff00", visualTextColor: "#adff2f", visualBorderColor: "#76ff03", visualBorderWidth: 3, visualRadius: 10 } },
     { name: "Safety Orange", data: { visualBgColor: "#ff5722", visualTitleColor: "#ffffff", visualTextColor: "#ffccbc", visualBorderColor: "#bf360c", visualBorderWidth: 3, visualRadius: 5 } }
 ];
+
+// =============================================================================
+// 4. VISUAL CARD FANCY (OPAQUE + BOLD STYLES) - ~30 Items
+// Focus: High Contrast, Rarity Tiers, Neon Borders, Unique Combinations.
+// Note: These rely on colors/borders since we don't have CSS field for Visual cards.
+// =============================================================================
+
+
+
+
+
+
+
+export const VISUAL_FANCY_PRESETS = [
+    // =================================================================
+    // --- 1. ANIMATED & PULSING (LEGENDARY) ---
+    // =================================================================
+    { 
+        name: "Legendary Holo (Anim)", 
+        data: { 
+            visualBgColor: "#ffd700", visualTitleColor: "#5e4000", visualTextColor: "#5e4000", visualBorderColor: "#fff", visualBorderWidth: 2, visualRadius: 12,
+            css: "background: linear-gradient(135deg, #fceabb 0%, #fccd4d 50%, #f8b500 51%, #fbdf93 100%); box-shadow: 0 0 15px #ffd700; animation: pulse 3s infinite;" 
+        } 
+    }, 
+    { 
+        name: "Epic Purple Pulse", 
+        data: { 
+            visualBgColor: "#4a148c", visualTitleColor: "#fff", visualTextColor: "#e1bee7", visualBorderColor: "#d500f9", visualBorderWidth: 3, visualRadius: 8,
+            css: "box-shadow: 0 0 10px #d500f9, inset 0 0 20px #aa00ff; animation: pulse 2s infinite alternate;" 
+        } 
+    }, 
+
+    // =================================================================
+    // --- 2. CYBERPUNK, GLITCH & TECH ---
+    // =================================================================
+    { 
+        name: "Cyber Glitch", 
+        data: { 
+            visualBgColor: "#00ffff", visualTitleColor: "#000", visualTextColor: "#000", visualBorderColor: "#ff00ff", visualBorderWidth: 2, visualRadius: 0,
+            css: "background-color: rgba(0, 255, 255, 0.1); box-shadow: -3px 0 #00ffff, 3px 0 #ff00ff; clip-path: polygon(15% 0%, 100% 0%, 100% 90%, 90% 100%, 0% 100%, 0% 8%);" 
+        } 
+    },
+    { 
+        name: "Cyber Beam", 
+        data: { 
+            visualBgColor: "#000", visualTitleColor: "#0ff", visualTextColor: "#fff", visualBorderColor: "transparent", visualBorderWidth: 0, visualRadius: 0,
+            css: "border-left: 5px solid #0ff; border-right: 5px solid #f0f; background: linear-gradient(90deg, rgba(0,255,255,0.1), rgba(255,0,255,0.1)); clip-path: polygon(0 0, 100% 0, 95% 100%, 5% 100%);" 
+        } 
+    },
+    { 
+        name: "VHS Glitch", 
+        data: { 
+            visualBgColor: "#111", visualTitleColor: "#fff", visualTextColor: "#ddd", visualBorderColor: "transparent", visualBorderWidth: 0, visualRadius: 0,
+            css: "box-shadow: -2px 0 0 #0ff, 2px 0 0 #f00; background: linear-gradient(rgba(18, 16, 16, 0.8) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06)); background-size: 100% 2px, 3px 100%;" 
+        } 
+    },  
+    { 
+        name: "Terminal Scanline", 
+        data: { 
+            visualBgColor: "#000", visualTitleColor: "#0f0", visualTextColor: "#0f0", visualBorderColor: "#0f0", visualBorderWidth: 1, visualRadius: 0,
+            css: "background-image: linear-gradient(to bottom, rgba(0,255,0,0), rgba(0,255,0,0) 50%, rgba(0,0,0,0.2) 50%, rgba(0,0,0,0.2)); background-size: 100% 4px; box-shadow: inset 0 0 20px #0f0; font-family: monospace;" 
+        } 
+    },
+    { 
+        name: "Sci-Fi HUD", 
+        data: { 
+            visualBgColor: "rgba(0, 20, 40, 0.9)", visualTitleColor: "#0ff", visualTextColor: "#80deea", visualBorderColor: "transparent", visualBorderWidth: 0, visualRadius: 0,
+            css: "clip-path: polygon(10% 0, 100% 0, 100% 90%, 90% 100%, 0 100%, 0 10%); border-right: 4px solid #0ff; border-bottom: 1px solid #0ff; border-top: 1px solid rgba(0,255,255,0.3);" 
+        } 
+    },
+    { 
+        name: "Blueprint",
+        data: { 
+            visualBgColor: "#0d47a1", visualTitleColor: "#fff", visualTextColor: "#e0e0e0", visualBorderColor: "#fff", visualBorderWidth: 2, visualRadius: 0,
+            css: "background-image: linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px); background-size: 20px 20px;" 
+        } 
+    },
+    { 
+        name: "Toxic Radioactive", 
+        data: { 
+            visualBgColor: "#1b5e20", visualTitleColor: "#ccff90", visualTextColor: "#b9f6ca", visualBorderColor: "#64dd17", visualBorderWidth: 2, visualRadius: 4,
+            css: "background-image: repeating-linear-gradient(45deg, rgba(0,0,0,0.2), rgba(0,0,0,0.2) 10px, transparent 10px, transparent 20px); box-shadow: 0 0 15px #64dd17;" 
+        } 
+    },
+
+    // =================================================================
+    // --- 3. NEON & LIGHTS ---
+    // =================================================================
+    { 
+        name: "Neon Frame (Pink)", 
+        data: { 
+            visualBgColor: "#111", visualTitleColor: "#ff00cc", visualTextColor: "#fce1f9", visualBorderColor: "transparent", visualBorderWidth: 3, visualRadius: 0,
+            css: "background: linear-gradient(#111, #111) padding-box, linear-gradient(to right, #ff00cc, #333399) border-box; border: 3px solid transparent; box-shadow: 0 0 15px rgba(255,0,204,0.3);" 
+        } 
+    },
+    { 
+        name: "Neon Frame (Pink/Cyan)", // VARIANT
+        data: { borderColor: "transparent", borderWidth: 0, bodyColor: "rgba(0,0,0,0.6)", bodyOpacity: 0.6, shadowColor: "#000", shadowWidth: 0, radius: 0, insetShadowColor: "transparent", insetShadowWidth: 0, 
+        css: "border: 2px solid transparent; border-image: linear-gradient(to right, #ff00cc, #333399, #00ccff) 1; box-shadow: 0 0 10px rgba(255,0,204,0.5), inset 0 0 20px rgba(0,204,255,0.2);" } 
+    },
+    { 
+        name: "Neon Frame", // VARIANT (Red)
+        data: { 
+            visualBgColor: "#111", visualTitleColor: "#fff", visualTextColor: "#ccc", visualBorderColor: "#ff0055", visualBorderWidth: 2, visualRadius: 10,
+            css: "box-shadow: 0 0 10px #ff0055, inset 0 0 10px #ff0055;" 
+        } 
+    },
+    { 
+        name: "Neon Sign (Green)", 
+        data: { 
+            visualBgColor: "transparent", visualTitleColor: "#0f0", visualTextColor: "#0f0", visualBorderColor: "#0f0", visualBorderWidth: 2, visualRadius: 12,
+            css: "background-color: rgba(0,20,0,0.8); box-shadow: 0 0 5px #0f0, inset 0 0 10px #0f0; text-shadow: 0 0 5px #0f0;" 
+        } 
+    },
+    { 
+        name: "Neon Sign", // VARIANT (Purple)
+        data: { borderColor: "#fff", borderWidth: 2, bodyColor: "transparent", bodyOpacity: 0, shadowColor: "#ff00de", shadowWidth: 20, radius: 12, insetShadowColor: "#ff00de", insetShadowWidth: 10, 
+        css: "box-shadow: 0 0 10px #ff00de, 0 0 20px #ff00de, 0 0 40px #ff00de, inset 0 0 10px #ff00de;" } 
+    },
+
+    // =================================================================
+    // --- 4. GLASS & TRANSPARENT ---
+    // =================================================================
+    { 
+        name: "Dark Glass", 
+        data: { 
+            visualBgColor: "rgba(16, 16, 16, 0.6)", visualTitleColor: "#fff", visualTextColor: "#ccc", visualBorderColor: "rgba(255,255,255,0.1)", visualBorderWidth: 1, visualRadius: 12,
+            css: "backdrop-filter: blur(8px); box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5); border: 1px solid rgba(255, 255, 255, 0.18);" 
+        } 
+    },
+    { 
+        name: "Glass Morphism", // SIMILAR
+        data: { 
+            visualBgColor: "rgba(255, 255, 255, 0.1)", visualTitleColor: "#fff", visualTextColor: "#eee", visualBorderColor: "rgba(255,255,255,0.2)", visualBorderWidth: 1, visualRadius: 16,
+            css: "backdrop-filter: blur(10px); box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1); border-top: 1px solid rgba(255,255,255,0.5); border-left: 1px solid rgba(255,255,255,0.5);" 
+        } 
+    },
+
+    // =================================================================
+    // --- 5. MAGIC, FIRE & DARK ---
+    // =================================================================
+    { 
+        name: "Arcane Fire", 
+        data: { 
+            visualBgColor: "#2a0a00", visualTitleColor: "#ff4500", visualTextColor: "#ff8c00", visualBorderColor: "#ff4500", visualBorderWidth: 3, visualRadius: 12,
+            css: "border-style: double; box-shadow: 0 0 15px #ff4500, inset 0 0 20px #8b0000;" 
+        } 
+    },
+    { 
+        name: "Magma Cracked", 
+        data: { borderColor: "#500", borderWidth: 2, bodyColor: "#1a0505", bodyOpacity: 0.9, shadowColor: "#f0f", shadowWidth: 10, radius: 4, insetShadowColor: "#f00", insetShadowWidth: 5, 
+        css: "background-image: repeating-linear-gradient(to bottom, #2a0a0a, #3a0a0a 2px, #1a0505 4px); box-shadow: inset 0 0 30px #f00;" } 
+    },
+    { 
+        name: "Void Rift", 
+        data: { borderColor: "#000", borderWidth: 0, bodyColor: "#000", bodyOpacity: 1, shadowColor: "#fff", shadowWidth: 2, radius: 50, insetShadowColor: "#000", insetShadowWidth: 0, 
+        css: "box-shadow: inset 0 0 40px #000, 0 0 5px #000; border: 1px solid #333;" } 
+    },
+    { 
+        name: "Gradient Border", 
+        data: { 
+            visualBgColor: "transparent", visualTitleColor: "#fff", visualTextColor: "#ccc", visualBorderColor: "transparent", visualBorderWidth: 4, visualRadius: 10,
+            css: "background: linear-gradient(#222, #222) padding-box, linear-gradient(135deg, darkorchid, darkblue, darkorchid) border-box; border: 4px solid transparent;" 
+        } 
+    },
+    { 
+        name: "Rainbow RGB", 
+        data: { 
+            visualBgColor: "#222", visualTitleColor: "#fff", visualTextColor: "#ddd", visualBorderColor: "transparent", visualBorderWidth: 4, visualRadius: 0,
+            css: "border-image: linear-gradient(45deg, red, orange, yellow, green, blue, indigo, violet) 1; box-shadow: 0 0 15px rgba(255,255,255,0.1);" 
+        } 
+    },
+    { 
+        name: "Minimal Dark", 
+        data: { 
+            visualBgColor: "#121212", visualTitleColor: "#e0e0e0", visualTextColor: "#a0a0a0", visualBorderColor: "#333", visualBorderWidth: 1, visualRadius: 0,
+            css: "border-left: 4px solid #e0e0e0;" 
+        } 
+    },
+
+    // =================================================================
+    // --- 6. DIVINE & LIGHT ---
+    // =================================================================
+    { 
+        name: "Divine Light", 
+        data: { 
+            visualBgColor: "#fff", visualTitleColor: "#000", visualTextColor: "#333", visualBorderColor: "#fff", visualBorderWidth: 1, visualRadius: 22,
+            css: "box-shadow: 0 0 20px #fff, 0 0 40px #fff; background-color: rgba(255,255,255,0.9);" 
+        } 
+    },
+    { 
+        name: "Divine Shield", // VARIANT
+        data: { borderColor: "#fff", borderWidth: 1, bodyColor: "rgba(255,255,255,0.1)", bodyOpacity: 0.1, shadowColor: "#fff", shadowWidth: 20, radius: 100, insetShadowColor: "#fff", insetShadowWidth: 20, 
+        css: "box-shadow: 0 0 15px #fff, 0 0 30px #fff, inset 0 0 30px rgba(255,255,255,0.5); border: 1px solid #fff;" } 
+    },
+
+    // =================================================================
+    // --- 7. PAPER, SCROLLS & SKETCHY ---
+    // =================================================================
+    { 
+        name: "RPG Scroll", 
+        data: { 
+            visualBgColor: "#f4e4bc", visualTitleColor: "#3e2723", visualTextColor: "#5d4037", visualBorderColor: "#8b4513", visualBorderWidth: 4, visualRadius: 4,
+            css: "border-style: double; box-shadow: inset 0 0 40px rgba(139,69,19,0.3); background-image: repeating-linear-gradient(#f4e4bc, #f4e4bc 20px, #e8d8b0 21px);" 
+        } 
+    },
+    { 
+        name: "Ripped Paper", 
+        data: { 
+            visualBgColor: "#fdfbf7", visualTitleColor: "#000", visualTextColor: "#333", visualBorderColor: "transparent", visualBorderWidth: 0, visualRadius: 0,
+            css: "clip-path: polygon(0% 0%, 100% 0%, 100% 100%, 95% 92%, 90% 100%, 85% 92%, 80% 100%, 75% 92%, 70% 100%, 65% 92%, 60% 100%, 55% 92%, 50% 100%, 45% 92%, 40% 100%, 35% 92%, 30% 100%, 25% 92%, 20% 100%, 15% 92%, 10% 100%, 5% 92%, 0% 100%); background-image: linear-gradient(to bottom, #fff 0%, #f4e4bc 100%); padding-bottom: 20px;" 
+        } 
+    },
+    { 
+        name: "Dotted Notepad", 
+        data: { 
+            visualBgColor: "#fff", visualTitleColor: "#333", visualTextColor: "#555", visualBorderColor: "#333", visualBorderWidth: 2, visualRadius: 2,
+            css: "border-style: dashed; background-image: radial-gradient(rgba(0, 0, 0, 0.15) 1px, transparent 1px); background-size: 10px 10px;" 
+        } 
+    },
+    { 
+        name: "Sketchy Box",
+        data: { borderColor: "#333", borderWidth: 2, bodyColor: "#fff", bodyOpacity: 0.1, shadowColor: "transparent", shadowWidth: 0, radius: 255, insetShadowColor: "transparent", insetShadowWidth: 0, 
+        css: "border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px; border-style: solid; box-shadow: 2px 2px 5px rgba(0,0,0,0.1);" } 
+    },
+    { 
+        name: "Comic Book", 
+        data: { 
+            visualBgColor: "#fff", visualTitleColor: "#000", visualTextColor: "#000", visualBorderColor: "#000", visualBorderWidth: 4, visualRadius: 0,
+            css: "box-shadow: 8px 8px 0px #000; background-image: radial-gradient(#000 20%, transparent 20%); background-size: 4px 4px; background-color: #fff;" 
+        } 
+    },
+    { 
+        name: "Noir Detective", 
+        data: { 
+            visualBgColor: "#e0e0e0", visualTitleColor: "#000", visualTextColor: "#000", visualBorderColor: "#000", visualBorderWidth: 2, visualRadius: 0,
+            css: "filter: contrast(150%) grayscale(100%); background-image: repeating-linear-gradient(45deg, #ccc, #ccc 2px, transparent 2px, transparent 6px);" 
+        } 
+    },
+
+    // =================================================================
+    // --- 8. MATERIALS (METAL, LEATHER, FABRIC) ---
+    // =================================================================
+    { 
+        name: "Carbon Fiber", 
+        data: { 
+            visualBgColor: "#1a1a1a", visualTitleColor: "#eee", visualTextColor: "#bbb", visualBorderColor: "#000", visualBorderWidth: 2, visualRadius: 4,
+            css: "background: radial-gradient(black 15%, transparent 16%) 0 0, radial-gradient(black 15%, transparent 16%) 8px 8px, radial-gradient(rgba(255,255,255,.1) 15%, transparent 20%) 0 1px, radial-gradient(rgba(255,255,255,.1) 15%, transparent 20%) 8px 9px; background-color:#282828; background-size:16px 16px;" 
+        } 
+    },
+    { 
+        name: "Brushed Metal", 
+        data: { 
+            visualBgColor: "#bdc3c7", visualTitleColor: "#2c3e50", visualTextColor: "#34495e", visualBorderColor: "#95a5a6", visualBorderWidth: 2, visualRadius: 6,
+            css: "background: linear-gradient(135deg, #e0e0e0 0%, #bdc3c7 50%, #95a5a6 100%); box-shadow: inset 1px 1px 0 rgba(255,255,255,0.8), 2px 2px 5px rgba(0,0,0,0.3);" 
+        } 
+    },
+    { 
+        name: "Leather Bound", 
+        data: { 
+            visualBgColor: "#3e2723", visualTitleColor: "#d7ccc8", visualTextColor: "#bcaaa4", visualBorderColor: "#281915", visualBorderWidth: 3, visualRadius: 6,
+            css: "box-shadow: inset 0 0 20px #000; border-style: ridge;" 
+        } 
+    },
+    { 
+        name: "Stitched Fabric", 
+        data: { 
+            visualBgColor: "#3f51b5", visualTitleColor: "#fff", visualTextColor: "#c5cae9", visualBorderColor: "#fff", visualBorderWidth: 2, visualRadius: 8,
+            css: "border-style: dashed; box-shadow: 0 2px 5px rgba(0,0,0,0.3); background-image: radial-gradient(rgba(255,255,255,0.1) 1px, transparent 1px); background-size: 4px 4px;" 
+        } 
+    },
+    { 
+        name: "Post-Apocalyptic", 
+        data: { 
+            visualBgColor: "#3e3b36", visualTitleColor: "#dcb67a", visualTextColor: "#a89f91", visualBorderColor: "#292724", visualBorderWidth: 1, visualRadius: 2,
+            css: "border-top: 4px solid #dcb67a; box-shadow: inset 0 0 50px rgba(0,0,0,0.8); opacity: 0.9;" 
+        } 
+    },
+
+    // =================================================================
+    // --- 9. INDUSTRIAL & SHAPES ---
+    // =================================================================
+    { 
+        name: "Warning Tape", 
+        data: { 
+            visualBgColor: "#fd0", visualTitleColor: "#000", visualTextColor: "#000", visualBorderColor: "#000", visualBorderWidth: 3, visualRadius: 4,
+            css: "background: repeating-linear-gradient(45deg, #fd0, #fd0 10px, #000 10px, #000 20px); text-shadow: 0 0 2px #fff; color: white !important;" 
+        } 
+    }, 
+    { 
+        name: "Caution Stripe !!!!", // SIMILAR
+        data: { 
+            visualBgColor: "#222", visualTitleColor: "#ffeb3b", visualTextColor: "#fff", visualBorderColor: "#ffeb3b", visualBorderWidth: 0, visualRadius: 0,
+            css: "border-bottom: 5px solid #ffeb3b; background: repeating-linear-gradient(45deg, #222, #222 10px, #333 10px, #333 20px);" 
+        } 
+    },
+    { 
+        name: "3D Button", 
+        data: { 
+            visualBgColor: "#007bff", visualTitleColor: "#fff", visualTextColor: "#e0f2f1", visualBorderColor: "#0056b3", visualBorderWidth: 0, visualRadius: 20,
+            css: "box-shadow: inset 0 10px 10px -5px rgba(255, 255, 255, 0.7), inset 0 -5px 10px rgba(0, 0, 0, 0.3), 0 5px 10px rgba(0,0,0,0.3); border-bottom: 4px solid #0056b3;" 
+        } 
+    }, 
+    { 
+        name: "Hexagon Card", 
+        data: { borderColor: "#333", borderWidth: 0, bodyColor: "#222", bodyOpacity: 0.8, shadowColor: "#000", shadowWidth: 0, radius: 0, insetShadowColor: "#000", insetShadowWidth: 20, 
+        css: "clip-path: polygon(5% 0%, 95% 0%, 100% 50%, 95% 100%, 5% 100%, 0% 50%); border: 2px solid #555; padding: 10px;" } 
+    },
+    { 
+        name: "Speech Bubble", 
+        data: { 
+            visualBgColor: "#fff", visualTitleColor: "#000", visualTextColor: "#333", visualBorderColor: "#000", visualBorderWidth: 3, visualRadius: 30,
+            css: "border-bottom-left-radius: 0; box-shadow: 4px 4px 0 #000;" 
+        } 
+    },
+    { 
+        name: "Ticket Stub", 
+        data: { 
+            visualBgColor: "#ffecb3", visualTitleColor: "#000", visualTextColor: "#444", visualBorderColor: "#ffca28", visualBorderWidth: 2, visualRadius: 8,
+            css: "mask-image: radial-gradient(circle at left, transparent 10px, black 11px), radial-gradient(circle at right, transparent 10px, black 11px); -webkit-mask-image: radial-gradient(circle at left, transparent 10px, black 11px), radial-gradient(circle at right, transparent 10px, black 11px); -webkit-mask-composite: source-in;" 
+        } 
+    }, 
+    { 
+        name: "Polaroid", 
+        data: { 
+            visualBgColor: "#fff", visualTitleColor: "#000", visualTextColor: "#444", visualBorderColor: "#ddd", visualBorderWidth: 1, visualRadius: 2,
+            css: "padding: 10px 10px 30px 10px; box-shadow: 2px 4px 10px rgba(0,0,0,0.2); transform: rotate(-1deg);" 
+        } 
+    },
+    { 
+        name: "Vaporwave Sun", 
+        data: { 
+            visualBgColor: "#2d0048", visualTitleColor: "#ff00d4", visualTextColor: "#00eaff", visualBorderColor: "#00eaff", visualBorderWidth: 2, visualRadius: 0,
+            css: "background: linear-gradient(to bottom, #2d0048 0%, #ff00d4 100%); border-image: linear-gradient(to right, #00eaff, #ff00d4) 1;" 
+        } 
+    },
+
+    // =================================================================
+    // --- 10. NEW ORIGINAL CARDS (ADDED) ---
+    // =================================================================
+    {
+        name: "Eldritch Flesh",
+        data: {
+            visualBgColor: "#3a0000", visualTitleColor: "#ff9999", visualTextColor: "#ffcccc", visualBorderColor: "#500", visualBorderWidth: 0, visualRadius: 10,
+            css: "box-shadow: inset 0 0 30px #000; background-image: radial-gradient(#5a0000 20%, transparent 20%), radial-gradient(#400 10%, transparent 10%); background-size: 20px 20px, 15px 15px; animation: pulse 4s infinite;"
+        }
+    },
+    {
+        name: "Royal Velvet",
+        data: {
+            visualBgColor: "#400010", visualTitleColor: "#ffd700", visualTextColor: "#fff0f5", visualBorderColor: "#daa520", visualBorderWidth: 4, visualRadius: 8,
+            css: "box-shadow: inset 0 0 50px rgba(0,0,0,0.7), 0 5px 15px rgba(0,0,0,0.5); border-style: double; background: repeating-linear-gradient(45deg, #400010, #400010 10px, #500015 10px, #500015 20px);"
+        }
+    },
+    {
+        name: "Deep Space",
+        data: {
+            visualBgColor: "#0b0d17", visualTitleColor: "#fff", visualTextColor: "#aab", visualBorderColor: "#4b0082", visualBorderWidth: 1, visualRadius: 12,
+            css: "background: radial-gradient(circle at top right, #1a1f3c, #0b0d17); box-shadow: 0 0 10px #4b0082, inset 0 0 20px #000; border-top: 1px solid rgba(255,255,255,0.3);"
+        }
+    },
+    {
+        name: "Steampunk Brass",
+        data: {
+            visualBgColor: "#b87333", visualTitleColor: "#3e2723", visualTextColor: "#4e342e", visualBorderColor: "#8b4513", visualBorderWidth: 6, visualRadius: 15,
+            css: "background: radial-gradient(circle, #cd7f32 0%, #a0522d 100%); border-style: ridge; box-shadow: inset 0 0 10px #3e2723, 3px 3px 5px rgba(0,0,0,0.4);"
+        }
+    },
+    {
+        name: "Matrix Rain",
+        data: {
+            visualBgColor: "#000", visualTitleColor: "#0f0", visualTextColor: "#00ff00", visualBorderColor: "transparent", visualBorderWidth: 0, visualRadius: 0,
+            css: "border-top: 2px solid #0f0; border-bottom: 2px solid #0f0; background: linear-gradient(180deg, rgba(0, 255, 0, 0.1) 0%, rgba(0, 0, 0, 0) 100%); text-shadow: 0 0 3px #0f0;"
+        }
+    },
+    {
+        name: "Slime Goo",
+        data: {
+            visualBgColor: "#ccffcc", visualTitleColor: "#006400", visualTextColor: "#003300", visualBorderColor: "#32cd32", visualBorderWidth: 3, visualRadius: 25,
+            css: "box-shadow: inset 0 10px 10px rgba(255,255,255,0.8), inset 0 -10px 10px rgba(0,100,0,0.2), 0 5px 15px rgba(50,205,50,0.4); border-style: solid;"
+        }
+    },
+    {
+        name: "Ancient Stone",
+        data: {
+            visualBgColor: "#7f8c8d", visualTitleColor: "#2c3e50", visualTextColor: "#34495e", visualBorderColor: "#95a5a6", visualBorderWidth: 4, visualRadius: 2,
+            css: "box-shadow: inset 2px 2px 5px rgba(255,255,255,0.2), inset -2px -2px 5px rgba(0,0,0,0.3); border-style: outset;"
+        }
+    },
+    {
+        name: "Frozen Ice",
+        data: {
+            visualBgColor: "rgba(200, 240, 255, 0.7)", visualTitleColor: "#005f73", visualTextColor: "#0a9396", visualBorderColor: "#94d2bd", visualBorderWidth: 2, visualRadius: 10,
+            css: "backdrop-filter: blur(5px); box-shadow: 0 0 15px rgba(148, 210, 189, 0.6); border: 1px solid white;"
+        }
+    }
+];
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+
+ 
 
 // =============================================================================
 // 5. DISABLED PRESETS (MIXED SIMPLE/COMPLEX) - ~50 Items
@@ -216,7 +620,7 @@ export const DISABLED_PRESETS = [
     // Crosses & Symbols
     { name: "Big Red X", data: { borderColor: "#500", borderWidth: 2, bodyColor: "#220000", bodyOpacity: 0.6, shadowColor: "#000", shadowWidth: 0, radius: 8, css: "background: linear-gradient(to top right, transparent calc(50% - 2px), red, transparent calc(50% + 2px)), linear-gradient(to bottom right, transparent calc(50% - 2px), red, transparent calc(50% + 2px)); background-color: rgba(0,0,0,0.6);" } },
     { name: "Big White X", data: { borderColor: "#555", borderWidth: 1, bodyColor: "#000", bodyOpacity: 0.6, shadowColor: "#000", shadowWidth: 0, radius: 8, css: "background: linear-gradient(to top right, transparent calc(50% - 1px), white, transparent calc(50% + 1px)), linear-gradient(to bottom right, transparent calc(50% - 1px), white, transparent calc(50% + 1px)); background-color: rgba(0,0,0,0.6);" } },
-    { name: "Circle Slash (Banned)", data: { borderColor: "#f00", borderWidth: 4, bodyColor: "#000", bodyOpacity: 0.5, shadowColor: "#000", shadowWidth: 0, radius: 50, css: "background: linear-gradient(to bottom right, transparent calc(50% - 2px), red, transparent calc(50% + 2px));" } },
+    { name: "Banned", data: { borderColor: "#f00", borderWidth: 4, bodyColor: "#000", bodyOpacity: 0.4, shadowColor: "#000", shadowWidth: 0, radius: 22, css: "background: linear-gradient(to bottom right, transparent calc(50% - 6px), red, transparent calc(50% + 6px));" } },
 
     // Filters & Blurs
     { name: "Blurred Out", data: { borderColor: "transparent", borderWidth: 0, bodyColor: "#fff", bodyOpacity: 0.3, shadowColor: "#000", shadowWidth: 0, radius: 12, css: "backdrop-filter: blur(4px) grayscale(100%);" } },

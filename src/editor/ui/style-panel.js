@@ -122,6 +122,11 @@ export function createStylePanelHTML() {
                             <input type="number" id="style-vis-border-width" class="style-input square-input thick-border" min="0" max="10" title="Border Width">
                             <input type="number" id="style-vis-radius" class="style-input square-input thick-border" min="0" max="30" title="Corner Radius">
                         </div>
+                        <!-- ADDED CSS FIELD FOR VISUAL CARDS -->
+                        <div class="style-row">
+                            <label class="style-label">CSS</label>
+                            <input type="text" id="style-vis-custom-css" class="style-input thick-border" placeholder="custom css (box-shadow, filters, etc)..." style="flex: 1;">
+                        </div>
                     </div>
                 </div>
 
@@ -142,7 +147,10 @@ export function createStylePanelHTML() {
                                 <input type="number" id="style-disabled-radius-br" class="style-input square-input input-corner-br" min="0" max="100">
                             </div>
                         </div>
-                        <!-- Additional fields can be added here -->
+                        <div class="style-row">
+                            <label class="style-label">CSS</label>
+                            <input type="text" id="style-disabled-custom-css" class="style-input thick-border" placeholder="custom css..." style="flex: 1;">
+                        </div>
                     </div>
                 </div>
             </div>
@@ -163,7 +171,6 @@ export const StyleSettingsMixin = {
         }
     },
 
-    // ОБНОВЛЕННАЯ ФУНКЦИЯ: Теперь обрабатывает 5 списков и корректно сбрасывает остальные
     applyPreset(type, selectElement) {
         const index = selectElement.value;
         if (index === "") return;
@@ -189,7 +196,7 @@ export const StyleSettingsMixin = {
 
         if (!preset) return;
 
-        // СБРОС ОСТАЛЬНЫХ СПИСКОВ В ТОЙ ЖЕ КАТЕГОРИИ
+        // Reset other dropdowns in the same category
         if (category === 'active') {
             if (type !== 'std_active') document.getElementById('preset-sel-std').value = "";
             if (type !== 'fancy_active') document.getElementById('preset-sel-fancy').value = "";
@@ -198,7 +205,6 @@ export const StyleSettingsMixin = {
             if (type !== 'visual_fancy') document.getElementById('preset-sel-vis-fancy').value = "";
         }
         
-        // Применяем данные к конфигу
         const s = this.engine.config.style;
         const d = preset.data;
 
@@ -209,6 +215,8 @@ export const StyleSettingsMixin = {
             s.visualBorderColor = d.visualBorderColor;
             s.visualBorderWidth = d.visualBorderWidth;
             s.visualRadius = d.visualRadius;
+            // !!! UPDATE CSS !!!
+            s.visualCustomCss = d.css || ''; 
         } 
         else if (category === 'disabled') {
             s.disabledBorderColor = d.borderColor;
@@ -285,11 +293,15 @@ export const StyleSettingsMixin = {
         setVal('style-vis-border-color', style.visualBorderColor || '#444444');
         setVal('style-vis-border-width', style.visualBorderWidth !== undefined ? style.visualBorderWidth : 1);
         setVal('style-vis-radius', style.visualRadius !== undefined ? style.visualRadius : 8);
+        setVal('style-vis-custom-css', style.visualCustomCss || ''); // Загрузка значения
 
         // Disabled styles
         setVal('style-disabled-border-color', style.disabledBorderColor || '#555555');
         setVal('style-disabled-border-width', style.disabledBorderWidth !== undefined ? style.disabledBorderWidth : 0);
         setVal('style-disabled-radius-tl', style.disabledRadiusTL !== undefined ? style.disabledRadiusTL : 12);
-        // ... (остальные поля для disabled можно добавить по аналогии, если нужно в UI)
+        setVal('style-disabled-radius-tr', style.disabledRadiusTR !== undefined ? style.disabledRadiusTR : 12);
+        setVal('style-disabled-radius-bl', style.disabledRadiusBL !== undefined ? style.disabledRadiusBL : 12);
+        setVal('style-disabled-radius-br', style.disabledRadiusBR !== undefined ? style.disabledRadiusBR : 12);
+        setVal('style-disabled-custom-css', style.disabledCustomCss || '');
     }
 };

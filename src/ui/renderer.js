@@ -1,7 +1,7 @@
 /**
  * src\ui\renderer.js
  * UI Renderer - Handles all visual rendering
- * UPDATED: Added Help Button to points bar
+ * UPDATED: Fixed Visual Card Custom CSS application
  */
 
 import { CoordHelper } from '../utils/coords.js';
@@ -26,7 +26,6 @@ export class UIRenderer {
         console.log('🎨 Renderer initialized');
     }
 
-    // Force refresh helper
     clearStateCache() {
         this.buttonStateCache.clear();
     }
@@ -38,11 +37,6 @@ export class UIRenderer {
         this.applyGlobalStyles(); 
         console.log('✅ All elements rendered');
     }
-
-    // ... [KEEP ALL STYLES AND PAGE RENDERING METHODS AS IS] ...
-    // ... [applyGlobalStyles, applyCustomCss, forceImportant, renderPages, renderLayout] ...
-    // ... [syncGroupDOM, syncItemDOM, setupItemEvents, syncBudgetBadges, createTextLayer] ...
-    // ... [getTinyReqString, getCostString] ...
 
     applyGlobalStyles() {
         const style = this.engine.config.style;
@@ -99,10 +93,12 @@ export class UIRenderer {
             root.style.setProperty('--dis-bg-image', 'none');
         }
 
-        this.applyCustomCss(style.customCss, style.disabledCustomCss);
+        // ИСПРАВЛЕНИЕ: Передаем 3-й аргумент (style.visualCustomCss)
+        this.applyCustomCss(style.customCss, style.disabledCustomCss, style.visualCustomCss);
     }
 
-    applyCustomCss(activeCss, disabledCss) {
+    // ИСПРАВЛЕНИЕ: Принимаем 3 аргумента
+    applyCustomCss(activeCss, disabledCss, visualCss) {
         let styleTag = document.getElementById('custom-card-style');
         if (!styleTag) {
             styleTag = document.createElement('style');
@@ -116,6 +112,10 @@ export class UIRenderer {
         }
         if (disabledCss) {
             content += `#game-wrapper .click-zone.disabled { ${this.forceImportant(disabledCss)} } `;
+        }
+        // ИСПРАВЛЕНИЕ: Генерируем CSS для Visual Cards
+        if (visualCss) {
+            content += `#game-wrapper .click-zone.visual-card { ${this.forceImportant(visualCss)} } `;
         }
         
         styleTag.textContent = content;
@@ -285,7 +285,7 @@ export class UIRenderer {
             button.classList.toggle('static-info', isStatic);
         }
 
-        // Content Hashing to prevent unnecessary re-renders of inner HTML
+        // Content Hashing
         const newTitle = item.title || '';
         const newDesc = item.description || '';
         const isMulti = (item.max_quantity !== undefined && item.max_quantity > 1) || (item.min_quantity !== undefined && item.min_quantity < 0);
@@ -299,26 +299,20 @@ export class UIRenderer {
             
             // --- RENDER VISUAL CARD ---
             if (item.isVisualCard) {
-                // RENDER SPECIAL CARD STRUCTURE
-                
-                // 1. Image (Changed to <img> tag for correct cropping proportions)
                 if (item.cardImage) {
                     const img = document.createElement('img');
                     img.className = 'vc-image';
                     img.src = item.cardImage;
                     button.appendChild(img);
                 } else {
-                    // Placeholder if no image but visual card
                     const imgDiv = document.createElement('div');
                     imgDiv.className = 'vc-image'; 
                     button.appendChild(imgDiv);
                 }
                 
-                // 2. Content Container
                 const contentDiv = document.createElement('div');
                 contentDiv.className = 'vc-content';
                 
-                // 3. Title (Centered via CSS)
                 if (newTitle) {
                     const titleDiv = document.createElement('div');
                     titleDiv.className = 'vc-title';
@@ -326,7 +320,6 @@ export class UIRenderer {
                     contentDiv.appendChild(titleDiv);
                 }
 
-                // 4. Cost Line (Separate line under title, small font, centered)
                 if (costStr) {
                     const costDiv = document.createElement('div');
                     costDiv.className = 'vc-cost';
@@ -334,7 +327,6 @@ export class UIRenderer {
                     contentDiv.appendChild(costDiv);
                 }
 
-                // 5. Requirements (Tiny line)
                 const reqString = this.getTinyReqString(item);
                 if (reqString) {
                     const reqDiv = document.createElement('div');
@@ -343,7 +335,6 @@ export class UIRenderer {
                     contentDiv.appendChild(reqDiv);
                 }
 
-                // 6. Body
                 if (newDesc) {
                     const bodyDiv = document.createElement('div');
                     bodyDiv.className = 'vc-body';
@@ -361,7 +352,6 @@ export class UIRenderer {
                 }
             }
 
-            // Multi-select controls
             if (!isStatic && isMulti) {
                 button.classList.add('multi-select');
                 const controls = document.createElement('div');
@@ -469,7 +459,6 @@ export class UIRenderer {
         const bar = document.getElementById('points-bar');
         bar.innerHTML = '';
         
-        // 1. Render Currencies
         const points = this.engine.config.points || [];
         points.forEach(p => {
             const div = document.createElement('div');
@@ -482,9 +471,6 @@ export class UIRenderer {
             bar.appendChild(div);
         });
 
-        // 2. Render HELP Button (NEW)
-        // Check if button exists to prevent duplicates if logic changes, 
-        // though innerHTML='' clears it anyway.
         const helpBtn = document.createElement('button');
         helpBtn.className = 'help-bar-btn';
         helpBtn.innerHTML = '!';
@@ -496,9 +482,6 @@ export class UIRenderer {
                 alert("Help module not loaded yet.");
             }
         };
-        
-        // Right-aligning it in the flex container via CSS margin-left auto if needed,
-        // or just append it at the end.
         bar.appendChild(helpBtn);
     }
 
@@ -537,29 +520,26 @@ export class UIRenderer {
             if (el.classList.contains('disabled') !== isDisabled) {
                 el.classList.toggle('disabled', isDisabled);
             }
-           // === FIX START: ВОССТАНОВЛЕНИЕ ЗАПУСКА РУЛЕТКИ ===
-            // Если предмет выбран, имеет эффект кубика, и мы еще не крутили рулетку:
+            
+            // Roulette Animation Logic
             if (isSelected && item.effects) {
                 const diceEffect = item.effects.find(e => e.type === 'roll_dice');
-                // Проверяем, есть ли сохраненный результат броска
                 const rolledValue = this.engine.state.rollResults.get(itemId);
                 
-                // Если результат есть, но анимация еще не играла (нет флага на DOM элементе)
                 if (diceEffect && rolledValue !== undefined && el.dataset.hasAnimated !== "true") {
-                    // Запускаем анимацию
                     this.playRouletteAnimation(el, rolledValue, item);
                 } 
-                // Если анимация уже была, убедимся, что бейдж (кружок с цифрой) на месте
                 else if (diceEffect && rolledValue !== undefined) {
-                    this.showPermanentBadge(el, rolledValue, true); // true = без анимации появления
+                    this.showPermanentBadge(el, rolledValue, true);
                 }
             }
-            // Если предмет отменили (сняли выбор), сбрасываем флаг анимации и удаляем бейдж
+            
             if (!isSelected) {
                 delete el.dataset.hasAnimated;
                 const oldBadge = el.querySelector('.roll-result-badge');
                 if (oldBadge) oldBadge.remove();
             }
+
             if (maxQty > 1 || minQty < 0) {
                 const isMaxed = qty >= maxQty;
                 if (el.classList.contains('maxed') !== isMaxed) {
@@ -577,41 +557,33 @@ export class UIRenderer {
         });
     }
 
- playRouletteAnimation(container, targetNumber, item) {
+    playRouletteAnimation(container, targetNumber, item) {
         if (container.classList.contains('spinning-active')) return;
-        
         container.classList.add('spinning-active');
         
-        // 1. Создаем DOM структуру
         const mask = document.createElement('div');
         mask.className = 'roulette-mask';
         
         const strip = document.createElement('div');
         strip.className = 'roulette-strip';
         
-        // 2. Вычисляем размеры
         const containerHeight = container.offsetHeight;
-        // Цифра занимает 65% высоты карты
         const itemHeight = Math.floor(containerHeight * 0.65); 
-        // Центрируем
         const maskOffset = (containerHeight - itemHeight) / 2; 
         
-        // 3. Генерируем случайные числа
         const diceEffect = item.effects.find(e => e.type === 'roll_dice');
         const min = parseInt(diceEffect?.min) || 1;
         const max = parseInt(diceEffect?.max) || 20;
         
-        const totalItems = 30 + Math.floor(Math.random() * 15); // Длина ленты
+        const totalItems = 30 + Math.floor(Math.random() * 15);
         const numbers = [];
         for(let i=0; i<totalItems; i++) {
             numbers.push(Math.floor(Math.random() * (max - min + 1)) + min);
         }
         
-        // Подменяем одно из последних чисел на РЕАЛЬНЫЙ результат
         const targetIndex = totalItems - 3;
         numbers[targetIndex] = targetNumber;
         
-        // Вставляем HTML
         strip.innerHTML = numbers.map(n => 
             `<div class="roulette-item" style="height:${itemHeight}px; line-height:${itemHeight}px;">${n}</div>`
         ).join('');
@@ -619,34 +591,26 @@ export class UIRenderer {
         mask.appendChild(strip);
         container.appendChild(mask);
         
-        // 4. Запускаем CSS transition
-        // Принудительный reflow, чтобы браузер понял начальную позицию
-        strip.offsetHeight; 
+        strip.offsetHeight; // Force reflow
         
         const duration = 2000;
-        // Смещаем ленту так, чтобы нужное число оказалось по центру
         const targetY = -1 * (targetIndex * itemHeight) + maskOffset;
         
         strip.style.transition = `transform ${duration}ms cubic-bezier(0.1, 0.7, 0.1, 1)`;
         strip.style.transform = `translateY(${targetY}px)`;
         
-        // 5. Завершение
         setTimeout(() => {
             const winnerEl = strip.querySelectorAll('.roulette-item')[targetIndex];
             if (winnerEl) winnerEl.classList.add('winner');
             
             setTimeout(() => {
-                mask.style.opacity = '0'; // Исчезаем маску
+                mask.style.opacity = '0';
                 mask.style.transition = 'opacity 0.5s';
-                
-                // Показываем финальный бейдж
                 this.showPermanentBadge(container, targetNumber);
-                
                 container.dataset.hasAnimated = "true";
                 container.classList.remove('spinning-active');
-                
-                setTimeout(() => mask.remove(), 500); // Удаляем из DOM
-            }, 600); // Пауза, чтобы увидеть золотую цифру
+                setTimeout(() => mask.remove(), 500);
+            }, 600);
         }, duration);
     }
 
@@ -667,8 +631,40 @@ export class UIRenderer {
         } else {
             container.appendChild(badge);
         }
-    }    showPermanentBadge(container,value,instant=false){const old=container.querySelector('.roll-result-badge');if(old)old.remove();const badge=document.createElement('div');badge.className='roll-result-badge';badge.textContent=value;if(!instant){badge.classList.add('spawn-anim');container.appendChild(badge);requestAnimationFrame(()=>{badge.classList.remove('spawn-anim');});}else{container.appendChild(badge);}}
-    updatePointsBar(){for(const currencyId in this.engine.state.currencies){const span=document.querySelector(`#curr-${currencyId} span`);if(span){const value=this.engine.state.currencies[currencyId];span.textContent=value;span.parentElement.classList.toggle('negative',value<0);}}}
-    updateBudgets(){for(const groupId in this.engine.state.budgets){const group=this.engine.findGroup(groupId);if(group){this.updateBudgetBadge(group);}}}
-    updateBudgetBadge(group){const badge=document.getElementById(`budget-${group.id}`);if(!badge)return;const budgetState=this.engine.state.budgets[group.id];if(!budgetState){const budget=group.rules.budget;badge.textContent=`${budget.name||budget.currency}: ${budget.amount}/${budget.amount}`;return;}const {total,remaining}=budgetState;const budget=group.rules.budget;badge.textContent=`${budget.name||budget.currency}: ${remaining}/${total}`;badge.classList.toggle('empty',remaining===0);}
+    }
+
+    updatePointsBar() {
+        for (const currencyId in this.engine.state.currencies) {
+            const span = document.querySelector(`#curr-${currencyId} span`);
+            if (span) {
+                const value = this.engine.state.currencies[currencyId];
+                span.textContent = value;
+                span.parentElement.classList.toggle('negative', value < 0);
+            }
+        }
+    }
+
+    updateBudgets() {
+        for (const groupId in this.engine.state.budgets) {
+            const group = this.engine.findGroup(groupId);
+            if (group) {
+                this.updateBudgetBadge(group);
+            }
+        }
+    }
+
+    updateBudgetBadge(group) {
+        const badge = document.getElementById(`budget-${group.id}`);
+        if (!badge) return;
+        const budgetState = this.engine.state.budgets[group.id];
+        if (!budgetState) {
+            const budget = group.rules.budget;
+            badge.textContent = `${budget.name || budget.currency}: ${budget.amount}/${budget.amount}`;
+            return;
+        }
+        const { total, remaining } = budgetState;
+        const budget = group.rules.budget;
+        badge.textContent = `${budget.name || budget.currency}: ${remaining}/${total}`;
+        badge.classList.toggle('empty', remaining === 0);
+    }
 }

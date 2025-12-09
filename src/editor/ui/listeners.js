@@ -54,11 +54,17 @@ export const ListenersMixin = {
         attachStyleListener('style-vis-border-color', 'visualBorderColor');
         attachStyleListener('style-vis-border-width', 'visualBorderWidth');
         attachStyleListener('style-vis-radius', 'visualRadius');
+        // !!! ДОБАВЛЕН СЛУШАТЕЛЬ !!!
+        attachStyleListener('style-vis-custom-css', 'visualCustomCss');
 
         // --- Disabled Style ---
         attachStyleListener('style-disabled-border-color', 'disabledBorderColor');
         attachStyleListener('style-disabled-border-width', 'disabledBorderWidth');
-        // ... other disabled listeners ...
+        attachStyleListener('style-disabled-radius-tl', 'disabledRadiusTL');
+        attachStyleListener('style-disabled-radius-tr', 'disabledRadiusTR');
+        attachStyleListener('style-disabled-radius-br', 'disabledRadiusBR');
+        attachStyleListener('style-disabled-radius-bl', 'disabledRadiusBL');
+        attachStyleListener('style-disabled-custom-css', 'disabledCustomCss');
         
         // Image Upload (Active)
         const imgInput = document.getElementById('style-bg-image-input');
@@ -79,7 +85,6 @@ export const ListenersMixin = {
     // ==================== CHOICE PANEL ====================
 
     setupChoiceListeners() {
-        // Selectable Checkbox Handler
         const selCheck = document.getElementById('edit-selectable');
         if (selCheck) {
             selCheck.addEventListener('change', (e) => {
@@ -90,8 +95,6 @@ export const ListenersMixin = {
                 this.updateCodePreview();
             });
         }
-
-        // Visual Card Checkbox Handler (NEW)
         const vcCheck = document.getElementById('edit-visual-card');
         if (vcCheck) {
             vcCheck.addEventListener('change', (e) => {
@@ -107,31 +110,23 @@ export const ListenersMixin = {
                 this.updateCodePreview();
             });
         }
-
-        // Visual Card Image Upload (NEW)
         const vcUpload = document.getElementById('vc-image-upload');
         if (vcUpload) {
             vcUpload.addEventListener('change', (e) => {
                 const file = e.target.files[0];
                 if (!file || !this.selectedItem) return;
-                
-                // Use the image cropper util
                 this.imageCropper.open(file, (dataUrl) => {
                     this.selectedItem.cardImage = dataUrl;
                     document.getElementById('vc-img-preview').style.backgroundImage = `url('${dataUrl}')`;
                     this.renderer.renderLayout();
                     this.updateCodePreview();
                 });
-                
-                vcUpload.value = ''; // Reset input
+                vcUpload.value = ''; 
             });
         }
-
         const update = (key, val, isNum) => {
             if (!this.selectedItem) return;
             if (isNum) val = parseInt(val) || 0;
-            
-            // ... (quantity logic kept same) ...
             if (['x','y','w','h'].includes(key)) { 
                 if (!this.selectedItem.coords) this.selectedItem.coords = {}; 
                 this.selectedItem.coords[key] = val; 
@@ -140,12 +135,10 @@ export const ListenersMixin = {
             } else { 
                 this.selectedItem[key] = val; 
             }
-
             this.renderer.renderLayout();
             this.refreshSelectionVisuals();
             this.updateCodePreview();
         };
-
         const inputs = ['edit-id', 'edit-title', 'edit-description', 'edit-tags', 'edit-x', 'edit-y', 'edit-w', 'edit-h', 'edit-max_quantity', 'edit-min_quantity'];
         inputs.forEach(id => {
             const el = document.getElementById(id); 
@@ -157,7 +150,6 @@ export const ListenersMixin = {
         });
     },
 
-    // ... (Other setup functions remain same) ...
     setupSettingsListeners() {
         const notes = document.getElementById('project-notes');
         if (notes) {
@@ -233,30 +225,24 @@ export const ListenersMixin = {
     setupAddPageListener() {
         const input = document.getElementById('add-page-image-input');
         if (!input) return;
-
         input.addEventListener('change', (e) => {
             const file = e.target.files[0];
             if (!file) return;
-
             const reader = new FileReader();
             reader.onload = (evt) => {
                 const dataUrl = evt.target.result;
                 if (!this.engine.config.pages) this.engine.config.pages = [];
-                
                 const newPageIndex = this.engine.config.pages.length;
                 const newPage = {
                     id: `page_${newPageIndex}`,
                     image: dataUrl,
                     layout: []
                 };
-                
                 this.engine.config.pages.push(newPage);
                 this.activePageIndex = newPageIndex;
-                
                 if (!this.engine.config.points || this.engine.config.points.length === 0) {
                     this.engine.config.points = [{ id: "points", name: "Points", start: 0 }];
                 }
-                
                 this.engine.buildMaps();
                 this.engine.state.resetCurrencies();
                 this.renderer.renderAll().then(() => {
@@ -271,11 +257,9 @@ export const ListenersMixin = {
     setupLoadListener() {
         const input = document.getElementById('load-config-input');
         if (!input) return;
-
         input.addEventListener('change', async (e) => {
             if (e.target.files.length === 0) return;
             const file = e.target.files[0];
-
             try {
                 if (!this.engine.isTestConfig) {
                     if (!confirm("Are you sure? Loading a new project will discard current changes.")) {
@@ -286,13 +270,10 @@ export const ListenersMixin = {
                 const { config, warning } = await ProjectStorage.load(file);
                 if (warning) alert(warning);
                 this.engine.loadConfig(config);
-                
                 this.deselectChoice();
                 this.selectedGroup = null;
                 this.activePageIndex = 0;
-                
                 this.updateSettingsInputs(); 
-                
             } catch (err) {
                 alert(`Error loading project: ${err.message}`);
             } finally {

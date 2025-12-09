@@ -12,27 +12,21 @@ export class GameEngine {
         this.config = config;
         this.isTestConfig = true;
 
-        // === Flat lookup maps (built from hierarchical config) ===
-        this.itemMap = new Map();       // itemId -> item object
-        this.itemToGroup = new Map();   // itemId -> group object (Logical Master Group)
-        this.itemToPage = new Map();    // itemId -> page object
-        this.groupMap = new Map();      // groupId -> group object (Logical Master Group)
-        this.groupToPage = new Map();   // groupId -> page object
-        
-        this.groupItemsMap = new Map(); // groupId -> Array<Item>
+        // === Flat lookup maps ===
+        this.itemMap = new Map();       
+        this.itemToGroup = new Map();   
+        this.itemToPage = new Map();    
+        this.groupMap = new Map();      
+        this.groupToPage = new Map();   
+        this.groupItemsMap = new Map(); 
 
         this.state = new GameState(config);
         this.rules = new RuleEvaluator(this);
         this.effects = new EffectProcessor(this);
         this.listeners = {};
         
-        this.modifiers = {
-            cost: [] 
-        };
-        
-        this.defaults = {
-            groupRules: {}
-        };
+        this.modifiers = { cost: [] };
+        this.defaults = { groupRules: {} };
         
         this.buildMaps();
         this.initDefaults();
@@ -40,9 +34,8 @@ export class GameEngine {
         console.log('🎮 Engine initialized (v2.1 - Split Groups Support)');
     }
 
-    /**
-     * Build flat lookup maps from hierarchical page/layout config
-     */
+    // ... buildMaps() и loadConfig() без изменений ...
+    
     buildMaps() {
         this.itemMap.clear();
         this.itemToGroup.clear();
@@ -55,30 +48,25 @@ export class GameEngine {
         
         for (const page of pages) {
             const layout = page.layout || [];
-            
             for (const element of layout) {
                 if (element.type === 'group') {
                     let logicalGroup = this.groupMap.get(element.id);
-
                     if (!logicalGroup) {
                         logicalGroup = element;
                         this.groupMap.set(element.id, element);
                         this.groupToPage.set(element.id, page);
                     }
-
                     let currentGroupItems = this.groupItemsMap.get(element.id) || [];
                     if (element.items && element.items.length > 0) {
                         currentGroupItems = currentGroupItems.concat(element.items);
                     }
                     this.groupItemsMap.set(element.id, currentGroupItems);
-                    
                     const items = element.items || [];
                     for (const item of items) {
                         this.itemMap.set(item.id, item);
                         this.itemToGroup.set(item.id, logicalGroup);
                         this.itemToPage.set(item.id, page);
                     }
-
                 } else if (element.type === 'item') {
                     this.itemMap.set(element.id, element);
                     this.itemToGroup.set(element.id, null);
@@ -86,23 +74,17 @@ export class GameEngine {
                 }
             }
         }
-
-        console.log(`📊 Maps built: ${this.itemMap.size} items, ${this.groupMap.size} logical groups`);
     }
 
     loadConfig(newConfig) {
         this.config = newConfig;
         this.isTestConfig = false;
-
         this.state = new GameState(newConfig);
         this.defaults.groupRules = {};
-        
         this.buildMaps();
         this.initDefaults();
-        
         this.emit('config_loaded');
         this.recalculate();
-        
         console.log('📂 New Project Loaded:', this.config.meta?.title);
     }
 
@@ -149,6 +131,8 @@ export class GameEngine {
         s.visualBorderColor = s.visualBorderColor || '#444444';
         s.visualBorderWidth = s.visualBorderWidth !== undefined ? s.visualBorderWidth : 1;
         s.visualRadius = s.visualRadius !== undefined ? s.visualRadius : 8;
+        // !!! ДОБАВЛЕНО ПОЛЕ !!!
+        s.visualCustomCss = s.visualCustomCss || '';
 
         // === DISABLED STYLE DEFAULTS ===
         s.disabledBorderColor = s.disabledBorderColor || '#555555';
@@ -171,6 +155,9 @@ export class GameEngine {
         }
     }
 
+    // ... restoreDefaults, select, deselect, toggle, canSelect ...
+    // ... recalculate, helpers, events ... (код остался тем же)
+    
     restoreDefaults() {
         for (const [groupId, group] of this.groupMap) {
             if (this.defaults.groupRules[groupId]) {
@@ -178,9 +165,7 @@ export class GameEngine {
             }
         }
     }
-
-    // ==================== SELECTION ====================
-
+    
     select(itemId) {
         const item = this.findItem(itemId);
         if (!item) return false;
@@ -206,7 +191,6 @@ export class GameEngine {
             } else {
                 const totalInGroup = this.getGroupQty(group);
                 if (totalInGroup >= group.rules.max_choices) {
-                    console.log(`Max choices reached in ${group.id}`);
                     return false;
                 }
             }
@@ -258,7 +242,6 @@ export class GameEngine {
     toggle(itemId) {
         const item = this.findItem(itemId);
         if (item && item.selectable === false) return false;
-
         if (this.state.selected.has(itemId)) {
             return this.deselect(itemId);
         } else {
@@ -266,28 +249,20 @@ export class GameEngine {
         }
     }
 
-    // ==================== VALIDATION ====================
-
     canSelect(item, group) {
         if (!this.rules.checkRequirements(item)) return false;
         if (!this.rules.checkIncompatible(item)) return false;
         return true;
     }
 
-    // ==================== CALCULATION ====================
-
     recalculate() {
         this.cleanupInvalidSelections();
         this.state.resetCurrencies();
         this.modifiers = { cost: [] };
-
         this.effects.applyAll();
-
         const groupDeltas = this.calculateGroupDeltas();
-        
         this.applyBudgets(groupDeltas);
         this.applyDeltas(groupDeltas);
-
         this.emit('recalculate', { state: this.state });
     }
 
@@ -310,7 +285,6 @@ export class GameEngine {
             if (!item?.cost) continue;
             const groupKey = group ? group.id : '_standalone';
             if (!deltas[groupKey]) deltas[groupKey] = {};
-
             for (const cost of item.cost) {
                 const unitValue = this.rules.evaluateCost(cost, item, group);
                 const currencyId = cost.currency;
@@ -361,8 +335,6 @@ export class GameEngine {
         }
     }
 
-    // ==================== HELPERS ====================
-
     findItem(itemId) { return this.itemMap.get(itemId) || null; }
     findGroupForItem(itemId) { return this.itemToGroup.get(itemId) || null; }
     findPageForItem(itemId) { return this.itemToPage.get(itemId) || null; }
@@ -387,8 +359,6 @@ export class GameEngine {
 
     getAllItems() { return Array.from(this.itemMap.values()); }
     getAllGroups() { return Array.from(this.groupMap.values()); }
-
-    // ==================== EVENTS ====================
 
     on(event, callback) {
         if (!this.listeners[event]) this.listeners[event] = [];
