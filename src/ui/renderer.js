@@ -537,7 +537,29 @@ export class UIRenderer {
             if (el.classList.contains('disabled') !== isDisabled) {
                 el.classList.toggle('disabled', isDisabled);
             }
-
+           // === FIX START: ВОССТАНОВЛЕНИЕ ЗАПУСКА РУЛЕТКИ ===
+            // Если предмет выбран, имеет эффект кубика, и мы еще не крутили рулетку:
+            if (isSelected && item.effects) {
+                const diceEffect = item.effects.find(e => e.type === 'roll_dice');
+                // Проверяем, есть ли сохраненный результат броска
+                const rolledValue = this.engine.state.rollResults.get(itemId);
+                
+                // Если результат есть, но анимация еще не играла (нет флага на DOM элементе)
+                if (diceEffect && rolledValue !== undefined && el.dataset.hasAnimated !== "true") {
+                    // Запускаем анимацию
+                    this.playRouletteAnimation(el, rolledValue, item);
+                } 
+                // Если анимация уже была, убедимся, что бейдж (кружок с цифрой) на месте
+                else if (diceEffect && rolledValue !== undefined) {
+                    this.showPermanentBadge(el, rolledValue, true); // true = без анимации появления
+                }
+            }
+            // Если предмет отменили (сняли выбор), сбрасываем флаг анимации и удаляем бейдж
+            if (!isSelected) {
+                delete el.dataset.hasAnimated;
+                const oldBadge = el.querySelector('.roll-result-badge');
+                if (oldBadge) oldBadge.remove();
+            }
             if (maxQty > 1 || minQty < 0) {
                 const isMaxed = qty >= maxQty;
                 if (el.classList.contains('maxed') !== isMaxed) {
@@ -555,8 +577,97 @@ export class UIRenderer {
         });
     }
 
-    playRouletteAnimation(container,targetNumber,item){if(container.classList.contains('spinning-active'))return;container.classList.add('spinning-active');const mask=document.createElement('div');mask.className='roulette-mask';const strip=document.createElement('div');strip.className='roulette-strip';const containerHeight=container.offsetHeight;const itemHeight=Math.floor(containerHeight*0.65);const maskOffset=(containerHeight-itemHeight)/2;const diceEffect=item.effects.find(e=>e.type==='roll_dice');const min=parseInt(diceEffect?.min)||1;const max=parseInt(diceEffect?.max)||20;const totalItems=30+Math.floor(Math.random()*15);const numbers=[];for(let i=0;i<totalItems;i++){numbers.push(Math.floor(Math.random()*(max-min+1))+min);}const targetIndex=totalItems-3;numbers[targetIndex]=targetNumber;strip.innerHTML=numbers.map(n=>`<div class="roulette-item" style="height:${itemHeight}px; line-height:${itemHeight}px;">${n}</div>`).join('');mask.appendChild(strip);container.appendChild(mask);const spinProfiles=[{name:'standard',duration:2000,bezier:'cubic-bezier(0.1, 0.7, 0.1, 1)',type:'direct'},{name:'slam',duration:1500,bezier:'cubic-bezier(0.5, 0.0, 0.1, 1)',type:'direct'},{name:'heavy',duration:2500,bezier:'cubic-bezier(0, 0.95, 0.2, 1)',type:'direct'},];const profile=spinProfiles[Math.floor(Math.random()*spinProfiles.length)];const baseTargetY=-1*(targetIndex*itemHeight)+maskOffset;let initialY=baseTargetY;strip.offsetHeight;strip.style.transition=`transform ${profile.duration}ms ${profile.bezier}`;strip.style.transform=`translateY(${initialY}px)`;const finalize=()=>{const winnerEl=strip.querySelectorAll('.roulette-item')[targetIndex];if(winnerEl)winnerEl.classList.add('winner');setTimeout(()=>{mask.style.opacity='0';mask.style.transition='opacity 0.2s';this.showPermanentBadge(container,targetNumber);container.dataset.hasAnimated="true";container.classList.remove('spinning-active');setTimeout(()=>mask.remove(),200);},400);};setTimeout(finalize,profile.duration);}
-    showPermanentBadge(container,value,instant=false){const old=container.querySelector('.roll-result-badge');if(old)old.remove();const badge=document.createElement('div');badge.className='roll-result-badge';badge.textContent=value;if(!instant){badge.classList.add('spawn-anim');container.appendChild(badge);requestAnimationFrame(()=>{badge.classList.remove('spawn-anim');});}else{container.appendChild(badge);}}
+ playRouletteAnimation(container, targetNumber, item) {
+        if (container.classList.contains('spinning-active')) return;
+        
+        container.classList.add('spinning-active');
+        
+        // 1. Создаем DOM структуру
+        const mask = document.createElement('div');
+        mask.className = 'roulette-mask';
+        
+        const strip = document.createElement('div');
+        strip.className = 'roulette-strip';
+        
+        // 2. Вычисляем размеры
+        const containerHeight = container.offsetHeight;
+        // Цифра занимает 65% высоты карты
+        const itemHeight = Math.floor(containerHeight * 0.65); 
+        // Центрируем
+        const maskOffset = (containerHeight - itemHeight) / 2; 
+        
+        // 3. Генерируем случайные числа
+        const diceEffect = item.effects.find(e => e.type === 'roll_dice');
+        const min = parseInt(diceEffect?.min) || 1;
+        const max = parseInt(diceEffect?.max) || 20;
+        
+        const totalItems = 30 + Math.floor(Math.random() * 15); // Длина ленты
+        const numbers = [];
+        for(let i=0; i<totalItems; i++) {
+            numbers.push(Math.floor(Math.random() * (max - min + 1)) + min);
+        }
+        
+        // Подменяем одно из последних чисел на РЕАЛЬНЫЙ результат
+        const targetIndex = totalItems - 3;
+        numbers[targetIndex] = targetNumber;
+        
+        // Вставляем HTML
+        strip.innerHTML = numbers.map(n => 
+            `<div class="roulette-item" style="height:${itemHeight}px; line-height:${itemHeight}px;">${n}</div>`
+        ).join('');
+        
+        mask.appendChild(strip);
+        container.appendChild(mask);
+        
+        // 4. Запускаем CSS transition
+        // Принудительный reflow, чтобы браузер понял начальную позицию
+        strip.offsetHeight; 
+        
+        const duration = 2000;
+        // Смещаем ленту так, чтобы нужное число оказалось по центру
+        const targetY = -1 * (targetIndex * itemHeight) + maskOffset;
+        
+        strip.style.transition = `transform ${duration}ms cubic-bezier(0.1, 0.7, 0.1, 1)`;
+        strip.style.transform = `translateY(${targetY}px)`;
+        
+        // 5. Завершение
+        setTimeout(() => {
+            const winnerEl = strip.querySelectorAll('.roulette-item')[targetIndex];
+            if (winnerEl) winnerEl.classList.add('winner');
+            
+            setTimeout(() => {
+                mask.style.opacity = '0'; // Исчезаем маску
+                mask.style.transition = 'opacity 0.5s';
+                
+                // Показываем финальный бейдж
+                this.showPermanentBadge(container, targetNumber);
+                
+                container.dataset.hasAnimated = "true";
+                container.classList.remove('spinning-active');
+                
+                setTimeout(() => mask.remove(), 500); // Удаляем из DOM
+            }, 600); // Пауза, чтобы увидеть золотую цифру
+        }, duration);
+    }
+
+    showPermanentBadge(container, value, instant = false) {
+        const old = container.querySelector('.roll-result-badge');
+        if (old) old.remove();
+        
+        const badge = document.createElement('div');
+        badge.className = 'roll-result-badge';
+        badge.textContent = value;
+        
+        if (!instant) {
+            badge.classList.add('spawn-anim');
+            container.appendChild(badge);
+            requestAnimationFrame(() => { 
+                badge.classList.remove('spawn-anim'); 
+            });
+        } else {
+            container.appendChild(badge);
+        }
+    }    showPermanentBadge(container,value,instant=false){const old=container.querySelector('.roll-result-badge');if(old)old.remove();const badge=document.createElement('div');badge.className='roll-result-badge';badge.textContent=value;if(!instant){badge.classList.add('spawn-anim');container.appendChild(badge);requestAnimationFrame(()=>{badge.classList.remove('spawn-anim');});}else{container.appendChild(badge);}}
     updatePointsBar(){for(const currencyId in this.engine.state.currencies){const span=document.querySelector(`#curr-${currencyId} span`);if(span){const value=this.engine.state.currencies[currencyId];span.textContent=value;span.parentElement.classList.toggle('negative',value<0);}}}
     updateBudgets(){for(const groupId in this.engine.state.budgets){const group=this.engine.findGroup(groupId);if(group){this.updateBudgetBadge(group);}}}
     updateBudgetBadge(group){const badge=document.getElementById(`budget-${group.id}`);if(!badge)return;const budgetState=this.engine.state.budgets[group.id];if(!budgetState){const budget=group.rules.budget;badge.textContent=`${budget.name||budget.currency}: ${budget.amount}/${budget.amount}`;return;}const {total,remaining}=budgetState;const budget=group.rules.budget;badge.textContent=`${budget.name||budget.currency}: ${remaining}/${total}`;badge.classList.toggle('empty',remaining===0);}

@@ -647,3 +647,125 @@ body.edit-mode-active #game-wrapper { margin-right: 340px; transition: margin-ri
         max-width: 420px;
     }
 }
+
+
+
+/* =========================================
+   RESTORED: COMPACT LISTS & INPUTS
+   ========================================= */
+.compact-list { display: flex; flex-direction: column; gap: 6px; width: 100%; }
+.compact-row { display: grid; grid-template-columns: 35% 1fr 24px; gap: 4px; align-items: center; }
+.compact-row select, .compact-row input { 
+    background: #222; border: 1px solid #333; color: #ddd; padding: 4px; border-radius: 3px; width: 100%; 
+}
+.icon-btn { 
+    background: #d32f2f; color: white; border: none; border-radius: 3px; 
+    width: 24px; height: 24px; cursor: pointer; display:flex; align-items:center; justify-content:center;
+}
+
+/* =========================================
+   RESTORED: STYLE EDITOR INPUTS (No Arrows)
+   ========================================= */
+/* Убираем стрелочки у input type="number" */
+.style-input::-webkit-outer-spin-button,
+.style-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.style-input[type=number] { -moz-appearance: textfield; }
+
+.style-input { 
+    background: #333; color: #fff; border: 1px solid #444; 
+    border-radius: 4px; height: 30px; text-align: center; 
+}
+.square-input { width: 32px; padding: 2px; }
+.thick-border { border: 2px solid #fff; }
+
+/* Уголки для настройки радиуса */
+.input-corner-tl { background-image: linear-gradient(#fff,#fff), linear-gradient(#fff,#fff); background-size: 30% 2px, 2px 30%; background-position: top left; background-repeat: no-repeat; }
+.input-corner-tr { background-image: linear-gradient(#fff,#fff), linear-gradient(#fff,#fff); background-size: 30% 2px, 2px 30%; background-position: top right; background-repeat: no-repeat; }
+.input-corner-br { background-image: linear-gradient(#fff,#fff), linear-gradient(#fff,#fff); background-size: 30% 2px, 2px 30%; background-position: bottom right; background-repeat: no-repeat; }
+.input-corner-bl { background-image: linear-gradient(#fff,#fff), linear-gradient(#fff,#fff); background-size: 30% 2px, 2px 30%; background-position: bottom left; background-repeat: no-repeat; }
+
+/* =========================================
+   RESTORED: PASSWORD TOGGLE (Eye Icon)
+   ========================================= */
+.input-group-with-toggle { display: flex; gap: 4px; align-items: stretch; }
+.input-group-with-toggle .input-group { flex: 1; }
+.toggle-visibility-btn { 
+    background: #333; border: 1px solid #444; border-radius: 4px; width: 36px; 
+    cursor: pointer; display: flex; align-items: center; justify-content: center; 
+    transition: background 0.2s; flex-shrink: 0; 
+}
+.toggle-visibility-btn:hover { background: #444; }
+
+/* =========================================
+   RESTORED: MISC UTILS
+   ========================================= */
+/* Центрирование текста в пустом состоянии */
+.info-text { 
+    background: #252525; padding: 15px; border-radius: 4px; color: #aaa; 
+    font-size: 0.9rem; line-height: 1.4; text-align: center; margin: 10px; 
+}
+
+/* Красивый уголок для ресайза текстовых полей */
+::-webkit-resizer { background: linear-gradient(135deg, transparent 70%, #666 70%); }
+
+/* Глобальные скроллбары */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #444; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #666; }
+
+/* =========================================
+   FIX 1: UGLY WHITE CORNERS & RESIZERS
+   ========================================= */
+
+/* Красим угол схождения скроллбаров в темный цвет */
+::-webkit-scrollbar-corner {
+    background: #1a1a1a;
+}
+
+/* Принудительно красим уголок конкретно у текстовых полей */
+.code-editor::-webkit-scrollbar-corner {
+    background: #111;
+}
+
+/* Делаем сам ползунок ресайза (треугольничек) стильным */
+.code-editor::-webkit-resizer {
+    background: linear-gradient(135deg, transparent 70%, #666 70%);
+    border-bottom-right-radius: 4px;
+}
+
+/* =========================================
+   FIX 2: ROULETTE ANIMATION & LAYOUT
+   ========================================= */
+
+/* Маска должна жестко перекрывать контент и иметь фон, 
+   иначе цифры будут бежать поверх текста карты */
+.roulette-mask {
+    background: #1a1a1a !important; /* Фон под цвет карты, чтобы скрыть текст под крутилкой */
+    z-index: 500 !important; /* Поверх всего контента карты */
+    border-radius: 8px; /* Чтобы не вылезало за края скруглений */
+}
+
+/* Полоса с цифрами должна растягиваться на всю ширину */
+.roulette-strip {
+    width: 100%;
+    position: absolute;
+    left: 0;
+    top: 0;
+    /* Важно: JS меняет transform, поэтому transition должен быть разрешен */
+    transition: transform 0s; 
+    will-change: transform;
+}
+
+/* Элементы внутри полосы */
+.roulette-item {
+    width: 100%;
+    box-sizing: border-box;
+    /* Убираем возможные конфликты с flex родителя */
+    flex-shrink: 0; 
+}
+
+/* Если вдруг анимация блокируется глобальными стилями редактора */
+.spinning-active .roulette-strip {
+    transition-property: transform !important;
+}
