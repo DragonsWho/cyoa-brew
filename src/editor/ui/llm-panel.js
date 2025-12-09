@@ -26,7 +26,12 @@ export function createLlmPanelHTML() {
                 <div id="llm-api-fields" style="background:#1a1a1a; padding:8px; border-radius:4px; margin-bottom:10px;">
                     <div class="input-group-with-toggle" style="margin-bottom:8px;">
                         <div class="input-group" style="margin-bottom:0;">
-                            <input type="password" id="llm-key" placeholder="sk-..." autocomplete="off">
+                            <input type="text" 
+                                id="llm-key" 
+                                class="masked-input" 
+                                placeholder="sk-..." 
+                                autocomplete="off" 
+                                spellcheck="false">
                             <span class="input-label">API Key</span>
                         </div>
                         <button type="button" class="toggle-visibility-btn" onclick="CYOA.editor.toggleApiKeyVisibility()" title="Show/Hide API Key">

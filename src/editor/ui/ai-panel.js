@@ -29,7 +29,15 @@ export function createAiPanelHTML() {
                     <div class="info-text" style="font-size:0.75rem; margin:5px 0 10px 0; padding:8px;">
                         Uses Roboflow to detect items in your image automatically.
                     </div>
-                    <div class="input-group"><input type="password" id="roboflow-api-key" placeholder="Key..."><span class="input-label">API Key</span></div>
+                    <div class="input-group">
+                        <input type="text" 
+                            id="roboflow-api-key" 
+                            class="masked-input" 
+                            placeholder="Key..." 
+                            autocomplete="off" 
+                            spellcheck="false">
+                        <span class="input-label">API Key</span>
+                    </div>
                     <div style="display:flex; gap:5px; margin-top:10px;">
                         <div class="input-group"><input type="text" id="roboflow-workspace" value="1-wnpqj"><span class="input-label">Workspace</span></div>
                         <div class="input-group"><input type="text" id="roboflow-workflow" value="sam3-with-prompts"><span class="input-label">Workflow</span></div>

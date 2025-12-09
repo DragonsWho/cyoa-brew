@@ -769,3 +769,8 @@ body.edit-mode-active #game-wrapper { margin-right: 340px; transition: margin-ri
 .spinning-active .roulette-strip {
     transition-property: transform !important;
 }
+
+.masked-input {
+    -webkit-text-security: disc;
+    /* text-security - стандарт будущего, но пока нужен вебкит */
+}

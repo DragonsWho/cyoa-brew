@@ -16,12 +16,15 @@ export const LLMListenersMixin = {
         
         if (!input) return;
         
-        if (input.type === 'password') {
-            input.type = 'text';
-            if (btn) btn.textContent = '🔒';
+        // Переключаем класс маскировки вместо типа поля
+        if (input.classList.contains('masked-input')) {
+            // Показать (убираем маску)
+            input.classList.remove('masked-input');
+            if (btn) btn.textContent = '🔒'; // Иконка "закрыть обратно"
         } else {
-            input.type = 'password';
-            if (btn) btn.textContent = '👁';
+            // Скрыть (добавляем маску)
+            input.classList.add('masked-input');
+            if (btn) btn.textContent = '👁'; // Иконка "показать"
         }
     },
 
@@ -100,7 +103,7 @@ export const LLMListenersMixin = {
             if (keyInput) {
                 keyInput.value = storedKey;
                 // Reset to password type when switching providers
-                keyInput.type = 'password';
+                    keyInput.classList.add('masked-input');
                 const eyeIcon = document.querySelector('.toggle-visibility-btn .eye-icon');
                 if (eyeIcon) eyeIcon.textContent = '👁';
             }
