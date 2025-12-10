@@ -20,36 +20,28 @@ body.editor-interacting .info-zone { transition: none !important; }
 /* === BASE EDITOR STYLES (When NOT in Preview Mode) === */
 
 /* --- PAGE SEPARATOR (HIGH CONTRAST) --- */
-/* Visible ONLY in edit mode */
 body.edit-mode-active .page-separator {
     display: flex !important;
     justify-content: center;
     align-items: center;
-    
-    /* ВЫСОКИЙ КОНТРАСТ: Черный фон + Неоновые границы */
     background-color: #000000; 
-    /* Добавляем легкую текстуру (полоски), чтобы отличалось от черного фона игры */
     background-image: linear-gradient(45deg, #111 25%, transparent 25%, transparent 50%, #111 50%, #111 75%, transparent 75%, transparent);
     background-size: 20px 20px;
-    
-    border-top: 3px solid #00ff00;    /* Яркий неоновый зеленый */
-    border-bottom: 3px solid #00ff00; /* Яркий неоновый зеленый */
-    box-shadow: 0 0 15px rgba(0, 0, 0, 0.9); /* Глубокая тень, чтобы приподнять над картинкой */
-
-    /* ТЕКСТ: Белый жирный шрифт для читаемости */
+    border-top: 3px solid #00ff00;    
+    border-bottom: 3px solid #00ff00; 
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.9); 
     color: #ffffff;
     font-weight: 900;
-    font-family: monospace, sans-serif; /* Технический стиль шрифта */
+    font-family: monospace, sans-serif; 
     font-size: 1.0rem;
     text-transform: uppercase;
     letter-spacing: 4px;
-    text-shadow: 0 0 5px rgba(0, 255, 0, 0.5); /* Легкое свечение текста */
-    
+    text-shadow: 0 0 5px rgba(0, 255, 0, 0.5); 
     padding: 8px 0;
     width: 100%;
     margin: 0;
-    position: relative; /* Гарантируем позиционирование */
-    z-index: 100;       /* Поднимаем выше всех элементов */
+    position: relative; 
+    z-index: 100;       
 }
 
 /* Override styles for visual debugging */
@@ -84,8 +76,6 @@ body.show-zones:not(.editor-preview-active) .group-budget-badge {
 }
 
 /* === INTERACTION FIXES === */
-
-/* Disable pointer events on ALL children of item-zones in edit mode */
 body.edit-mode-choice .item-zone * {
     pointer-events: none !important;
 }
@@ -97,7 +87,6 @@ body.edit-mode-group .info-zone { pointer-events: auto; cursor: move; z-index: 2
 body.edit-mode-group .item-zone { pointer-events: none; opacity: 0.5; }
 
 /* === PREVIEW MODE OVERRIDES === */
-
 body.editor-preview-active.show-zones .click-zone:not(.selected):not(.disabled) {
     border: none !important;
     background-color: transparent !important;
@@ -192,7 +181,7 @@ body.editor-preview-active.show-zones .click-zone.disabled::after {
     z-index: 3000 !important; color: #FFD700; 
 }
 
-/* Отключаем анимацию для выбранных элементов (ФИКС "СИРОПА") */
+/* Отключаем анимацию для выбранных элементов */
 .click-zone.editor-selected, 
 .info-zone.editor-selected,
 .item-zone.editor-selected { 
@@ -244,7 +233,6 @@ body.edit-mode-active #game-wrapper { margin-right: 340px; transition: margin-ri
 .page-close { position: absolute; right: 2px; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
 .nav-add-btn { color: #4CAF50; font-weight: bold; }
 
-/* FIX: Scrollbar gutter prevents jumping content */
 .sidebar-scroll-content { 
     flex: 1; overflow-y: auto; padding: 15px 0 40px 0; 
     scrollbar-gutter: stable; 
@@ -272,7 +260,35 @@ body.edit-mode-active #game-wrapper { margin-right: 340px; transition: margin-ri
 .accordion-header { cursor: pointer; padding: 6px 0; color: #4CAF50; font-weight: bold; border-bottom: 1px solid #222; }
 .accordion-content.collapsed { display: none; }
 .full-width-btn { width: 100%; padding: 8px; background: #333; border: 1px solid #444; color: #ccc; cursor: pointer; border-radius: 4px; margin-top: 5px; font-weight: bold; }
-.action-btn { width: 100%; padding: 10px; border-radius: 4px; cursor: pointer; font-weight: bold; color: white; border: none; }
+
+/* FIX: Action Button Stability */
+.action-btn { 
+    width: 100%; 
+    padding: 10px; 
+    border-radius: 4px; 
+    cursor: pointer; 
+    font-weight: bold; 
+    color: white; 
+    border: 1px solid transparent; /* Ensure border space is always reserved */
+    box-sizing: border-box; /* Prevent padding/border from affecting width */
+    transition: filter 0.2s, background 0.2s, opacity 0.2s;
+    position: relative;
+    transform: none !important; /* Disable unintentional scaling */
+}
+
+/* On press: just slight opacity change, NO movement, NO scaling */
+.action-btn:active {
+    transform: none !important;
+    opacity: 0.8;
+}
+
+/* Ensure disabled state keeps border to prevent jumping */
+.action-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    border-style: solid; /* Force border to stay */
+}
+
 .btn-delete { background: #500; }
 
 .code-editor { width: 100%; height: 200px; background: #111; color: #0f0; font-family: monospace; font-size: 0.8rem; border: 1px solid #333; border-radius: 4px; padding: 5px; box-sizing: border-box; resize: vertical; }
@@ -771,39 +787,31 @@ body.edit-mode-active #game-wrapper { margin-right: 340px; transition: margin-ri
    FIX 2: ROULETTE ANIMATION & LAYOUT
    ========================================= */
 
-/* Маска должна жестко перекрывать контент и иметь фон, 
-   иначе цифры будут бежать поверх текста карты */
 .roulette-mask {
-    background: #1a1a1a !important; /* Фон под цвет карты, чтобы скрыть текст под крутилкой */
-    z-index: 500 !important; /* Поверх всего контента карты */
-    border-radius: 8px; /* Чтобы не вылезало за края скруглений */
+    background: #1a1a1a !important; 
+    z-index: 500 !important; 
+    border-radius: 8px; 
 }
 
-/* Полоса с цифрами должна растягиваться на всю ширину */
 .roulette-strip {
     width: 100%;
     position: absolute;
     left: 0;
     top: 0;
-    /* Важно: JS меняет transform, поэтому transition должен быть разрешен */
     transition: transform 0s; 
     will-change: transform;
 }
 
-/* Элементы внутри полосы */
 .roulette-item {
     width: 100%;
     box-sizing: border-box;
-    /* Убираем возможные конфликты с flex родителя */
     flex-shrink: 0; 
 }
 
-/* Если вдруг анимация блокируется глобальными стилями редактора */
 .spinning-active .roulette-strip {
     transition-property: transform !important;
 }
 
 .masked-input {
     -webkit-text-security: disc;
-    /* text-security - стандарт будущего, но пока нужен вебкит */
 }

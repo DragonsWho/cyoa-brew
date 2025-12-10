@@ -5,6 +5,8 @@
 
 import { LLM_PROVIDERS, fetchAvailableModels, saveLlmSettings, loadLlmSettings, getStoredApiKey } from './config/providers.js';
 import { USER_PROMPTS } from './config/prompts.js';
+// ВНИМАНИЕ: Проверьте путь к icons.js. Если ui-listeners лежит в src/editor/integrations/llm, то путь должен быть:
+import { ICONS } from '../../ui/icons.js'; 
 
 export const LLMListenersMixin = {
     
@@ -16,15 +18,15 @@ export const LLMListenersMixin = {
         
         if (!input) return;
         
-        // Переключаем класс маскировки вместо типа поля
+        // Переключаем класс маскировки
         if (input.classList.contains('masked-input')) {
             // Показать (убираем маску)
             input.classList.remove('masked-input');
-            if (btn) btn.textContent = '🔒'; // Иконка "закрыть обратно"
+            if (btn) btn.innerHTML = ICONS.eye_off; // SVG для "Hide"
         } else {
             // Скрыть (добавляем маску)
             input.classList.add('masked-input');
-            if (btn) btn.textContent = '👁'; // Иконка "показать"
+            if (btn) btn.innerHTML = ICONS.eye; // SVG для "Show"
         }
     },
 
@@ -102,10 +104,12 @@ export const LLMListenersMixin = {
             const storedKey = getStoredApiKey(provider);
             if (keyInput) {
                 keyInput.value = storedKey;
-                // Reset to password type when switching providers
-                    keyInput.classList.add('masked-input');
+                // Reset to password type (masked) when switching providers
+                keyInput.classList.add('masked-input');
+                
+                // Reset toggle icon to "Show" (Eye)
                 const eyeIcon = document.querySelector('.toggle-visibility-btn .eye-icon');
-                if (eyeIcon) eyeIcon.textContent = '👁';
+                if (eyeIcon) eyeIcon.innerHTML = ICONS.eye;
             }
             
             // Update key status
