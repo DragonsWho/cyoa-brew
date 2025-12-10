@@ -13,7 +13,9 @@ export function createLlmPanelHTML() {
 
     return `
         <div class="editor-section">
-            <div class="accordion-header collapsed" onclick="CYOA.editor.toggleAccordion(this)">🧠 AI Assistant</div>
+            <div class="accordion-header collapsed" onclick="CYOA.editor.toggleAccordion(this)">
+                <span style="display:flex; align-items:center; gap:6px;">${ICONS.brain} AI Assistant</span>
+            </div>
             <div class="accordion-content collapsed">
                 
                 <div style="background:#1a1a1a; padding:8px; border-radius:4px; margin-bottom:10px;">
@@ -76,23 +78,29 @@ export function createLlmPanelHTML() {
                     </div>
                 </div>
 
-                <div style="display:flex; flex-direction:column; gap:6px; margin-bottom:10px;">
+                <div style="display:flex; flex-direction:column; gap:8px; margin-bottom:10px;">
                     <button onclick="CYOA.editor.runLlmAction('refine')" class="action-btn" style="background:linear-gradient(135deg, #1e3a5f, #2d5a87); text-align:left; font-size:0.8rem; padding:10px 12px; border:1px solid #3d7ab8;">
-                        <span style="float:right; font-size:1.1rem;">📐</span><strong>Refine Layout</strong>
+                        <span style="float:right; font-size:1.1rem;">${ICONS.edit}</span><strong>Refine Layout</strong>
                     </button>
                     <button onclick="CYOA.editor.runLlmAction('fill')" class="action-btn" style="background:linear-gradient(135deg, #5c2d6e, #8e24aa); text-align:left; font-size:0.8rem; padding:10px 12px; border:1px solid #b04cc8;">
-                        <span style="float:right; font-size:1.1rem;">👁️</span><strong>OCR & Fill</strong>
+                        <span style="float:right; font-size:1.1rem;">${ICONS.eye}</span><strong>OCR & Fill</strong>
                     </button>
                     <button onclick="CYOA.editor.startAuditChat()" class="action-btn" style="background:linear-gradient(135deg, #1b5e20, #2e7d32); text-align:left; font-size:0.8rem; padding:10px 12px; border:1px solid #4caf50;">
-                        <span style="float:right; font-size:1.1rem;">🕵️</span><strong>Interactive Audit</strong>
+                        <span style="float:right; font-size:1.1rem;">${ICONS.audit}</span><strong>Interactive Audit</strong>
                     </button>
                 </div>
 
                 <div id="llm-manual-ui" style="display:none; margin-top:12px; border:1px dashed #444; border-radius:4px; padding:10px; background:#0d0d0d;">
-                    <div style="font-size:0.75rem; color:#ffd700; margin-bottom:8px;">📋 <strong>Manual Mode</strong></div>
-                    <button id="btn-copy-debug-img" class="full-width-btn" style="background: #e65100; margin-bottom:8px; font-size:0.8rem;" onclick="CYOA.editor.copyDebugImageToClipboard()">📸 Copy Layout Image</button>
+                    <div style="font-size:0.75rem; color:#ffd700; margin-bottom:8px; display:flex; align-items:center; gap:4px;">
+                        ${ICONS.paste} <strong>Manual Mode</strong>
+                    </div>
+                    <button id="btn-copy-debug-img" class="full-width-btn" style="background: #e65100; margin-bottom:8px; font-size:0.8rem; display:flex; align-items:center; justify-content:center; gap:6px;" onclick="CYOA.editor.copyDebugImageToClipboard()">
+                        ${ICONS.image} Copy Layout Image
+                    </button>
                     <textarea id="llm-manual-out" class="code-editor" style="height:80px; font-size:0.7rem;" readonly></textarea>
-                    <button class="full-width-btn" onclick="CYOA.editor.copyManualPrompt()" style="margin:6px 0; font-size:0.8rem;">📋 Copy Prompt</button>
+                    <button class="full-width-btn" onclick="CYOA.editor.copyManualPrompt()" style="margin:6px 0; font-size:0.8rem; display:flex; align-items:center; justify-content:center; gap:6px;">
+                        ${ICONS.copy} Copy Prompt
+                    </button>
                     <div style="border-top:1px solid #333; margin:10px 0; padding-top:10px;">
                         <label style="font-size:0.7rem; color:#888;">Paste LLM Response:</label>
                         <textarea id="llm-manual-in" class="code-editor" style="height:80px; font-size:0.7rem; margin-top:4px;" placeholder='{"layout": [...]}'></textarea>

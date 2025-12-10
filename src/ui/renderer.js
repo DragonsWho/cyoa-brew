@@ -1,7 +1,7 @@
 /**
  * src\ui\renderer.js
  * UI Renderer - Handles all visual rendering
- * UPDATED: Fixed Visual Card Custom CSS application
+ * UPDATED: Page Separator moved OUTSIDE page-container to fix coordinate offsets
  */
 
 import { CoordHelper } from '../utils/coords.js';
@@ -93,11 +93,9 @@ export class UIRenderer {
             root.style.setProperty('--dis-bg-image', 'none');
         }
 
-        // ИСПРАВЛЕНИЕ: Передаем 3-й аргумент (style.visualCustomCss)
         this.applyCustomCss(style.customCss, style.disabledCustomCss, style.visualCustomCss);
     }
 
-    // ИСПРАВЛЕНИЕ: Принимаем 3 аргумента
     applyCustomCss(activeCss, disabledCss, visualCss) {
         let styleTag = document.getElementById('custom-card-style');
         if (!styleTag) {
@@ -113,7 +111,6 @@ export class UIRenderer {
         if (disabledCss) {
             content += `#game-wrapper .click-zone.disabled { ${this.forceImportant(disabledCss)} } `;
         }
-        // ИСПРАВЛЕНИЕ: Генерируем CSS для Visual Cards
         if (visualCss) {
             content += `#game-wrapper .click-zone.visual-card { ${this.forceImportant(visualCss)} } `;
         }
@@ -145,15 +142,17 @@ export class UIRenderer {
 
         const loadPromises = pages.map((page, index) => {
             return new Promise((resolve) => {
+                // 1. Create Separator (NOW OUTSIDE THE CONTAINER)
+                const separator = document.createElement('div');
+                separator.className = 'page-separator';
+                separator.textContent = `Page ${index + 1}`;
+                wrapper.appendChild(separator);
+
+                // 2. Create Page Container (Strictly for Image + Layer)
                 const container = document.createElement('div');
                 container.className = 'page-container';
                 container.id = `page-${index}`;
                 container.dataset.pageId = page.id;
-
-                const separator = document.createElement('div');
-                separator.className = 'page-separator';
-                separator.textContent = `Page ${index + 1}`;
-                container.appendChild(separator);
 
                 const img = document.createElement('img');
                 img.className = 'page-image';
@@ -223,6 +222,9 @@ export class UIRenderer {
         this.updateUI();
     }
 
+    // ... syncGroupDOM, syncItemDOM, setupItemEvents, syncBudgetBadges ...
+    // (Эти методы остаются без изменений, они отвечают только за внутреннее содержимое)
+
     syncGroupDOM(group, layer, dim, activeIds) {
         if (!group.coords) return;
         const domId = `group-${group.id}`;
@@ -257,7 +259,6 @@ export class UIRenderer {
         let button = document.getElementById(domId);
         let isNew = false;
         
-        // Create element if not exists
         if (!button) {
             isNew = true;
             button = document.createElement('div');
@@ -267,25 +268,21 @@ export class UIRenderer {
             this.setupItemEvents(button, item, group);
         }
         
-        // Update basic attributes
         button.dataset.itemId = item.id;
         button.dataset.groupId = group ? group.id : '';
         Object.assign(button.style, CoordHelper.toPercent(item.coords, dim));
 
-        // Handle Visual Card CSS Class
         if (item.isVisualCard) {
             if (!button.classList.contains('visual-card')) button.classList.add('visual-card');
         } else {
             if (button.classList.contains('visual-card')) button.classList.remove('visual-card');
         }
 
-        // Handle Static Info CSS Class
         const isStatic = (item.selectable === false);
         if (button.classList.contains('static-info') !== isStatic) {
             button.classList.toggle('static-info', isStatic);
         }
 
-        // Content Hashing
         const newTitle = item.title || '';
         const newDesc = item.description || '';
         const isMulti = (item.max_quantity !== undefined && item.max_quantity > 1) || (item.min_quantity !== undefined && item.min_quantity < 0);
@@ -297,7 +294,6 @@ export class UIRenderer {
         if (isNew || button.dataset.contentHash !== contentHash) {
             button.innerHTML = '';
             
-            // --- RENDER VISUAL CARD ---
             if (item.isVisualCard) {
                 if (item.cardImage) {
                     const img = document.createElement('img');
@@ -341,11 +337,8 @@ export class UIRenderer {
                     bodyDiv.innerHTML = newDesc.replace(/\n/g, '<br>');
                     contentDiv.appendChild(bodyDiv);
                 }
-                
                 button.appendChild(contentDiv);
-
             }
-            // --- RENDER STANDARD CARD ---
             else {
                 if (newTitle || newDesc) {
                     button.appendChild(this.createTextLayer(newTitle, newDesc));

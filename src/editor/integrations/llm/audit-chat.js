@@ -6,14 +6,7 @@
 
 // Import the prompt
 import { AUDIT_CHAT_SYSTEM_PROMPT } from './config/prompts.js';
-
-// SVG Icons matching Material UI style
-const ICONS = {
-    ASSIGNMENT: `<svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M19 3h-4.18C14.4 1.84 13.3 1 12 1c-1.3 0-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm2 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>`,
-    AUTO_AWESOME: `<svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M19 9l1.25-2.75L23 5l-2.75-1.25L19 1l-1.25 2.75L15 5l2.75 1.25L19 9zm-7.5.5L9 4 6.5 9.5 1 12l5.5 2.5L9 20l2.5-5.5L17 12l-5.5-2.5zM19 15l-1.25 2.75L15 19l2.75 1.25L19 23l1.25-2.75L23 19l-2.75-1.25L19 15z"/></svg>`,
-    CLOSE: `<svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>`,
-    MINIMIZE: `<svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M19 13H5v-2h14v2z"/></svg>`
-};
+import { ICONS } from '../../ui/icons.js'; // Import centralized icons
 
 export const AuditChatMixin = {
     auditHistory: [],
@@ -29,18 +22,18 @@ export const AuditChatMixin = {
             <div id="audit-chat-window" class="audit-chat-window">
                 <div class="audit-header" id="audit-drag-handle">
                     <span class="audit-title" style="display:flex; align-items:center; gap:8px;">
-                        ${ICONS.AUTO_AWESOME} AI Editor
+                        ${ICONS.ai} AI Editor
                     </span>
                     <div class="audit-header-controls">
                         <span id="audit-token-counter" class="audit-token-counter" title="Tokens used">0 tk</span>
                         <button class="audit-ctrl-btn debug-btn" onclick="CYOA.editor.copyAuditDebugLog()" title="Copy Full Debug Log">
-                            ${ICONS.ASSIGNMENT}
+                            ${ICONS.file}
                         </button>
                         <button class="audit-ctrl-btn" onclick="CYOA.editor.toggleAuditMinimize()" title="Minimize">
-                            ${ICONS.MINIMIZE}
+                            _
                         </button>
                         <button class="audit-ctrl-btn close" onclick="CYOA.editor.closeAuditChat()" title="Close">
-                            ${ICONS.CLOSE}
+                            ${ICONS.close}
                         </button>
                     </div>
                 </div>
@@ -64,6 +57,9 @@ export const AuditChatMixin = {
         this.initAuditDraggable();
     },
 
+    // ... остальной код audit-chat.js остается без изменений ...
+    // (copyAuditDebugLog, updateTokenCounter, initAuditDraggable и т.д.)
+    
     // ==================== DEBUG & LOGGING ====================
 
     updateAuditDebugLog(requestData, responseData) {
@@ -562,7 +558,7 @@ I'll ask you to find and fix issues. When suggesting fixes, use the action forma
         wrapper.innerHTML = `
             <div class="audit-actions-block" id="${blockId}">
                 <div class="actions-header">
-                    🔧 <strong>Suggested Fixes</strong> (${actions.length})
+                    ${ICONS.edit} <strong>Suggested Fixes</strong> (${actions.length})
                     <span style="font-size:0.7em; color:#888; font-weight:normal; float:right;">Uncheck to skip</span>
                 </div>
                 <ul class="actions-list" style="list-style:none; padding:0;">

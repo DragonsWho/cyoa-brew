@@ -16,11 +16,19 @@ export function createSettingsPanel() {
     <span style="display:flex; align-items:center; gap:6px;">${ICONS.save} File Operations</span>
 </div>
                 <div class="accordion-content">
-                    <button class="full-width-btn" style="background:#555; margin-bottom:10px;" onclick="CYOA.editor.newProject()">${ICONS.file} New Project</button>
-                    <button class="full-width-btn" style="background:#4b6cb7; margin-bottom:10px;" onclick="document.getElementById('load-config-input').click()">${ICONS.folder} Load Project</button>
-                    <div class="row-buttons">
-                        <button class="action-btn primary-btn" onclick="CYOA.editor.exportConfig()">${ICONS.save} Save JSON</button>
-                        <button class="action-btn" style="background:#444;" onclick="CYOA.editor.exportZip()">${ICONS.zip} Save Zip</button>
+                    <div style="display:flex; flex-direction:column; gap:8px; margin-bottom:10px;">
+                        <button class="full-width-btn" style="background:#555; margin:0; display:flex; align-items:center; justify-content:center; gap:6px;" onclick="CYOA.editor.newProject()">
+                            ${ICONS.new_file} New Project
+                        </button>
+                        <button class="full-width-btn" style="background:#4b6cb7; margin:0; display:flex; align-items:center; justify-content:center; gap:6px;" onclick="document.getElementById('load-config-input').click()">
+                            ${ICONS.upload} Load Project
+                        </button>
+                        <button class="action-btn primary-btn" style="width:100%; display:flex; align-items:center; justify-content:center; gap:6px;" onclick="CYOA.editor.exportConfig()">
+                            ${ICONS.download} Save JSON
+                        </button>
+                        <button class="action-btn" style="background:#444; width:100%; display:flex; align-items:center; justify-content:center; gap:6px;" onclick="CYOA.editor.exportZip()">
+                            ${ICONS.archive} Save Zip
+                        </button>
                     </div>
                 </div>
             </div>

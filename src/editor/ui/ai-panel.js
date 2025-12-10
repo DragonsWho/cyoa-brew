@@ -4,15 +4,17 @@
  */
 
 import { createLlmPanelHTML } from './llm-panel.js';
+import { ICONS } from './icons.js';
 
 export function createAiPanelHTML() {
     return `
         <div id="tab-content-ai" class="tab-content" style="display:none;">
             
-
             <!-- Project Notes -->
             <div class="editor-section"> 
-                <div class="accordion-header collapsed" onclick="CYOA.editor.toggleAccordion(this)">📝 Project Notes & Global Rules</div> 
+                <div class="accordion-header collapsed" onclick="CYOA.editor.toggleAccordion(this)">
+                    <span style="display:flex; align-items:center; gap:6px;">${ICONS.note} Project Notes & Global Rules</span>
+                </div> 
                 <div class="accordion-content collapsed">
                     <div style="margin-bottom:5px; font-size:0.75rem; color:#888;">
                         Shared context for the LLM. Keep track of global mechanics here.
@@ -21,10 +23,11 @@ export function createAiPanelHTML() {
                 </div>
             </div>
 
-
             <!-- SAM Auto-Detect (Moved from Settings) -->
             <div class="editor-section">
-                <div class="accordion-header collapsed" onclick="CYOA.editor.toggleAccordion(this)">🤖 Auto-Detect Frames</div>
+                <div class="accordion-header collapsed" onclick="CYOA.editor.toggleAccordion(this)">
+                    <span style="display:flex; align-items:center; gap:6px;">${ICONS.crop_free} Auto-Detect Frames</span>
+                </div>
                 <div class="accordion-content collapsed">
                     <div class="info-text" style="font-size:0.75rem; margin:5px 0 10px 0; padding:8px;">
                         Automatically detect items in your image. You need a Roboflow API key!
@@ -47,10 +50,14 @@ export function createAiPanelHTML() {
                         <div style="display:flex; justify-content:space-between; font-size:0.8rem; color:#888;"><span>Shave</span><span id="shave-val">2.0%</span></div>
                         <input type="range" id="sam-shave" min="0.005" max="0.05" step="0.005" value="0.02" style="width:100%;" oninput="document.getElementById('shave-val').textContent = (this.value*100).toFixed(1)+'%'">
                     </div>
-                    <button id="btn-run-sam" class="full-width-btn primary-btn" style="margin-top:15px;">🚀 Run Inference</button>
+                    <button id="btn-run-sam" class="full-width-btn primary-btn" style="margin-top:15px; display:flex; align-items:center; justify-content:center; gap:6px;">
+                        ${ICONS.crop_free} Run Inference
+                    </button>
                     <div id="sam-status" style="margin-top:10px; font-size:0.75rem; color:#ffd700; min-height:1.2em;"></div>
                      <div class="editor-section" style="margin-top:15px; border:1px solid #333; padding:0;">
-                        <div class="accordion-header collapsed" onclick="CYOA.editor.toggleAccordion(this)" style="padding:5px 10px; font-size:0.8rem;">🐞 Debug Gallery</div>
+                        <div class="accordion-header collapsed" onclick="CYOA.editor.toggleAccordion(this)" style="padding:5px 10px; font-size:0.8rem;">
+                             <span style="display:flex; align-items:center; gap:6px;">${ICONS.bug} Debug Gallery</span>
+                        </div>
                         <div class="accordion-content collapsed" id="sam-debug-gallery" style="background:#000; padding:10px;"></div>
                     </div>
                 </div>
