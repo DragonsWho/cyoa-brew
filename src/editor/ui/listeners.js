@@ -47,14 +47,13 @@ export const ListenersMixin = {
         attachStyleListener('style-body-opacity', 'bodyOpacity');
         attachStyleListener('style-custom-css', 'customCss');
 
-        // --- Visual Card Style (NEW) ---
+        // --- Visual Card Style ---
         attachStyleListener('style-vis-bg-color', 'visualBgColor');
         attachStyleListener('style-vis-title-color', 'visualTitleColor');
         attachStyleListener('style-vis-text-color', 'visualTextColor');
         attachStyleListener('style-vis-border-color', 'visualBorderColor');
         attachStyleListener('style-vis-border-width', 'visualBorderWidth');
         attachStyleListener('style-vis-radius', 'visualRadius');
-        // !!! ДОБАВЛЕН СЛУШАТЕЛЬ !!!
         attachStyleListener('style-vis-custom-css', 'visualCustomCss');
 
         // --- Disabled Style ---
@@ -66,6 +65,11 @@ export const ListenersMixin = {
         attachStyleListener('style-disabled-radius-bl', 'disabledRadiusBL');
         attachStyleListener('style-disabled-custom-css', 'disabledCustomCss');
         
+        // --- Point Bar Style (NEW) ---
+        attachStyleListener('style-pb-bg', 'pointBarBg');
+        attachStyleListener('style-pb-label', 'pointBarLabelColor');
+        attachStyleListener('style-pb-val', 'pointBarValueColor');
+
         // Image Upload (Active)
         const imgInput = document.getElementById('style-bg-image-input');
         if (imgInput) {
@@ -82,6 +86,7 @@ export const ListenersMixin = {
         }
     },
 
+    // ... [Rest of the file remains unchanged] ...
     // ==================== CHOICE PANEL ====================
 
     setupChoiceListeners() {

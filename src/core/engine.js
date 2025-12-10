@@ -34,8 +34,7 @@ export class GameEngine {
         console.log('🎮 Engine initialized (v2.1 - Split Groups Support)');
     }
 
-    // ... buildMaps() и loadConfig() без изменений ...
-    
+    // ... buildMaps() ... (No change)
     buildMaps() {
         this.itemMap.clear();
         this.itemToGroup.clear();
@@ -76,6 +75,7 @@ export class GameEngine {
         }
     }
 
+    // ... loadConfig() ... (No change)
     loadConfig(newConfig) {
         this.config = newConfig;
         this.isTestConfig = false;
@@ -124,15 +124,19 @@ export class GameEngine {
         s.bodyImage = s.bodyImage || '';
         s.customCss = s.customCss || '';
 
-        // === SPECIAL VISUAL CARD DEFAULTS ===
+        // === VISUAL CARD DEFAULTS ===
         s.visualBgColor = s.visualBgColor || '#222222';
         s.visualTitleColor = s.visualTitleColor || '#ffffff';
         s.visualTextColor = s.visualTextColor || '#cccccc';
         s.visualBorderColor = s.visualBorderColor || '#444444';
         s.visualBorderWidth = s.visualBorderWidth !== undefined ? s.visualBorderWidth : 1;
         s.visualRadius = s.visualRadius !== undefined ? s.visualRadius : 8;
-        // !!! ДОБАВЛЕНО ПОЛЕ !!!
         s.visualCustomCss = s.visualCustomCss || '';
+
+        // === POINT BAR DEFAULTS (NEW) ===
+        s.pointBarBg = s.pointBarBg || '#101010';
+        s.pointBarLabelColor = s.pointBarLabelColor || '#cccccc';
+        s.pointBarValueColor = s.pointBarValueColor || '#00ff88';
 
         // === DISABLED STYLE DEFAULTS ===
         s.disabledBorderColor = s.disabledBorderColor || '#555555';
@@ -155,9 +159,7 @@ export class GameEngine {
         }
     }
 
-    // ... restoreDefaults, select, deselect, toggle, canSelect ...
-    // ... recalculate, helpers, events ... (код остался тем же)
-    
+    // ... [Rest of the file remains unchanged] ...
     restoreDefaults() {
         for (const [groupId, group] of this.groupMap) {
             if (this.defaults.groupRules[groupId]) {

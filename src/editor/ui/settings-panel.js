@@ -5,9 +5,14 @@
 
 import { createStylePanelHTML } from './style-panel.js';
 import { createEditorPreferencesHTML } from './editor-preferences.js';
+import { POINT_BAR_PRESETS } from '../data/style-presets.js';
 import { ICONS } from './icons.js';
 
 export function createSettingsPanel() {
+    // Generate preset options for the dropdown
+    const pointBarPresetsOpts = `<option value="">-- Choose Preset --</option>` + 
+        POINT_BAR_PRESETS.map((p, i) => `<option value="${i}">${p.name}</option>`).join('');
+
     return `
         <div id="tab-content-settings" class="tab-content" style="display:none;">
             
@@ -48,6 +53,36 @@ export function createSettingsPanel() {
                     <button class="full-width-btn" style="background:#2e7d32 !important; color:white !important;" onclick="CYOA.editor.addNewPointSystem()">${ICONS.add} Add Currency</button>
                 </div>
             </div>
+
+            <!-- Bottom Point Bar Style -->
+            <div class="editor-section">
+                <div class="accordion-header collapsed" onclick="CYOA.editor.toggleAccordion(this)">
+                    <span style="display:flex; align-items:center; gap:6px;">${ICONS.edit} Bottom Bar Style</span>
+                </div>
+                <div class="accordion-content collapsed">
+                    <div style="margin-bottom:8px;">
+                        <select id="pb-preset-select" class="style-input" style="width:100%;" onchange="CYOA.editor.applyPointBarPreset(this.value)">
+                            ${pointBarPresetsOpts}
+                        </select>
+                    </div>
+                    <div class="style-row">
+                        <label class="style-label">Bar BG</label>
+                        <input type="color" id="style-pb-bg" class="style-input square-input" title="Background Color">
+                        <span style="font-size:0.7em; color:#888; margin-left:5px;">Background</span>
+                    </div>
+                    <div class="style-row">
+                        <label class="style-label">Name</label>
+                        <input type="color" id="style-pb-label" class="style-input square-input" title="Name/Icon Color">
+                        <span style="font-size:0.7em; color:#888; margin-left:5px;">Label Text & Icons</span>
+                    </div>
+                    <div class="style-row">
+                        <label class="style-label">Value</label>
+                        <input type="color" id="style-pb-val" class="style-input square-input" title="Value Color">
+                        <span style="font-size:0.7em; color:#888; margin-left:5px;">Numbers</span>
+                    </div>
+                </div>
+            </div>
+
         </div>
     `;
 }

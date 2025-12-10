@@ -1,7 +1,6 @@
 /**
  * src\ui\renderer.js
  * UI Renderer - Handles all visual rendering
- * UPDATED: Page Separator moved OUTSIDE page-container to fix coordinate offsets
  */
 
 import { CoordHelper } from '../utils/coords.js';
@@ -93,9 +92,15 @@ export class UIRenderer {
             root.style.setProperty('--dis-bg-image', 'none');
         }
 
+        // --- POINT BAR STYLE (NEW) ---
+        root.style.setProperty('--pb-bg', style.pointBarBg || '#101010');
+        root.style.setProperty('--pb-label', style.pointBarLabelColor || '#cccccc');
+        root.style.setProperty('--pb-val', style.pointBarValueColor || '#00ff88');
+
         this.applyCustomCss(style.customCss, style.disabledCustomCss, style.visualCustomCss);
     }
 
+    // ... [Rest of the file remains unchanged] ...
     applyCustomCss(activeCss, disabledCss, visualCss) {
         let styleTag = document.getElementById('custom-card-style');
         if (!styleTag) {
@@ -221,9 +226,6 @@ export class UIRenderer {
         
         this.updateUI();
     }
-
-    // ... syncGroupDOM, syncItemDOM, setupItemEvents, syncBudgetBadges ...
-    // (Эти методы остаются без изменений, они отвечают только за внутреннее содержимое)
 
     syncGroupDOM(group, layer, dim, activeIds) {
         if (!group.coords) return;

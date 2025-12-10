@@ -4,7 +4,7 @@
  * Updated: Uses CSS variables for Light/Dark mode compatibility
  */
 
-import { STANDARD_PRESETS, FANCY_PRESETS, VISUAL_STANDARD_PRESETS, VISUAL_FANCY_PRESETS, DISABLED_PRESETS } from '../data/style-presets.js';
+import { STANDARD_PRESETS, FANCY_PRESETS, VISUAL_STANDARD_PRESETS, VISUAL_FANCY_PRESETS, DISABLED_PRESETS, POINT_BAR_PRESETS } from '../data/style-presets.js';
 import { ICONS } from './icons.js';
 
 export function createStylePanelHTML() {
@@ -173,6 +173,20 @@ export const StyleSettingsMixin = {
         }
     },
 
+    applyPointBarPreset(index) {
+        if (index === "") return;
+        const preset = POINT_BAR_PRESETS[parseInt(index)];
+        if (!preset) return;
+        
+        const s = this.engine.config.style;
+        s.pointBarBg = preset.data.bg;
+        s.pointBarLabelColor = preset.data.label;
+        s.pointBarValueColor = preset.data.val;
+        
+        this.renderer.applyGlobalStyles();
+        this.loadStyleSettings();
+    },
+
     applyPreset(type, selectElement) {
         const index = selectElement.value;
         if (index === "") return;
@@ -295,7 +309,7 @@ export const StyleSettingsMixin = {
         setVal('style-vis-border-color', style.visualBorderColor || '#444444');
         setVal('style-vis-border-width', style.visualBorderWidth !== undefined ? style.visualBorderWidth : 1);
         setVal('style-vis-radius', style.visualRadius !== undefined ? style.visualRadius : 8);
-        setVal('style-vis-custom-css', style.visualCustomCss || ''); // Загрузка значения
+        setVal('style-vis-custom-css', style.visualCustomCss || ''); 
 
         // Disabled styles
         setVal('style-disabled-border-color', style.disabledBorderColor || '#555555');
@@ -305,5 +319,10 @@ export const StyleSettingsMixin = {
         setVal('style-disabled-radius-bl', style.disabledRadiusBL !== undefined ? style.disabledRadiusBL : 12);
         setVal('style-disabled-radius-br', style.disabledRadiusBR !== undefined ? style.disabledRadiusBR : 12);
         setVal('style-disabled-custom-css', style.disabledCustomCss || '');
+
+        // Point Bar Styles
+        setVal('style-pb-bg', style.pointBarBg || '#101010');
+        setVal('style-pb-label', style.pointBarLabelColor || '#cccccc');
+        setVal('style-pb-val', style.pointBarValueColor || '#00ff88');
     }
 };

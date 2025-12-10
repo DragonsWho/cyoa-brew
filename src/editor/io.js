@@ -13,7 +13,6 @@ export const EditorIOMixin = {
         if (!confirm("Create new project? All unsaved changes will be lost.")) return;
         
         // Reset configuration to default empty state
-        // ИСПРАВЛЕНИЕ: Добавлен объект style с дефолтными значениями
         this.engine.config = {
             pages: [],
             points: [
@@ -44,6 +43,11 @@ export const EditorIOMixin = {
                 visualBorderColor: "#444444",
                 visualBorderWidth: 1,
                 visualRadius: 8,
+                
+                // Настройки Point Bar
+                pointBarBg: "#101010",
+                pointBarLabelColor: "#cccccc",
+                pointBarValueColor: "#00ff88",
 
                 // Настройки Disabled
                 disabledBorderColor: "#555555",
@@ -102,6 +106,7 @@ export const EditorIOMixin = {
     },
     
     async copyDebugImageToClipboard() {
+        // ... [Code for copyDebugImageToClipboard remains unchanged] ...
         const page = this.getCurrentPage();
         if (!page || !page.image) { alert("No image on this page."); return; }
         

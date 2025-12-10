@@ -674,3 +674,27 @@ export const DISABLED_PRESETS = [
  
 
 ];
+
+
+
+
+// =============================================================================
+// 6. POINT BAR PRESETS (Footer Styles)
+// =============================================================================
+export const POINT_BAR_PRESETS = [
+    { name: "Default Dark", data: { bg: "#101010", label: "#cccccc", val: "#00ff88" } },
+    { name: "Pure White", data: { bg: "#ffffff", label: "#333333", val: "#000000" } },
+    { name: "Midnight Blue", data: { bg: "#0a0e17", label: "#a0a0ff", val: "#66ccff" } },
+    { name: "Matrix Console", data: { bg: "#000000", label: "#008800", val: "#00ff00" } },
+    { name: "Royal Gold", data: { bg: "#2a1a0a", label: "#d4af37", val: "#fff8e1" } },
+    { name: "Cyberpunk Pink", data: { bg: "#2d002d", label: "#ff00ff", val: "#00ffff" } },
+    { name: "Forest Green", data: { bg: "#1b2e1b", label: "#a5d6a7", val: "#ffffff" } },
+    { name: "Crimson Red", data: { bg: "#220000", label: "#ff9999", val: "#ff0000" } },
+    { name: "Deep Purple", data: { bg: "#1a0033", label: "#d1c4e9", val: "#e040fb" } },
+    { name: "Slate Grey", data: { bg: "#263238", label: "#cfd8dc", val: "#80cbc4" } },
+    { name: "Solar Orange", data: { bg: "#3e1c00", label: "#ffab91", val: "#ff6d00" } },
+    { name: "Steel Blue", data: { bg: "#102027", label: "#90caf9", val: "#ffffff" } },
+    { name: "Soft Pastel", data: { bg: "#fce4ec", label: "#880e4f", val: "#ec407a" } },
+    { name: "High Contrast", data: { bg: "#000000", label: "#ffff00", val: "#ffffff" } },
+    { name: "Retro Terminal", data: { bg: "#111111", label: "#ffb74d", val: "#ff9800" } }
+];
