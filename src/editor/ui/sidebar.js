@@ -1,6 +1,7 @@
 /**
  * src/ui/editor/ui/sidebar.js
  * Main Sidebar Creation and Tab Management
+ * Updated: Auto-scroll sidebar based on view
  */
 
 import { createChoicePanel } from './choice-panel.js';
@@ -86,6 +87,51 @@ export const SidebarMixin = {
         }
         
         this.renderPageNavigationBar();
+        this.setupScrollSpy(); // NEW: Init scroll sync
+    },
+
+    // ==================== SCROLL SPY (SYNC MENU WITH VIEW) ====================
+
+    setupScrollSpy() {
+        // Disconnect old observer if exists
+        if (this._scrollObserver) {
+            this._scrollObserver.disconnect();
+        }
+
+        const options = {
+            root: null, // viewport
+            rootMargin: '0px',
+            threshold: 0.5 // Trigger when 50% of the page is visible
+        };
+
+        this._scrollObserver = new IntersectionObserver((entries) => {
+            if (!this.enabled) return;
+
+            let maxRatio = 0;
+            let bestIndex = -1;
+
+            entries.forEach(entry => {
+                if (entry.isIntersecting && entry.intersectionRatio > maxRatio) {
+                    maxRatio = entry.intersectionRatio;
+                    // Extract index from ID "page-0", "page-1"
+                    const index = parseInt(entry.target.id.replace('page-', ''));
+                    bestIndex = index;
+                }
+            });
+
+            if (bestIndex !== -1 && bestIndex !== this.activePageIndex) {
+                // Only update if changed to avoid loop
+                this.activePageIndex = bestIndex;
+                this.renderPageNavigationBar();
+            }
+        }, options);
+
+        // Observe all pages
+        setTimeout(() => {
+            document.querySelectorAll('.page-container').forEach(el => {
+                this._scrollObserver.observe(el);
+            });
+        }, 500); // Delay to ensure DOM is ready
     },
 
     // ==================== PAGE NAV RENDERER ====================
@@ -126,6 +172,7 @@ export const SidebarMixin = {
         
         container.innerHTML = html;
         
+        // Auto scroll nav strip to active button
         setTimeout(() => {
             const activeEl = container.querySelector('.nav-page-btn.active');
             if (activeEl) activeEl.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });

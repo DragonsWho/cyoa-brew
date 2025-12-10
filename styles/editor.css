@@ -19,6 +19,24 @@ body.editor-interacting .info-zone { transition: none !important; }
 
 /* === BASE EDITOR STYLES (When NOT in Preview Mode) === */
 
+/* --- PAGE SEPARATOR (NEW) --- */
+/* Visible ONLY in edit mode */
+body.edit-mode-active .page-separator {
+    display: flex !important; /* Override none */
+    justify-content: center;
+    align-items: center;
+    background: #1a1a1a;
+    border-top: 2px solid #2e7d32; /* Green line */
+    border-bottom: 2px solid #2e7d32;
+    color: #4CAF50;
+    font-weight: bold;
+    padding: 10px;
+    margin-bottom: 0;
+    margin-top: 20px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+}
+
 /* Override styles for visual debugging */
 body.show-zones:not(.editor-preview-active) #game-wrapper .click-zone { 
     border: 2px solid rgba(255,0,0,0.5) !important; 

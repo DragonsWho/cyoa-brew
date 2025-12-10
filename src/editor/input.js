@@ -1,7 +1,7 @@
 /**
  * src\ui\editor\input.js
  * Editor Input Mixin - Handles mouse and keyboard input
- * Updated: Fix selection bug by ensuring UI refreshes on repeated clicks
+ * Updated: Constraints for drag/drop to prevent memory leaks and UI bugs
  */
 
 import { CoordHelper } from '../utils/coords.js';
@@ -149,11 +149,20 @@ export const EditorInputMixin = {
         targets.forEach(item => {
             if (!item.coords) return;
 
+            // --- CONSTRAINT LOGIC FOR WASD ---
+            // Prevent moving out of bounds with keyboard too
+            const maxX = dim.w - item.coords.w;
+            const maxY = dim.h - item.coords.h;
+
             if (this.transformMode === 'move') {
                 if (isUp) item.coords.y -= step;
                 if (isDown) item.coords.y += step;
                 if (isLeft) item.coords.x -= step;
                 if (isRight) item.coords.x += step;
+                
+                // Clamp position
+                item.coords.x = Math.max(0, Math.min(item.coords.x, maxX));
+                item.coords.y = Math.max(0, Math.min(item.coords.y, maxY));
             } 
             else if (this.transformMode === 'shrink') {
                 if (isUp) { item.coords.y += step; item.coords.h -= step; }
@@ -168,8 +177,11 @@ export const EditorInputMixin = {
                 if (isRight) { item.coords.w += step; }
             }
 
+            // Clamp dimensions
             if (item.coords.w < 5) item.coords.w = 5;
             if (item.coords.h < 5) item.coords.h = 5;
+            if (item.coords.w > dim.w) item.coords.w = dim.w;
+            if (item.coords.h > dim.h) item.coords.h = dim.h;
 
             const domId = (item.type === 'group' || this.activeTab === 'group') ? `group-${item.id}` : `btn-${item.id}`;
             const el = document.getElementById(domId);
@@ -230,25 +242,39 @@ export const EditorInputMixin = {
             const isX = this.isHoldingX;
 
             if (isZ || isX) {
+                // 1. DETERMINE PAGE UNDER MOUSE
+                const targetPageContainer = e.target.closest('.page-container');
+                if (!targetPageContainer) return; // Prevent creation outside pages
+
                 e.preventDefault();
                 
-                const pageIndex = this.activePageIndex;
-                const pageEl = document.getElementById(`page-${pageIndex}`);
-                const dim = this.renderer.pageDimensions[pageIndex];
+                // 2. SWITCH ACTIVE PAGE IF NEEDED
+                const targetPageIndex = parseInt(targetPageContainer.id.replace('page-', '')) || 0;
+                if (this.activePageIndex !== targetPageIndex) {
+                    this.activePageIndex = targetPageIndex;
+                    this.renderPagesList();
+                }
+
+                const pageEl = targetPageContainer;
+                const dim = this.renderer.pageDimensions[targetPageIndex];
                 
                 if (pageEl && dim) {
                     const rect = pageEl.getBoundingClientRect();
                     const scaleX = dim.w / rect.width;
                     const scaleY = dim.h / rect.height;
                     
-                    const relX = (e.clientX - rect.left) * scaleX;
-                    const relY = (e.clientY - rect.top) * scaleY;
+                    // 3. CLAMP START POSITION INSIDE PAGE
+                    let rawRelX = (e.clientX - rect.left) * scaleX;
+                    let rawRelY = (e.clientY - rect.top) * scaleY;
+                    
+                    const relX = Math.max(0, Math.min(rawRelX, dim.w));
+                    const relY = Math.max(0, Math.min(rawRelY, dim.h));
 
                     const type = isX ? 'group' : 'item';
                     if (isX) this.switchTab('group');
                     else this.switchTab('choice');
 
-                    const newObj = this.startDragCreation(type, relX, relY, pageIndex);
+                    const newObj = this.startDragCreation(type, relX, relY, targetPageIndex);
                     
                     if (newObj) {
                         this.creationState = {
@@ -257,7 +283,7 @@ export const EditorInputMixin = {
                             startX: relX,
                             startY: relY,
                             obj: newObj,
-                            pageIndex: pageIndex,
+                            pageIndex: targetPageIndex,
                             scaleX: scaleX,
                             scaleY: scaleY,
                             containerRect: rect,
@@ -327,8 +353,6 @@ export const EditorInputMixin = {
                         if (!this.selectedItems.includes(item)) { 
                             this.selectChoice(item, target); 
                         } else { 
-                            // ⚡ FIX: Force refresh UI if clicking an already selected item
-                            // This fixes the issue where visual cards sometimes don't activate the sidebar controls
                             this.selectedItem = item; 
                             this.switchTab('choice');
                             this.updateChoiceInputs();
@@ -340,20 +364,23 @@ export const EditorInputMixin = {
                 }
             } else {
                 if (!e.shiftKey) { this.deselectChoice(); }
-                this.isMarqueeSelecting = true;
-                this.marqueeStart = { x: e.clientX, y: e.clientY };
-                if (!this.marqueeBox) {
-                    this.marqueeBox = document.createElement('div');
-                    this.marqueeBox.className = 'selection-marquee';
-                    document.body.appendChild(this.marqueeBox);
+                // Start marquee only if inside a page
+                if (pageContainer) {
+                    this.isMarqueeSelecting = true;
+                    this.marqueeStart = { x: e.clientX, y: e.clientY };
+                    if (!this.marqueeBox) {
+                        this.marqueeBox = document.createElement('div');
+                        this.marqueeBox.className = 'selection-marquee';
+                        document.body.appendChild(this.marqueeBox);
+                    }
+                    this.marqueeBox.style.display = 'block';
+                    this.marqueeBox.style.left = e.clientX + 'px';
+                    this.marqueeBox.style.top = e.clientY + 'px';
+                    this.marqueeBox.style.width = '0px';
+                    this.marqueeBox.style.height = '0px';
+                    e.preventDefault();
+                    return;
                 }
-                this.marqueeBox.style.display = 'block';
-                this.marqueeBox.style.left = e.clientX + 'px';
-                this.marqueeBox.style.top = e.clientY + 'px';
-                this.marqueeBox.style.width = '0px';
-                this.marqueeBox.style.height = '0px';
-                e.preventDefault();
-                return; 
             }
         }
         
@@ -400,16 +427,21 @@ export const EditorInputMixin = {
             return;
         }
 
-        // === DRAG TO CREATE LOGIC ===
+        // === DRAG TO CREATE LOGIC (Restricted) ===
         if (this.creationState && this.creationState.active) {
             const { startX, startY, obj, containerRect, scaleX, scaleY, dim } = this.creationState;
             
             // Calculate current coords relative to start
             const pageEl = document.getElementById(`page-${this.creationState.pageIndex}`);
-            const rect = pageEl.getBoundingClientRect();
+            // Recalculate rect in case of scroll
+            const rect = pageEl.getBoundingClientRect(); 
             
-            const currentX = (e.clientX - rect.left) * scaleX;
-            const currentY = (e.clientY - rect.top) * scaleY;
+            const rawCurrentX = (e.clientX - rect.left) * scaleX;
+            const rawCurrentY = (e.clientY - rect.top) * scaleY;
+
+            // Clamp current mouse pos to page dimensions
+            const currentX = Math.max(0, Math.min(rawCurrentX, dim.w));
+            const currentY = Math.max(0, Math.min(rawCurrentY, dim.h));
 
             let x = Math.min(startX, currentX);
             let y = Math.min(startY, currentY);
@@ -456,6 +488,7 @@ export const EditorInputMixin = {
         const dy = e.clientY - this.dragStart.y;
         const { scaleX, scaleY, dim, targetObj, isGroup } = this.dragContext;
         
+        // === DRAGGING EXISTING ITEMS (Restricted) ===
         if (this.isDragging) {
             const itemsToMove = isGroup ? [targetObj] : this.selectedItems;
             
@@ -466,6 +499,7 @@ export const EditorInputMixin = {
                 let destX = Math.round(initial.x + dx * scaleX);
                 let destY = Math.round(initial.y + dy * scaleY);
                 
+                // Constraint: Keep fully inside page
                 destX = Math.max(0, Math.min(destX, dim.w - item.coords.w));
                 destY = Math.max(0, Math.min(destY, dim.h - item.coords.h));
 
@@ -477,6 +511,7 @@ export const EditorInputMixin = {
                 if (el) Object.assign(el.style, CoordHelper.toPercent(item.coords, dim));
             });
         } 
+        // === RESIZING ITEMS (Restricted) ===
         else if (this.isResizing && this.resizeMode) {
             const start = this.initialRect;
             const deltaX = dx * scaleX;
@@ -488,15 +523,25 @@ export const EditorInputMixin = {
             let finalW = start.w;
             let finalH = start.h;
 
-            if (this.resizeMode.includes('r')) finalW = Math.max(MIN_SIZE, start.w + deltaX);
+            if (this.resizeMode.includes('r')) {
+                // Ensure width doesn't go beyond page width
+                const maxW = dim.w - start.x;
+                finalW = Math.min(maxW, Math.max(MIN_SIZE, start.w + deltaX));
+            }
             if (this.resizeMode.includes('l')) {
-                const proposedX = Math.min(start.x + deltaX, start.x + start.w - MIN_SIZE);
+                // Ensure x doesn't go below 0
+                const proposedX = Math.max(0, Math.min(start.x + deltaX, start.x + start.w - MIN_SIZE));
                 finalW = (start.x + start.w) - proposedX;
                 finalX = proposedX;
             }
-            if (this.resizeMode.includes('b')) finalH = Math.max(MIN_SIZE, start.h + deltaY);
+            if (this.resizeMode.includes('b')) {
+                // Ensure height doesn't go beyond page height
+                const maxH = dim.h - start.y;
+                finalH = Math.min(maxH, Math.max(MIN_SIZE, start.h + deltaY));
+            }
             if (this.resizeMode.includes('t')) {
-                const proposedY = Math.min(start.y + deltaY, start.y + start.h - MIN_SIZE);
+                // Ensure y doesn't go below 0
+                const proposedY = Math.max(0, Math.min(start.y + deltaY, start.y + start.h - MIN_SIZE));
                 finalH = (start.y + start.h) - proposedY;
                 finalY = proposedY;
             }
@@ -527,9 +572,23 @@ export const EditorInputMixin = {
             if (obj.coords.w < 10 || obj.coords.h < 10) {
                  const defW = type === 'group' ? 300 : 200;
                  const defH = type === 'group' ? 200 : 100;
+                 
+                 // Smart Center on Click:
+                 // We need to recenter because (x,y) is top-left currently
+                 // and ensure we don't blow past the page boundaries
+                 const dim = this.renderer.pageDimensions[this.creationState.pageIndex];
+                 
+                 let cx = obj.coords.x - (defW / 2);
+                 let cy = obj.coords.y - (defH / 2);
+                 
+                 // Clamp again for the expanded size
+                 cx = Math.max(0, Math.min(cx, dim.w - defW));
+                 cy = Math.max(0, Math.min(cy, dim.h - defH));
+
+                 obj.coords.x = Math.round(cx);
+                 obj.coords.y = Math.round(cy);
                  obj.coords.w = defW;
                  obj.coords.h = defH;
-                 // Recenter logic optional, currently expands top-left
             }
 
             this.history.push(`create_${type}`);
