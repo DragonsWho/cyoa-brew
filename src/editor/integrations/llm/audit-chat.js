@@ -1,12 +1,13 @@
 /**
  * src/editor/integrations/llm/audit-chat.js
  * Interactive Audit Chat Logic with Caching, Debug & Token Tracking
- * Updated: Selective Apply (Checkboxes), Instant Debug Copy, Material UI Icons
+ * FULL VERSION - NO CUTS
  */
 
 // Import the prompt
 import { AUDIT_CHAT_SYSTEM_PROMPT } from './config/prompts.js';
-import { ICONS } from '../../ui/icons.js'; // Import centralized icons
+// FIX: Correct path to icons
+import { ICONS } from '../../ui/icons.js'; 
 
 export const AuditChatMixin = {
     auditHistory: [],
@@ -37,7 +38,6 @@ export const AuditChatMixin = {
                         </button>
                     </div>
                 </div>
-                <!-- REMOVED THE ACCORDION DEBUG PANEL -->
                 <div id="audit-body" class="audit-body">
                     <div id="audit-messages" class="audit-messages"></div>
                     <div class="audit-input-area">
@@ -57,9 +57,6 @@ export const AuditChatMixin = {
         this.initAuditDraggable();
     },
 
-    // ... остальной код audit-chat.js остается без изменений ...
-    // (copyAuditDebugLog, updateTokenCounter, initAuditDraggable и т.д.)
-    
     // ==================== DEBUG & LOGGING ====================
 
     updateAuditDebugLog(requestData, responseData) {
@@ -78,7 +75,6 @@ export const AuditChatMixin = {
 
     copyAuditDebugLog() {
         if (!this.auditLastRequest) {
-            // If no request yet, create a dummy state or alert
             alert('No AI interaction data recorded yet.');
             return;
         }
@@ -88,13 +84,11 @@ export const AuditChatMixin = {
         navigator.clipboard.writeText(jsonStr).then(() => {
             const btn = document.querySelector('.audit-ctrl-btn.debug-btn');
             if (btn) {
-                // Visual feedback
                 btn.style.color = '#4CAF50';
                 setTimeout(() => btn.style.color = '', 1000);
             }
         }).catch(err => {
             console.error('Failed to copy', err);
-            // Fallback
             const ta = document.createElement('textarea');
             ta.value = jsonStr;
             document.body.appendChild(ta);
@@ -237,7 +231,7 @@ export const AuditChatMixin = {
         this.auditHistory = [];
         this.resetTokenCounter();
 
-        // ⚠️ IMPORTANT: Sync config from UI before API call
+        // Sync config from UI before API call
         this.syncLlmConfigFromUI();
 
         // Check for manual mode
@@ -336,22 +330,17 @@ Be concise. If everything looks good, say so.`;
 
         const request = providerConfig.formatRequest(model, messages, apiKey, baseUrl);
         
-        // --- PREPARE FULL DEBUG LOG ---
+        // Prepare debug log
         let logMessages = null;
         try {
             logMessages = JSON.parse(JSON.stringify(messages));
+            // Truncate huge images in logs
             if (Array.isArray(logMessages)) {
                 logMessages.forEach(msg => {
                     if (Array.isArray(msg.content)) {
                         msg.content.forEach(part => {
                             if (part.type === 'image_url' && part.image_url?.url?.startsWith('data:')) {
                                 part.image_url.url = '<BASE64_IMAGE_DATA_TRUNCATED_FOR_LOG>';
-                            }
-                            if (part.inline_data && part.inline_data.data) {
-                                part.inline_data.data = '<BASE64_DATA_TRUNCATED_FOR_LOG>';
-                            }
-                            if (part.source && part.source.type === 'base64') {
-                                part.source.data = '<BASE64_DATA_TRUNCATED_FOR_LOG>';
                             }
                         });
                     }
@@ -546,12 +535,10 @@ I'll ask you to find and fix issues. When suggesting fixes, use the action forma
         container.scrollTop = container.scrollHeight;
     },
 
-    // UPDATED: Now renders checkboxes
     renderActionsBlock(actions, container) {
         const wrapper = document.createElement('div');
         wrapper.className = 'audit-msg ai';
         
-        // Ensure actions have a safe ID for the list
         const blockId = `act-block-${Date.now()}`;
         const actionsJson = encodeURIComponent(JSON.stringify(actions));
         
@@ -572,15 +559,11 @@ I'll ask you to find and fix issues. When suggesting fixes, use the action forma
                         </li>
                     `).join('')}
                 </ul>
-                <button class="apply-fixes-btn" data-actions="${actionsJson}" data-block-id="${blockId}">
+                <button class="apply-fixes-btn" onclick="CYOA.editor.applyAuditActions(this, '${blockId}', '${actionsJson}')">
                     ✅ Apply Selected Fixes
                 </button>
             </div>
         `;
-
-        wrapper.querySelector('.apply-fixes-btn').addEventListener('click', (e) => {
-            this.applyAuditActions(e.target);
-        });
 
         container.appendChild(wrapper);
     },
@@ -630,21 +613,17 @@ I'll ask you to find and fix issues. When suggesting fixes, use the action forma
         const input = document.getElementById('audit-input');
         if (sendBtn) {
             sendBtn.disabled = isLoading;
-            sendBtn.querySelector('.send-icon').style.display = isLoading ? 'none' : 'inline';
-            sendBtn.querySelector('.loading-icon').style.display = isLoading ? 'inline' : 'none';
+            const sendIcon = sendBtn.querySelector('.send-icon');
+            const loadIcon = sendBtn.querySelector('.loading-icon');
+            if(sendIcon) sendIcon.style.display = isLoading ? 'none' : 'inline';
+            if(loadIcon) loadIcon.style.display = isLoading ? 'inline' : 'none';
         }
         if (input) input.disabled = isLoading;
     },
 
     // ==================== APPLY ACTIONS ====================
     
-    // UPDATED: Filters by Checked boxes
-    applyAuditActions(btn) {
-        const actionsStr = btn.dataset.actions;
-        const blockId = btn.dataset.blockId;
-        
-        if (!actionsStr || !blockId) return;
-        
+    applyAuditActions(btn, blockId, actionsStr) {
         const allActions = JSON.parse(decodeURIComponent(actionsStr));
         const container = document.getElementById(blockId);
         if (!container) return;

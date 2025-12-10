@@ -25,6 +25,7 @@ import { SettingsPanelMixin } from './ui/settings-panel.js';
 import { StyleSettingsMixin } from './ui/style-panel.js'; 
 import { ListenersMixin } from './ui/listeners.js';
 import { SelectionMixin } from './ui/selection.js';
+import { EditorPreferencesMixin } from './ui/editor-preferences.js'; // NEW
 
 import { LLMCoreMixin } from './integrations/llm/core.js';
 import { ManualModeMixin } from './integrations/llm/manual-mode.js';
@@ -92,6 +93,9 @@ export class CYOAEditor {
             model: 'google/gemini-2.0-flash-exp:free'
         };
 
+        // Initialize preferences
+        this.initPreferences();
+
         console.log('✏️ Editor initialized');
     }
 
@@ -158,6 +162,7 @@ Object.assign(CYOAEditor.prototype, SettingsPanelMixin);
 Object.assign(CYOAEditor.prototype, StyleSettingsMixin); 
 Object.assign(CYOAEditor.prototype, ListenersMixin);
 Object.assign(CYOAEditor.prototype, SelectionMixin);
+Object.assign(CYOAEditor.prototype, EditorPreferencesMixin); // NEW
 
 // 6. Integrations
 Object.assign(CYOAEditor.prototype, LLMCoreMixin);

@@ -1,6 +1,7 @@
 /**
  * src/editor/ui/style-panel.js
  * Style Settings Panel
+ * Updated: Uses CSS variables for Light/Dark mode compatibility
  */
 
 import { STANDARD_PRESETS, FANCY_PRESETS, VISUAL_STANDARD_PRESETS, VISUAL_FANCY_PRESETS, DISABLED_PRESETS } from '../data/style-presets.js';
@@ -20,24 +21,24 @@ export function createStylePanelHTML() {
     const checkedAttr = isPreviewActive ? 'checked' : '';
 
     return `
-        <div class="editor-section" style="padding:0; border-bottom:1px solid #222;">
-<div class="accordion-header collapsed" onclick="CYOA.editor.toggleAccordion(this)" style="padding: 10px;">
-    <span style="display:flex; align-items:center; gap:6px;">${ICONS.palette} Card Styles</span>
-</div>
+        <div class="editor-section" style="padding:0; border-bottom:1px solid var(--ed-border);">
+            <div class="accordion-header collapsed" onclick="CYOA.editor.toggleAccordion(this)" style="padding: 10px;">
+                <span style="display:flex; align-items:center; gap:6px;">${ICONS.palette} Card Styles</span>
+            </div>
             
             <div class="accordion-content collapsed" style="padding: 0;">
                 
                 <!-- PREVIEW TOGGLE -->
-                <div style="background: #252525; padding: 8px 10px; border-bottom: 1px solid #333; display:flex; align-items:center; justify-content:space-between;">
-                    <span style="color:#aaa; font-size:0.8rem;">Test interactions:</span>
+                <div style="background: var(--ed-panel-bg); padding: 8px 10px; border-bottom: 1px solid var(--ed-border); display:flex; align-items:center; justify-content:space-between;">
+                    <span style="color:var(--ed-fg); font-size:0.8rem;">Test interactions:</span>
                     <div style="display:flex; align-items:center; gap:6px;">
                         <input type="checkbox" id="style-preview-mode" onchange="CYOA.editor.togglePreviewMode(this.checked)" style="cursor:pointer;" ${checkedAttr} title="Toggle interactive preview mode to test hover/click states">
-                        <label for="style-preview-mode" style="cursor:pointer; font-size:0.85rem; color:#fff;" title="Toggle interactive preview mode to test hover/click states">Preview Mode</label>
+                        <label for="style-preview-mode" style="cursor:pointer; font-size:0.85rem; color:var(--ed-fg);" title="Toggle interactive preview mode to test hover/click states">Preview Mode</label>
                     </div>
                 </div>
 
                 <!-- PRESETS SECTION -->
-                <div class="editor-section" style="border-bottom: 1px solid #333; padding: 10px; background:#1e1e1e;">
+                <div class="editor-section" style="border-bottom: 1px solid var(--ed-border); padding: 10px; background:var(--ed-bg);">
                     <div style="font-size: 0.8rem; color: #888; margin-bottom: 5px;">Presets</div>
                     
                     <div class="compact-list">
@@ -65,10 +66,10 @@ export function createStylePanelHTML() {
                 </div>
 
                 <!-- ACTIVE STYLE EDITOR -->
-                <div class="editor-section" style="border-bottom: 1px solid #333; padding-left: 5px;">
-        <div class="accordion-header collapsed" onclick="CYOA.editor.toggleAccordion(this)" style="font-size: 0.85rem; color: #ccc;">
-            <span style="display:flex; align-items:center; gap:6px;">${ICONS.edit} Transparent Card Settings</span>
-        </div>
+                <div class="editor-section" style="border-bottom: 1px solid var(--ed-border); padding-left: 5px;">
+                    <div class="accordion-header collapsed" onclick="CYOA.editor.toggleAccordion(this)" style="font-size: 0.85rem; color: var(--ed-fg);">
+                        <span style="display:flex; align-items:center; gap:6px;">${ICONS.edit} Transparent Card Settings</span>
+                    </div>
                     <div class="accordion-content collapsed">
                         <div class="style-row">
                             <label class="style-label" title="Border/Frame settings for selected items">Frame</label>
@@ -103,8 +104,8 @@ export function createStylePanelHTML() {
                 </div>
 
                 <!-- SPECIAL CARD STYLE EDITOR -->
-                <div class="editor-section" style="border-bottom: 1px solid #333; padding-left: 5px;">
-                    <div class="accordion-header collapsed" onclick="CYOA.editor.toggleAccordion(this)" style="font-size: 0.85rem; color: #ccc;">
+                <div class="editor-section" style="border-bottom: 1px solid var(--ed-border); padding-left: 5px;">
+                    <div class="accordion-header collapsed" onclick="CYOA.editor.toggleAccordion(this)" style="font-size: 0.85rem; color: var(--ed-fg);">
                         <span style="display:flex; align-items:center; gap:6px;">${ICONS.image} Visual Card Settings</span>
                     </div>
                     <div class="accordion-content collapsed">
@@ -132,8 +133,8 @@ export function createStylePanelHTML() {
                 </div>
 
                 <!-- DISABLED STYLE EDITOR -->
-                <div class="editor-section" style="border-bottom: 1px solid #333; padding-left: 5px;">
-                    <div class="accordion-header collapsed" onclick="CYOA.editor.toggleAccordion(this)" style="font-size: 0.85rem; color: #ccc;">
+                <div class="editor-section" style="border-bottom: 1px solid var(--ed-border); padding-left: 5px;">
+                    <div class="accordion-header collapsed" onclick="CYOA.editor.toggleAccordion(this)" style="font-size: 0.85rem; color: var(--ed-fg);">
                         <span style="display:flex; align-items:center; gap:6px;">${ICONS.block} Disabled Settings</span>
                     </div>
                     <div class="accordion-content collapsed">

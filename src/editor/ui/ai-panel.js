@@ -19,7 +19,7 @@ export function createAiPanelHTML() {
                     <div style="margin-bottom:5px; font-size:0.75rem; color:#888;">
                         Shared context for the LLM. Keep track of global mechanics here.
                     </div>
-                    <textarea id="project-notes" class="code-editor" style="height:150px; font-family: sans-serif; font-size: 0.9rem; color:#ddd;" placeholder="Enter global game rules or notes here..."></textarea>
+                    <textarea id="project-notes" class="code-editor" style="height:150px;" placeholder="Enter global game rules or notes here..."></textarea>
                 </div>
             </div>
 
