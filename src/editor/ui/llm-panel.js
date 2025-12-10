@@ -4,6 +4,7 @@
  */
 
 import { LLM_PROVIDERS } from '../integrations/llm/config/providers.js';
+import { ICONS } from './icons.js';
 
 export function createLlmPanelHTML() {
     const providerOptions = Object.entries(LLM_PROVIDERS)
@@ -35,7 +36,7 @@ export function createLlmPanelHTML() {
                             <span class="input-label">API Key</span>
                         </div>
                         <button type="button" class="toggle-visibility-btn" onclick="CYOA.editor.toggleApiKeyVisibility()" title="Show/Hide API Key">
-                            <span class="eye-icon">👁</span>
+                            <span class="eye-icon">${ICONS.eye}</span>
                         </button>
                     </div>
                     <div id="llm-key-status" style="font-size:0.65rem; color:#666; margin-bottom:8px; padding-left:4px;"></div>
@@ -110,11 +111,11 @@ export function toggleApiKeyVisibility() {
     
     if (!input) return;
     
-    if (input.type === 'password') {
-        input.type = 'text';
-        if (btn) btn.textContent = '🙈';
+    if (input.classList.contains('masked-input')) {
+        input.classList.remove('masked-input');
+        if (btn) btn.innerHTML = ICONS.eye_off;
     } else {
-        input.type = 'password';
-        if (btn) btn.textContent = '👁';
+        input.classList.add('masked-input');
+        if (btn) btn.innerHTML = ICONS.eye;
     }
 }

@@ -4,6 +4,7 @@
  */
 
 import { imageCropper } from '../utils/image-tools.js';
+import { ICONS } from './icons.js';
 
 export function createChoicePanel() {
     return `
@@ -16,12 +17,12 @@ export function createChoicePanel() {
                     <div class="accordion-header" onclick="CYOA.editor.toggleAccordion(this)">📐 Alignment</div>
                     <div class="accordion-content">
                         <div class="row-buttons">
-                            <button class="action-btn" style="background:#444;" onclick="CYOA.editor.alignSelectedItems('top')">⬆️ Top</button>
-                            <button class="action-btn" style="background:#444;" onclick="CYOA.editor.alignSelectedItems('bottom')">⬇️ Bottom</button>
+                            <button class="action-btn" style="background:#444;" onclick="CYOA.editor.alignSelectedItems('top')">${ICONS.arrow_up} Align Top</button>
+                            <button class="action-btn" style="background:#444;" onclick="CYOA.editor.alignSelectedItems('bottom')">${ICONS.arrow_down} Align Bottom</button>
                         </div>
                         <div class="row-buttons">
-                            <button class="action-btn" style="background:#444;" onclick="CYOA.editor.alignSelectedItems('left')">⬅️ Left</button>
-                            <button class="action-btn" style="background:#444;" onclick="CYOA.editor.alignSelectedItems('right')">➡️ Right</button>
+                            <button class="action-btn" style="background:#444;" onclick="CYOA.editor.alignSelectedItems('left')">${ICONS.arrow_left} Align Left</button>
+                            <button class="action-btn" style="background:#444;" onclick="CYOA.editor.alignSelectedItems('right')">${ICONS.arrow_right} Align Right</button>
                         </div>
                     </div>
                 </div>
@@ -34,12 +35,12 @@ export function createChoicePanel() {
                     </div>
                 </div>
                 <div class="editor-section" style="margin-top: 10px; border-top: 1px solid #222;">
-                    <button class="action-btn btn-delete" onclick="CYOA.editor.deleteSelectedItems()">🗑️ Delete All Selected</button>
+                    <button class="action-btn btn-delete" onclick="CYOA.editor.deleteSelectedItems()">${ICONS.delete} Delete All</button>
                 </div>
             </div>
 
             <div id="choice-empty-state" class="info-text">
-                <p>Select an item to edit.</p>
+                <p>Select a card to edit.</p>
                 <p style="font-size:0.8rem; color:#666;">Shift+Click to multi-select.<br>WASD to move.</p>
             </div>
 
@@ -73,7 +74,8 @@ export function createChoicePanel() {
                          <div style="display:flex; gap:10px; align-items:center;">
                              <div id="vc-img-preview" style="width: 40px; height: 40px; background: #000; background-size: cover; background-position: center; border: 1px solid #555;"></div>
                              <div style="flex:1;">
-                                <button class="full-width-btn" style="margin-top:0; font-size:0.8rem;" onclick="document.getElementById('vc-image-upload').click()">🖼️ Upload & Crop Image</button>
+  
+                                <button class="full-width-btn" style="margin-top:0; font-size:0.8rem;" onclick="document.getElementById('vc-image-upload').click()">${ICONS.image} Upload & Crop Image</button>
                                 <input type="file" id="vc-image-upload" accept="image/*" style="display:none;">
                              </div>
                          </div>
@@ -121,11 +123,11 @@ export function createChoicePanel() {
                     </div>
                 </div>
                 <div class="editor-section" style="margin-top: 10px; border-top: 1px solid #222;">
-                    <button class="action-btn btn-delete" onclick="CYOA.editor.deleteSelectedItem()">🗑️ Delete</button>
+                    <button class="action-btn btn-delete" onclick="CYOA.editor.deleteSelectedItem()">${ICONS.delete} Delete</button>
                 </div>
             </div>
             <div class="editor-section editor-actions-fixed">
-                <button class="action-btn btn-add full-width-btn" onclick="CYOA.editor.addNewItem()">➕ Add New Item</button>
+                <button class="action-btn btn-add full-width-btn" onclick="CYOA.editor.addNewItem()">${ICONS.add} Add New Card</button>
             </div>
         </div>
     `;

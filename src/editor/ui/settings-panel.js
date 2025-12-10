@@ -4,6 +4,7 @@
  */
 
 import { createStylePanelHTML } from './style-panel.js';
+import { ICONS } from './icons.js';
 
 export function createSettingsPanel() {
     return `
@@ -11,13 +12,15 @@ export function createSettingsPanel() {
     
             <!-- File Operations -->
             <div class="editor-section">
-                <div class="accordion-header" onclick="CYOA.editor.toggleAccordion(this)">💾 File Operations</div>
+                <div class="accordion-header" onclick="CYOA.editor.toggleAccordion(this)">
+    <span style="display:flex; align-items:center; gap:6px;">${ICONS.save} File Operations</span>
+</div>
                 <div class="accordion-content">
-                    <button class="full-width-btn" style="background:#555; margin-bottom:10px;" onclick="CYOA.editor.newProject()">📄 New Project</button>
-                    <button class="full-width-btn" style="background:#4b6cb7; margin-bottom:10px;" onclick="document.getElementById('load-config-input').click()">📂 Load Project</button>
+                    <button class="full-width-btn" style="background:#555; margin-bottom:10px;" onclick="CYOA.editor.newProject()">${ICONS.file} New Project</button>
+                    <button class="full-width-btn" style="background:#4b6cb7; margin-bottom:10px;" onclick="document.getElementById('load-config-input').click()">${ICONS.folder} Load Project</button>
                     <div class="row-buttons">
-                        <button class="action-btn primary-btn" onclick="CYOA.editor.exportConfig()">💾 Save JSON</button>
-                        <button class="action-btn" style="background:#444;" onclick="CYOA.editor.exportZip()">📦 Save Zip</button>
+                        <button class="action-btn primary-btn" onclick="CYOA.editor.exportConfig()">${ICONS.save} Save JSON</button>
+                        <button class="action-btn" style="background:#444;" onclick="CYOA.editor.exportZip()">${ICONS.zip} Save Zip</button>
                     </div>
                 </div>
             </div>
@@ -27,10 +30,10 @@ export function createSettingsPanel() {
 
             <!-- Point Systems -->
             <div class="editor-section">
-                <div class="accordion-header collapsed" onclick="CYOA.editor.toggleAccordion(this)">💰 Point Systems</div>
+                <div class="accordion-header collapsed" onclick="CYOA.editor.toggleAccordion(this)">${ICONS.coin} Point Systems</div>
                 <div class="accordion-content collapsed">
                     <div id="points-list-container" style="margin-bottom:10px;"></div>
-                    <button class="full-width-btn" style="background:#2e7d32;" onclick="CYOA.editor.addNewPointSystem()">➕ Add Currency</button>
+                    <button class="full-width-btn" style="background:#2e7d32;" onclick="CYOA.editor.addNewPointSystem()">${ICONS.add} Add Currency</button>
                 </div>
             </div>
         </div>
@@ -80,7 +83,7 @@ export const SettingsPanelMixin = {
                 <input style="width:60px; background:#333; border:none; color:#fff; padding:4px;" value="${p.id}" onchange="CYOA.editor.updatePointSystem(${idx}, 'id', this.value)">
                 <input style="flex:1; min-width:0; background:#333; border:none; color:#fff; padding:4px;" value="${p.name}" onchange="CYOA.editor.updatePointSystem(${idx}, 'name', this.value)">
                 <input style="width:40px; background:#333; border:none; color:#fff; padding:4px; text-align:center;" type="number" value="${p.start}" onchange="CYOA.editor.updatePointSystem(${idx}, 'start', this.value)">
-                <button style="width:24px; height:24px; background:#b71c1c; border:none; color:white; border-radius:3px; cursor:pointer; display:flex; align-items:center; justify-content:center;" onclick="CYOA.editor.deletePointSystem(${idx})">🗑️</button>
+                <button style="width:24px; height:24px; background:#b71c1c; border:none; color:white; border-radius:3px; cursor:pointer; display:flex; align-items:center; justify-content:center;" onclick="CYOA.editor.deletePointSystem(${idx})">${ICONS.delete}</button>
             </div>
         `).join('');
     }

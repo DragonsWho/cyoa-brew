@@ -4,6 +4,7 @@
  */
 
 import { STANDARD_PRESETS, FANCY_PRESETS, VISUAL_STANDARD_PRESETS, VISUAL_FANCY_PRESETS, DISABLED_PRESETS } from '../data/style-presets.js';
+import { ICONS } from './icons.js';
 
 export function createStylePanelHTML() {
     const createOptions = (list) => list.map((p, i) => `<option value="${i}">${p.name}</option>`).join('');
@@ -20,9 +21,9 @@ export function createStylePanelHTML() {
 
     return `
         <div class="editor-section" style="padding:0; border-bottom:1px solid #222;">
-            <div class="accordion-header collapsed" onclick="CYOA.editor.toggleAccordion(this)" style="padding: 10px;">
-                <span>🎨 Card Styles</span>
-            </div>
+<div class="accordion-header collapsed" onclick="CYOA.editor.toggleAccordion(this)" style="padding: 10px;">
+    <span style="display:flex; align-items:center; gap:6px;">${ICONS.palette} Card Styles</span>
+</div>
             
             <div class="accordion-content collapsed" style="padding: 0;">
                 
@@ -37,7 +38,7 @@ export function createStylePanelHTML() {
 
                 <!-- PRESETS SECTION -->
                 <div class="editor-section" style="border-bottom: 1px solid #333; padding: 10px; background:#1e1e1e;">
-                    <div style="font-size: 0.8rem; color: #888; margin-bottom: 5px;">⚡ Quick Presets</div>
+                    <div style="font-size: 0.8rem; color: #888; margin-bottom: 5px;">Presets</div>
                     
                     <div class="compact-list">
                         <!-- 1. ACTIVE TRANSPARENT -->
@@ -65,9 +66,9 @@ export function createStylePanelHTML() {
 
                 <!-- ACTIVE STYLE EDITOR -->
                 <div class="editor-section" style="border-bottom: 1px solid #333; padding-left: 5px;">
-                    <div class="accordion-header collapsed" onclick="CYOA.editor.toggleAccordion(this)" style="font-size: 0.85rem; color: #ccc;">
-                        ✏️ Transparent Card Settings
-                    </div>
+        <div class="accordion-header collapsed" onclick="CYOA.editor.toggleAccordion(this)" style="font-size: 0.85rem; color: #ccc;">
+            <span style="display:flex; align-items:center; gap:6px;">${ICONS.edit} Transparent Card Settings</span>
+        </div>
                     <div class="accordion-content collapsed">
                         <div class="style-row">
                             <label class="style-label" title="Border/Frame settings for selected items">Frame</label>
@@ -94,7 +95,7 @@ export function createStylePanelHTML() {
                             <label class="style-label" title="Background overlay settings">Body</label>
                             <input type="color" id="style-body-color" class="style-input square-input" title="Background Overlay Color">
                             <input type="number" id="style-body-opacity" class="style-input square-input" min="0" max="1" step="0.1" title="Background Opacity (0.0 to 1.0)">
-                            <button class="style-input square-input" onclick="document.getElementById('style-bg-image-input').click()" title="Upload Background Pattern/Image">🖼️</button>
+                            <button class="style-input square-input" onclick="document.getElementById('style-bg-image-input').click()" title="Upload Background Pattern/Image">${ICONS.image}</button>
                             <input type="file" id="style-bg-image-input" accept="image/*" style="display:none;">
                             <input type="text" id="style-custom-css" class="style-input" placeholder="css..." style="flex: 1; min-width: 0;" title="Custom CSS for selected state (e.g., filter: blur(2px))">
                         </div>
@@ -103,8 +104,8 @@ export function createStylePanelHTML() {
 
                 <!-- SPECIAL CARD STYLE EDITOR -->
                 <div class="editor-section" style="border-bottom: 1px solid #333; padding-left: 5px;">
-                    <div class="accordion-header collapsed" onclick="CYOA.editor.toggleAccordion(this)" style="font-size: 0.85rem; color: #4CAF50; font-weight:bold;">
-                        🎴 Visual Card Settings
+                    <div class="accordion-header collapsed" onclick="CYOA.editor.toggleAccordion(this)" style="font-size: 0.85rem; color: #ccc;">
+                        <span style="display:flex; align-items:center; gap:6px;">${ICONS.image} Visual Card Settings</span>
                     </div>
                     <div class="accordion-content collapsed">
                         <div class="info-text" style="font-size:0.75rem; padding:5px; margin:5px 0;">
@@ -133,7 +134,7 @@ export function createStylePanelHTML() {
                 <!-- DISABLED STYLE EDITOR -->
                 <div class="editor-section" style="border-bottom: 1px solid #333; padding-left: 5px;">
                     <div class="accordion-header collapsed" onclick="CYOA.editor.toggleAccordion(this)" style="font-size: 0.85rem; color: #ccc;">
-                        🚫 Disabled Settings
+                        <span style="display:flex; align-items:center; gap:6px;">${ICONS.block} Disabled Settings</span>
                     </div>
                     <div class="accordion-content collapsed">
                         <div class="style-row">

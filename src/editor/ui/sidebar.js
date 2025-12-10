@@ -7,6 +7,7 @@ import { createChoicePanel } from './choice-panel.js';
 import { createGroupPanel } from './group-panel.js';
 import { createSettingsPanel } from './settings-panel.js';
 import { createAiPanelHTML } from './ai-panel.js';
+import { ICONS } from './icons.js';
 
 export const SidebarMixin = {
     // ==================== CREATE SIDEBAR ====================
@@ -40,9 +41,9 @@ export const SidebarMixin = {
             
             <!-- Page Navigation Strip -->
             <div class="editor-page-nav-container">
-                <button class="nav-arrow" onclick="CYOA.editor.scrollPageNav(-100)">‹</button>
+                <button class="nav-arrow" onclick="CYOA.editor.scrollPageNav(-100)">${ICONS.arrow_left}</button>
                 <div id="editor-page-nav-scroll" class="nav-scroll-area"></div>
-                <button class="nav-arrow" onclick="CYOA.editor.scrollPageNav(100)">›</button>
+                <button class="nav-arrow" onclick="CYOA.editor.scrollPageNav(100)">${ICONS.arrow_right}</button>
             </div>
             
             <div class="sidebar-scroll-content">
@@ -108,7 +109,7 @@ export const SidebarMixin = {
                         onclick="CYOA.editor.selectPage(${idx})" 
                         title="${tooltip}">
                         <span class="page-num">${idx + 1}</span>
-                        ${isActive ? `<span class="page-close" onclick="event.stopPropagation(); CYOA.editor.deletePage(${idx})">×</span>` : ''}
+                        ${isActive ? `<span class="page-close" onclick="event.stopPropagation(); CYOA.editor.deletePage(${idx})">${ICONS.close}</span>` : ''}
                     </div>
                     <div class="nav-divider">|</div>
                 `;
@@ -119,7 +120,7 @@ export const SidebarMixin = {
             <div class="nav-page-btn nav-add-btn" 
                  onclick="document.getElementById('add-page-image-input').click()" 
                  title="Add New Page Image">
-                 <span>+</span>
+                 <span>${ICONS.add}</span>
             </div>
         `;
         

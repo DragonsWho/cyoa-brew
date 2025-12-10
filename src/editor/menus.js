@@ -3,6 +3,8 @@
  * Editor Menus Mixin - Handles Context Menu Logic
  */
 
+import { ICONS } from './ui/icons.js';
+
 export const EditorMenusMixin = {
     setupContextMenu() {
         // Remove existing if any (to prevent duplicates on re-init)
@@ -18,19 +20,18 @@ export const EditorMenusMixin = {
         contextMenu.innerHTML = `
             <div class="menu-label" id="ctx-label">Actions</div>
             <div class="menu-divider"></div>
-            <div class="menu-item ctx-common" onclick="CYOA.editor.handleContextAction('add-item')">➕ Add Item Here</div>
-            <div class="menu-item ctx-common" onclick="CYOA.editor.handleContextAction('add-group')">📂 Add Group Here</div>
+            <div class="menu-item ctx-common" onclick="CYOA.editor.handleContextAction('add-item')">${ICONS.add} Add Item Here</div>
+            <div class="menu-item ctx-common" onclick="CYOA.editor.handleContextAction('add-group')">${ICONS.folder} Add Group Here</div>
             <div class="menu-divider ctx-obj"></div>
-            <div class="menu-item ctx-obj" onclick="CYOA.editor.handleContextAction('duplicate')">📄 Duplicate</div>
-            <div class="menu-item ctx-obj" onclick="CYOA.editor.handleContextAction('copy')">📋 Copy</div>
-            <div class="menu-item ctx-obj" style="color:#ff6b6b;" onclick="CYOA.editor.handleContextAction('delete')">🗑️ Delete</div>
+            <div class="menu-item ctx-obj" onclick="CYOA.editor.handleContextAction('duplicate')">${ICONS.duplicate} Duplicate</div>
+            <div class="menu-item ctx-obj" onclick="CYOA.editor.handleContextAction('copy')">${ICONS.copy} Copy</div>
+            <div class="menu-item ctx-obj" style="color:#ff6b6b;" onclick="CYOA.editor.handleContextAction('delete')">${ICONS.delete} Delete</div>
             <div class="menu-divider ctx-obj"></div>
-            <div class="menu-item ctx-obj" onclick="CYOA.editor.handleContextAction('split-v')">✂️ Split Vertical</div>
-            <div class="menu-item ctx-obj" onclick="CYOA.editor.handleContextAction('split-h')">✂️ Split Horizontal</div>
+            <div class="menu-item ctx-obj" onclick="CYOA.editor.handleContextAction('split-v')">${ICONS.split_v} Split Vertical</div>
+            <div class="menu-item ctx-obj" onclick="CYOA.editor.handleContextAction('split-h')">${ICONS.split_h} Split Horizontal</div>
             <div class="menu-divider ctx-paste"></div>
-            <div class="menu-item ctx-paste" id="ctx-paste-btn" onclick="CYOA.editor.handleContextAction('paste')">📌 Paste</div>
-            <div class="menu-divider"></div>
-            <div class="menu-item" onclick="CYOA.editor.handleContextAction('auto-detect')">🚀 Auto-Detect (SAM)</div>
+            <div class="menu-item ctx-paste" id="ctx-paste-btn" onclick="CYOA.editor.handleContextAction('paste')">${ICONS.paste} Paste</div>
+            <div class="menu-divider"></div> 
         `;
         document.body.appendChild(contextMenu);
 

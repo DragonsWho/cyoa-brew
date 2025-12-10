@@ -3,6 +3,8 @@
  * Group Editing Panel HTML
  */
 
+import { ICONS } from './icons.js';
+
 export function createGroupPanel() {
     return `
         <div id="tab-content-group" class="tab-content" style="display:none;">
@@ -27,17 +29,19 @@ export function createGroupPanel() {
                     </div>
                 </div>
                  <div class="editor-section">
-                     <div class="accordion-header" onclick="CYOA.editor.toggleAccordion(this)">📜 Group Rules (JSON)</div>
+                     <div class="accordion-header" onclick="CYOA.editor.toggleAccordion(this)">
+    <span style="display:flex; align-items:center; gap:6px;">${ICONS.code} Group Rules (JSON)</span>
+</div>
                      <div class="accordion-content">
                          <textarea id="group-rules-json" class="code-editor" style="height:150px;"></textarea>
                      </div>
                  </div>
                 <div class="editor-section" style="margin-top: 10px; border-top: 1px solid #222;">
-                    <button class="action-btn btn-delete" onclick="CYOA.editor.deleteSelectedGroup()">🗑️ Delete Group</button>
+                    <button class="action-btn btn-delete" onclick="CYOA.editor.deleteSelectedGroup()">${ICONS.delete} Delete Group</button>
                 </div>
             </div>
             <div class="editor-section editor-actions-fixed">
-                <button class="action-btn btn-add full-width-btn" onclick="CYOA.editor.addNewGroup()">➕ Add New Group</button>
+                <button class="action-btn btn-add full-width-btn" onclick="CYOA.editor.addNewGroup()">${ICONS.add} Add New Group</button>
             </div>
         </div>
     `;
