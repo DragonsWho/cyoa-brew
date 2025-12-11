@@ -161,85 +161,112 @@ body.text-mode .text-content { display: block; pointer-events: auto; }
 
 
 
-
-
-
-
 /* =========================================
-   CUSTOM SHAPE LOGIC (SVG POLYGONS)
+   CUSTOM SHAPE LOGIC (FINAL)
    ========================================= */
 
-/* 1. Контейнер (DIV) */
+/* 1. БАЗОВЫЙ КОНТЕЙНЕР (DIV) */
 #game-wrapper .click-zone.custom-shape {
-    /* Отключаем стандартные стили коробки */
-    background: transparent !important;
+    background: none !important;
+    background-image: none !important;
+    background-color: transparent !important;
     border: none !important;
     box-shadow: none !important;
     border-radius: 0 !important;
-    /* Разрешаем SVG выходить за границы (для свечения) */
+    filter: none !important; 
+    animation: none !important;
     overflow: visible !important;
+    clip-path: none !important; 
+    pointer-events: none !important;
 }
 
-/* В режиме редактора (НЕ превью) возвращаем рамку, чтобы видеть границы */
+/* Фикс для прозрачности: контейнер должен быть полностью непрозрачным,
+   чтобы внутренние слои сами управляли своей прозрачностью */
+#game-wrapper .click-zone.custom-shape.disabled {
+    opacity: 1 !important; 
+}
+
+/* 2. УБИВАЕМ ПСЕВДОЭЛЕМЕНТЫ У КОНТЕЙНЕРА */
+#game-wrapper .click-zone.custom-shape::after,
+#game-wrapper .click-zone.custom-shape::before,
+#game-wrapper .click-zone.custom-shape.selected::after,
+#game-wrapper .click-zone.custom-shape.selected::before,
+#game-wrapper .click-zone.custom-shape.disabled::after,
+#game-wrapper .click-zone.custom-shape.disabled::before {
+    display: none !important;
+    content: none !important;
+}
+
+/* 3. ВНУТРЕННИЙ СЛОЙ ПОЛОСОК */
+.shape-internal-stripes {
+    position: absolute;
+    top: 0; left: 0; 
+    width: 100%; height: 100%;
+    z-index: -1; 
+    pointer-events: none;
+    /* Сюда JS нальет background-image с полосками */
+}
+
+/* 4. ИСКЛЮЧЕНИЕ ДЛЯ РЕДАКТОРА */
 body:not(.editor-preview-active) #game-wrapper .click-zone.custom-shape.editor-selected {
-    border: 1px dashed rgba(255, 255, 255, 0.5) !important;
-    box-shadow: 0 0 5px rgba(0,0,0,0.5) !important;
+    border: 1px dashed rgba(0, 255, 255, 0.5) !important;
+    box-shadow: 0 0 5px rgba(0, 0, 0, 0.5) !important;
+    pointer-events: auto !important; 
 }
 
-/* 2. Слой SVG */
+/* 5. SVG SLOI */
 .shape-bg-layer {
     position: absolute;
     top: 0; left: 0; width: 100%; height: 100%;
-    z-index: -1; 
-    overflow: visible;
-    pointer-events: none; /* Клики проходят сквозь SVG в DIV */
+    z-index: -2; 
+    overflow: visible !important;
+    pointer-events: none;
 }
 
-/* 3. Полигон (Сама форма) */
+/* 6. ПОЛИГОН */
 .shape-poly {
-    vector-effect: non-scaling-stroke; /* Чтобы линия не жирнела при растягивании */
+    vector-effect: non-scaling-stroke;
     transition: all 0.2s ease-in-out;
-    
-    /* ПО УМОЛЧАНИЮ: НЕВИДИМЫЙ */
-    fill: transparent; 
+    pointer-events: auto;
+    cursor: pointer;
+    fill: transparent;
     stroke: transparent;
     stroke-width: 0;
 }
 
 /* --- СОСТОЯНИЯ --- */
 
-/* HOVER (Наведение) - Легкая подсветка контура */
-#game-wrapper .click-zone.custom-shape:not(.disabled):hover .shape-poly {
-    stroke: rgba(255, 255, 255, 0.5);
+/* Hover */
+#game-wrapper .click-zone.custom-shape:not(.selected):not(.disabled):hover .shape-poly {
+    stroke: rgba(255, 255, 255, 0.6);
     stroke-width: 2px;
-    filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.5));
+    filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.5));
+    fill: rgba(255, 255, 255, 0.05);
 }
 
-/* SELECTED (Выбрано) - Берет цвета из глобальных настроек стиля */
+/* Selected */
 #game-wrapper .click-zone.custom-shape.selected .shape-poly {
-    /* Переменные берутся из renderer.js applyGlobalStyles */
-    fill: var(--sel-bg-color); 
-    stroke: var(--sel-border-c);
-    stroke-width: var(--sel-border-w);
-    
-    /* Свечение по форме */
-    filter: drop-shadow(0 0 10px var(--sel-shadow-c));
-    
-    /* Учитываем прозрачность фона */
-    fill-opacity: var(--sel-bg-opacity, 0.2);
+    stroke: var(--sel-border-c, #00ff00);
+    stroke-width: var(--sel-border-w, 3px);
+    filter: drop-shadow(0 0 15px var(--sel-shadow-c, #00ff00));
+    fill: var(--sel-bg-color, #00ff00);
+    fill-opacity: var(--sel-bg-opacity, 0.1); 
 }
 
-/* DISABLED (Недоступно) */
+/* Disabled */
 #game-wrapper .click-zone.custom-shape.disabled .shape-poly {
-    fill: rgba(0, 0, 0, 0.5);
-    stroke: #333;
+    stroke: var(--dis-border-c, #333);
     stroke-width: 1px;
     filter: grayscale(100%);
+    cursor: not-allowed;
+    /* Убираем заливку SVG, так как под ним теперь лежит .shape-internal-stripes с полосками */
+    fill: transparent; 
 }
 
-/* В РЕДАКТОРЕ ТОЧЕК (пока рисуем) - делаем форму чуть видной */
+/* В редакторе */
 body.shape-editing-mode .shape-poly {
     stroke: #555;
     stroke-width: 1px;
     stroke-dasharray: 4;
+    pointer-events: none;
 }

@@ -100,8 +100,7 @@ export class UIRenderer {
         this.applyCustomCss(style.customCss, style.disabledCustomCss, style.visualCustomCss);
     }
 
-    // ... [Rest of the file remains unchanged] ...
-    applyCustomCss(activeCss, disabledCss, visualCss) {
+applyCustomCss(activeCss, disabledCss, visualCss) {
         let styleTag = document.getElementById('custom-card-style');
         if (!styleTag) {
             styleTag = document.createElement('style');
@@ -110,12 +109,26 @@ export class UIRenderer {
         }
         
         let content = '';
+        
+        // Active Styles
         if (activeCss) {
             content += `#game-wrapper .click-zone.selected { ${this.forceImportant(activeCss)} } `;
         }
+        
+        // Disabled Styles
         if (disabledCss) {
-            content += `#game-wrapper .click-zone.disabled { ${this.forceImportant(disabledCss)} } `;
+            const forcedDisabled = this.forceImportant(disabledCss);
+            
+            // 1. ИЗМЕНЕНИЕ ЗДЕСЬ: Применяем стиль disabled ТОЛЬКО к НЕ кастомным формам
+            // Это уберет полосатый прямоугольник с родительского контейнера
+            content += `#game-wrapper .click-zone.disabled:not(.custom-shape) { ${forcedDisabled} } `;
+            
+            // 2. А здесь применяем этот же стиль к ВНУТРЕННЕМУ слою кастомной формы
+            // (который уже обрезан по маске)
+            content += `#game-wrapper .click-zone.custom-shape .shape-internal-stripes { ${forcedDisabled} } `;
         }
+        
+        // Visual Card Styles
         if (visualCss) {
             content += `#game-wrapper .click-zone.visual-card { ${this.forceImportant(visualCss)} } `;
         }
@@ -519,10 +532,9 @@ export class UIRenderer {
         this.updateBudgets();
     }
 
-updateButtons() {
-        // Проверяем, активен ли режим превью в редакторе
+
+    updateButtons() {
         const isPreview = document.body.classList.contains('editor-preview-active');
-        // Проверяем, активен ли режим редактирования точек (shape editor)
         const isShapeEditingMode = document.body.classList.contains('shape-editing-mode');
 
         document.querySelectorAll('.item-zone').forEach(el => {
@@ -530,25 +542,22 @@ updateButtons() {
             const item = this.engine.findItem(itemId);
             if (!item) return;
 
-            // 1. Статус элемента
             const qty = this.engine.state.selected.get(itemId) || 0;
             const isSelected = qty !== 0; 
             const group = this.engine.findGroupForItem(itemId);
             const canSelect = item.selectable !== false && this.engine.canSelect(item, group);
+            const isDisabled = !canSelect && !isSelected && item.selectable !== false;
             const isEditorSelected = el.classList.contains('editor-selected');
 
-            // 2. Логика Custom Shape
+            // --- SHAPE LOGIC ---
             const hasShape = item.shapePoints && item.shapePoints.length >= 3;
-            
-            // Мы показываем форму, если она есть.
-            // Исключение: если мы ПРЯМО СЕЙЧАС редактируем точки ЭТОЙ формы (shape.js сам рисует оверлей)
             const isEditingThisShape = isShapeEditingMode && 
                                        this.engine.editor?.shapeItem?.id === item.id;
 
             if (hasShape && !isEditingThisShape) {
                 if (!el.classList.contains('custom-shape')) el.classList.add('custom-shape');
 
-                // --- SVG Setup ---
+                // 1. SVG Layer (Свечение и Рамка)
                 let svgLayer = el.querySelector('.shape-bg-layer');
                 if (!svgLayer) {
                     svgLayer = document.createElementNS("http://www.w3.org/2000/svg", "svg");
@@ -570,34 +579,44 @@ updateButtons() {
                     polygon.setAttribute("points", pointsStr);
                 }
 
-                // --- Clip Path (Область клика) ---
-                const cssClipPath = `polygon(${item.shapePoints.map(p => `${p.x}% ${p.y}%`).join(', ')})`;
-                if (el.style.clipPath !== cssClipPath) {
-                    el.style.clipPath = cssClipPath;
+                // 2. Internal Stripes Layer (Слой для полосок) - НОВОЕ
+                let stripeLayer = el.querySelector('.shape-internal-stripes');
+                if (!stripeLayer) {
+                    stripeLayer = document.createElement('div');
+                    stripeLayer.className = 'shape-internal-stripes';
+                    // Вставляем ПОД текст, но НАД SVG (хотя z-index решит)
+                    el.insertBefore(stripeLayer, el.firstChild); 
                 }
 
-                // --- Стили границ ---
-                // ВАЖНО: Если мы в редакторе и элемент выделен -> оставляем стандартный border (через CSS editor-selected),
-                // чтобы видеть габариты. Иначе убираем border, чтобы рисовал SVG.
+                // Применяем маску к слою полосок
+                const cssClipPath = `polygon(${item.shapePoints.map(p => `${p.x}% ${p.y}%`).join(', ')})`;
+                stripeLayer.style.clipPath = cssClipPath;
+                
+                // Показываем полоски ТОЛЬКО если disabled
+                stripeLayer.style.display = isDisabled ? 'block' : 'none';
+
+                // Очищаем clip-path у родителя
+                el.style.clipPath = 'none';
+
+                // Сброс рамок родителя
                 if (isEditorSelected && !isPreview) {
-                    // Редактор сам нарисует рамку через класс .editor-selected + CSS
                     el.style.border = ''; 
                     el.style.boxShadow = '';
                     el.style.background = '';
                 } else {
-                    // В игре (или превью) убираем рамку DIVа, работает SVG
                     el.style.border = 'none';
                     el.style.boxShadow = 'none';
                     el.style.background = 'transparent';
                 }
 
             } else {
-                // Нет формы (или сброшена)
+                // Стандартный режим
                 el.classList.remove('custom-shape');
                 const svgLayer = el.querySelector('.shape-bg-layer');
                 if (svgLayer) svgLayer.remove();
+                const stripeLayer = el.querySelector('.shape-internal-stripes'); // Удаляем слой полосок
+                if (stripeLayer) stripeLayer.remove();
                 
-                // Если мы НЕ редактируем форму прямо сейчас, сбрасываем маску
                 if (!isEditingThisShape) {
                     el.style.clipPath = 'none';
                     el.style.border = '';
@@ -606,19 +625,22 @@ updateButtons() {
                 }
             }
 
-            // 3. Кеширование и классы состояний (без изменений)
+            // --- STANDARD STATE LOGIC ---
             const stateKey = `${isSelected}|${canSelect}|${qty}|${hasShape}|${isEditorSelected}`;
             if (this.buttonStateCache.get(itemId) === stateKey) return;
             this.buttonStateCache.set(itemId, stateKey);
 
             el.classList.toggle('selected', isSelected);
-            
-            const isDisabled = !canSelect && !isSelected && item.selectable !== false;
             el.classList.toggle('disabled', isDisabled);
             
-            // ... (остальная логика бейджей и анимаций) ...
+            // ... (остальной код) ...
         });
     }
+
+
+
+
+
 
     playRouletteAnimation(container, targetNumber, item) {
         if (container.classList.contains('spinning-active')) return;
