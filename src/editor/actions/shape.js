@@ -1,6 +1,7 @@
 /**
  * src/editor/actions/shape.js
  * Polygon Shape Editor using CSS clip-path
+ * Fixed: Event bubbling and Interaction logic
  */
 
 export const ShapeEditorMixin = {
@@ -19,24 +20,30 @@ export const ShapeEditorMixin = {
         this.shapeEditorActive = true;
         this.shapeItem = item;
         
-        // Если точек нет, создаем дефолтный треугольник, чтобы пользователю было с чего начать,
-        // или оставляем пустым, чтобы он начал кликать. 
-        // Лучше: если точек нет, даем пользователю кликать "с нуля".
         if (!item.shapePoints) {
-            item.shapePoints = []; // [{x: 0, y: 0}, ...] in percent
+            item.shapePoints = []; 
         }
 
-        // Блокируем обычное выделение
+        // Блокируем интерфейс редактора
         document.body.classList.add('shape-editing-mode');
         
-        // Создаем SVG слой поверх элемента для рисования
+        // Временно убираем маску, чтобы видеть весь холст для рисования
+        const itemEl = document.getElementById(`btn-${item.id}`);
+        if (itemEl) {
+            itemEl.style.clipPath = 'none';
+            // Отключаем транзишн инлайн, чтобы перебить CSS
+            itemEl.style.transition = 'none'; 
+        }
+
         this.createShapeOverlay();
-        this.renderShapeUI();
+        
+        // Показываем UI
+        const ui = document.getElementById('shape-editor-ui');
+        if (ui) ui.style.display = 'block';
     },
 
     closeShapeEditor() {
         this.shapeEditorActive = false;
-        this.shapeItem = null;
         document.body.classList.remove('shape-editing-mode');
         
         const overlay = document.getElementById('shape-editor-overlay');
@@ -45,103 +52,125 @@ export const ShapeEditorMixin = {
         const ui = document.getElementById('shape-editor-ui');
         if (ui) ui.style.display = 'none';
         
-        this.renderer.renderLayout(); // Обновить вид
+        // Восстанавливаем маску и стили
+        if (this.shapeItem) {
+            const itemEl = document.getElementById(`btn-${this.shapeItem.id}`);
+            if (itemEl) {
+                itemEl.style.transition = ''; // Возвращаем CSS транзишн
+                // Применяем маску через рендерер или вручную
+                if (this.shapeItem.shapePoints && this.shapeItem.shapePoints.length >= 3) {
+                    const polygonStr = this.shapeItem.shapePoints.map(p => `${p.x}% ${p.y}%`).join(', ');
+                    itemEl.style.clipPath = `polygon(${polygonStr})`;
+                    itemEl.style.border = 'none';
+                    itemEl.style.boxShadow = 'none';
+                } else {
+                    itemEl.style.clipPath = 'none';
+                    itemEl.style.border = '';
+                    itemEl.style.boxShadow = '';
+                }
+            }
+        }
+        
+        this.shapeItem = null;
     },
 
     createShapeOverlay() {
         const itemEl = document.getElementById(`btn-${this.shapeItem.id}`);
         if (!itemEl) return;
 
-        const rect = itemEl.getBoundingClientRect();
-        
-        // Оверлей должен перекрывать элемент и следовать за ним (но пока мы запретим перемещение элемента во время редактирования формы)
+        // Создаем оверлей ВНУТРИ элемента
         const overlay = document.createElement('div');
         overlay.id = 'shape-editor-overlay';
+        // z-index должен быть выше контента кнопки
         overlay.style.cssText = `
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
-            z-index: 5000;
+            z-index: 10000; 
             cursor: crosshair;
+            background: rgba(0, 255, 255, 0.1); /* Легкая подсветка зоны редактирования */
         `;
         
-        // Вставляем ВНУТРЬ item-zone, чтобы координаты были локальными (0-100%)
         itemEl.appendChild(overlay);
 
-        // SVG для отрисовки линий
         this.shapeSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
         this.shapeSvg.style.cssText = "width:100%; height:100%; overflow:visible;";
+        this.shapeSvg.setAttribute('viewBox', '0 0 100 100');
+        this.shapeSvg.setAttribute('preserveAspectRatio', 'none');
         overlay.appendChild(this.shapeSvg);
 
-        // Слушатели
+        // ВАЖНО: stopPropagation предотвращает выбор элемента редактором
         overlay.addEventListener('mousedown', (e) => this.handleShapeMouseDown(e));
-        overlay.addEventListener('dblclick', (e) => this.handleShapeDblClick(e));
+        overlay.addEventListener('click', (e) => { e.stopPropagation(); e.preventDefault(); });
         
-        // Рендер точек
         this.drawShapeOverlay();
     },
 
     drawShapeOverlay() {
         const points = this.shapeItem.shapePoints;
-        this.shapeSvg.innerHTML = ''; // Clear
+        this.shapeSvg.innerHTML = ''; 
 
         if (!points || points.length === 0) return;
 
-        // 1. Рисуем полигон (линии)
-        const polygon = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
-        const pointsStr = points.map(p => `${p.x},${p.y}`).join(' '); // Тут координаты в %, но SVG polygon требует absolute units или viewBox.
-        // Проще использовать viewBox="0 0 100 100" и preserveAspectRatio="none"
+        // 1. Полигон (Предпросмотр заливки)
+        if (points.length >= 3) {
+            const polygon = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
+            const pointsStr = points.map(p => `${p.x},${p.y}`).join(' ');
+            polygon.setAttribute("points", pointsStr);
+            polygon.style.cssText = "fill: rgba(255, 215, 0, 0.3); stroke: none;";
+            this.shapeSvg.appendChild(polygon);
+        }
+
+        // 2. Линии (Контур)
+        const polyline = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
+        // Замыкаем линию, если точек > 2
+        let linePoints = points.map(p => `${p.x},${p.y}`).join(' ');
+        if (points.length > 2) linePoints += ` ${points[0].x},${points[0].y}`;
         
-        this.shapeSvg.setAttribute('viewBox', '0 0 100 100');
-        this.shapeSvg.setAttribute('preserveAspectRatio', 'none');
+        polyline.setAttribute("points", linePoints);
+        polyline.style.cssText = "fill: none; stroke: #FFD700; stroke-width: 2px; vector-effect: non-scaling-stroke; stroke-dasharray: 4;";
+        this.shapeSvg.appendChild(polyline);
 
-        polygon.setAttribute("points", pointsStr);
-        polygon.style.cssText = "fill: rgba(0, 255, 0, 0.3); stroke: #00ff00; stroke-width: 1px; vector-effect: non-scaling-stroke;";
-        this.shapeSvg.appendChild(polygon);
-
-        // 2. Рисуем точки (ручки)
+        // 3. Точки (Ручки)
         points.forEach((p, idx) => {
             const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
             circle.setAttribute("cx", p.x);
             circle.setAttribute("cy", p.y);
-            circle.setAttribute("r", "2"); // Радиус маленький, так как scale 100x100
-            circle.style.cssText = "fill: #fff; stroke: #000; stroke-width: 0.5px; cursor: pointer; vector-effect: non-scaling-stroke;";
-            
-            // Хак для увеличения зоны клика при маленьком радиусе
-            circle.setAttribute("pointer-events", "all");
+            // r=1.5 в системе координат 0-100 может быть большим овалом, если элемент не квадратный.
+            // Используем vector-effect, чтобы радиус был в пикселях экрана
+            circle.setAttribute("r", "4"); 
+            circle.style.cssText = "fill: #fff; stroke: #000; stroke-width: 1px; cursor: move; vector-effect: non-scaling-stroke;";
             
             circle.addEventListener('mousedown', (e) => {
                 e.stopPropagation(); // Не создавать новую точку
-                this.startDraggingPoint(idx, e);
+                e.preventDefault();  // Не выделять текст
+                // Правый клик = удалить
+                if (e.button === 2) {
+                    this.shapeItem.shapePoints.splice(idx, 1);
+                    this.drawShapeOverlay();
+                } else {
+                    this.startDraggingPoint(idx);
+                }
             });
+            // Блокируем контекстное меню на точках для удаления
+            circle.addEventListener('contextmenu', e => e.preventDefault());
 
             this.shapeSvg.appendChild(circle);
         });
-        
-        // Обновляем clip-path самого элемента в реальном времени
-        this.applyShapeToItemDOM();
-    },
-
-    applyShapeToItemDOM() {
-        const points = this.shapeItem.shapePoints;
-        const el = document.getElementById(`btn-${this.shapeItem.id}`);
-        if (!el) return;
-
-        if (!points || points.length < 3) {
-            el.style.clipPath = 'none';
-        } else {
-            const polygonStr = points.map(p => `${p.x}% ${p.y}%`).join(', ');
-            el.style.clipPath = `polygon(${polygonStr})`;
-        }
     },
 
     handleShapeMouseDown(e) {
-        // Добавление новой точки
+        // Левый клик по пустому месту = новая точка
+        if (e.button !== 0) return;
+        
+        e.stopPropagation();
+        e.preventDefault();
+
         if (e.target.tagName !== 'circle') {
             const rect = e.target.getBoundingClientRect();
+            // Вычисляем проценты
             const x = ((e.clientX - rect.left) / rect.width) * 100;
             const y = ((e.clientY - rect.top) / rect.height) * 100;
             
-            // Округляем для красоты
             const newPoint = { x: parseFloat(x.toFixed(1)), y: parseFloat(y.toFixed(1)) };
             
             this.shapeItem.shapePoints.push(newPoint);
@@ -149,22 +178,17 @@ export const ShapeEditorMixin = {
         }
     },
 
-    handleShapeDblClick(e) {
-        // Удаление точки (если попали в круг, но событие всплывает)
-        // Для простоты сделаем удаление последней точки если клик по фону,
-        // или переделаем логику кружков.
-        // Реализуем удаление через нажатие правой кнопкой или модификатор в `startDraggingPoint`.
-    },
-
-    startDraggingPoint(index, startEvent) {
+    startDraggingPoint(index) {
         const itemEl = document.getElementById(`btn-${this.shapeItem.id}`);
-        const rect = itemEl.getBoundingClientRect();
         
         const onMove = (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            const rect = itemEl.getBoundingClientRect();
             let x = ((e.clientX - rect.left) / rect.width) * 100;
             let y = ((e.clientY - rect.top) / rect.height) * 100;
             
-            // Clamp 0-100
             x = Math.max(0, Math.min(100, x));
             y = Math.max(0, Math.min(100, y));
 
@@ -172,20 +196,23 @@ export const ShapeEditorMixin = {
             this.drawShapeOverlay();
         };
 
-        const onUp = () => {
+        const onUp = (e) => {
+            e.preventDefault();
+            e.stopPropagation();
             window.removeEventListener('mousemove', onMove);
             window.removeEventListener('mouseup', onUp);
         };
 
-        window.addEventListener('mousemove', onMove);
+        window.addEventListener('mousemove', onMove, { passive: false });
         window.addEventListener('mouseup', onUp);
     },
     
     resetShape() {
         if(this.shapeItem) {
             delete this.shapeItem.shapePoints;
+            const itemEl = document.getElementById(`btn-${this.shapeItem.id}`);
+            if(itemEl) itemEl.style.clipPath = 'none';
             this.drawShapeOverlay();
-            this.applyShapeToItemDOM();
         }
     }
 };

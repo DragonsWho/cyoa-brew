@@ -81,6 +81,21 @@ export function createChoicePanel() {
                          </div>
                     </div>
 
+
+
+              <!-- NEW SHAPE TOOL BUTTON -->
+                <div style="margin-bottom: 10px;">
+                    <button class="full-width-btn" onclick="CYOA.editor.toggleShapeEditor()" style="background: #e65100 !important; color:white;">
+                        📐 Edit Custom Shape (Mask)
+                    </button>
+                    <div id="shape-editor-ui" style="display:none; margin-top:5px; background:#222; padding:5px; border:1px solid #444;">
+                        <small style="color:#aaa;">Click inside box to add points. Drag points. Double-click point to delete (todo).</small>
+                        <button class="action-btn" onclick="CYOA.editor.resetShape()" style="margin-top:5px; font-size:0.8rem;">Reset to Rectangle</button>
+                        <button class="action-btn" onclick="CYOA.editor.closeShapeEditor()" style="margin-top:5px; font-size:0.8rem;">Done</button>
+                    </div>
+                </div>
+
+
                     <div class="row-2">
                         <div class="input-group">
                             <input type="number" id="edit-min_quantity" placeholder="0">

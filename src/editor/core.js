@@ -47,6 +47,8 @@ export class CYOAEditor {
         this.ruleBuilder = new RuleBuilder(engine);
         this.autoDetector = new AutoDetector(); 
         this.history = new HistoryManager(this);
+
+        this.shapeEditorActive = false;
         
         this.selectedItem = null;
         this.selectedGroup = null;
@@ -158,6 +160,7 @@ Object.assign(CYOAEditor.prototype, AlignmentMixin);
 Object.assign(CYOAEditor.prototype, SplittingMixin);
 Object.assign(CYOAEditor.prototype, ClipboardMixin);
 Object.assign(CYOAEditor.prototype, NavigationMixin);
+Object.assign(CYOAEditor.prototype, ShapeEditorMixin); 
 
 // 4. Input
 Object.assign(CYOAEditor.prototype, EditorInputMixin);

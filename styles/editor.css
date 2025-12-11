@@ -2,68 +2,32 @@
    CYOA EDITOR STYLES (Admin Interface)
    ========================================================================== */
 
-/* === VARIABLES FOR EDITOR THEME === */
+/* === VARIABLES === */
 :root {
     /* DEFAULT DARK THEME */
-    --ed-bg: #1a1a1a;
-    --ed-fg: #eee;
-    --ed-border: #333;
-    --ed-input-bg: #252525;
-    --ed-input-fg: #fff;
-    --ed-input-border: #333;
-    --ed-panel-bg: #111;
-    --ed-btn-bg: #333;
-    --ed-btn-fg: #ccc;
-    --ed-btn-hover: #444;
+    --ed-bg: #1a1a1a; --ed-fg: #eee; --ed-border: #333;
+    --ed-input-bg: #252525; --ed-input-fg: #fff; --ed-input-border: #333;
+    --ed-panel-bg: #111; --ed-btn-bg: #333; --ed-btn-fg: #ccc; --ed-btn-hover: #444;
     
     /* Frame colors (defaults) */
-    --editor-item-border: rgba(255,0,0,0.8);
-    --editor-item-bg: rgba(255,0,0,0.1);
-    --editor-item-label-bg: red;
-    --editor-group-border: rgba(255,165,0,0.6);
-    --editor-group-bg: rgba(255,165,0,0.1);
-    --editor-frame-width: 2px;
+    --editor-item-border: rgba(255,0,0,0.8); --editor-item-bg: rgba(255,0,0,0.1); --editor-item-label-bg: red;
+    --editor-group-border: rgba(255,165,0,0.6); --editor-group-bg: rgba(255,165,0,0.1); --editor-frame-width: 2px;
 }
 
-/* === CRITICAL FIX: Hide Spin Buttons in Inputs === */
-/* Chrome, Safari, Edge, Opera */
-input::-webkit-outer-spin-button,
-input::-webkit-inner-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
-}
-/* Firefox */
-input[type=number] {
-  -moz-appearance: textfield;
-}
+/* === UTILS === */
+input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+input[type=number] { -moz-appearance: textfield; }
 
-/* === DAY THEME OVERRIDES === */
+/* === THEME OVERRIDES === */
 body.editor-theme-light {
-    --ed-bg: #f5f5f7;
-    --ed-fg: #333;
-    --ed-border: #ccc;
-    --ed-input-bg: #fff;
-    --ed-input-fg: #000;
-    --ed-input-border: #bbb;
-    --ed-panel-bg: #e8e8eb;
-    --ed-btn-bg: #e0e0e0;
-    --ed-btn-fg: #000;
-    --ed-btn-hover: #d0d0d0;
+    --ed-bg: #f5f5f7; --ed-fg: #333; --ed-border: #ccc;
+    --ed-input-bg: #fff; --ed-input-fg: #000; --ed-input-border: #bbb;
+    --ed-panel-bg: #e8e8eb; --ed-btn-bg: #e0e0e0; --ed-btn-fg: #000; --ed-btn-hover: #d0d0d0;
 }
 
 /* === SIDEBAR & LAYOUT === */
-.editor-sidebar { 
-    background: var(--ed-bg); 
-    color: var(--ed-fg);
-    border-left: 1px solid var(--ed-border);
-    width: 340px; position: fixed; right: 0; top: 0; bottom: 0; z-index: 4000; 
-    display: flex; flex-direction: column; box-shadow: -5px 0 20px rgba(0,0,0,0.5); 
-}
-
-/* Sidebar Position Logic */
-body.editor-sidebar-left .editor-sidebar { 
-    left: 0; right: auto; border-right: 1px solid var(--ed-border); border-left: none; box-shadow: 5px 0 20px rgba(0,0,0,0.5);
-}
+.editor-sidebar { background: var(--ed-bg); color: var(--ed-fg); border-left: 1px solid var(--ed-border); width: 340px; position: fixed; right: 0; top: 0; bottom: 0; z-index: 4000; display: flex; flex-direction: column; box-shadow: -5px 0 20px rgba(0,0,0,0.5); }
+body.editor-sidebar-left .editor-sidebar { left: 0; right: auto; border-right: 1px solid var(--ed-border); border-left: none; box-shadow: 5px 0 20px rgba(0,0,0,0.5); }
 body.editor-sidebar-left.edit-mode-active #game-wrapper { margin-left: 340px; margin-right: 0; }
 body.edit-mode-active #game-wrapper { margin-right: 340px; transition: margin-right 0.3s, margin-left 0.3s; }
 
@@ -92,9 +56,8 @@ body.editor-theme-light .code-editor { color: #222; }
 .action-btn, .full-width-btn, .pref-btn { background: var(--ed-btn-bg) !important; color: var(--ed-btn-fg) !important; border: 1px solid var(--ed-border) !important; border-radius: 4px; cursor: pointer; padding: 8px; width: 100%; font-weight: bold; transition: all 0.2s; }
 .action-btn:hover, .full-width-btn:hover, .pref-btn:hover { background: var(--ed-btn-hover) !important; }
 
-/* Theme Specific Buttons (Softening for Light Mode) */
-body.editor-theme-light .full-width-btn[style*="background:#555"],
-body.editor-theme-light .action-btn[style*="background:#444"] { background-color: #9e9e90 !important; border-color: #8e8e80 !important; color: #fff !important; }
+/* Soften buttons for light theme */
+body.editor-theme-light .full-width-btn[style*="background:#555"], body.editor-theme-light .action-btn[style*="background:#444"] { background-color: #9e9e90 !important; border-color: #8e8e80 !important; color: #fff !important; }
 body.editor-theme-light .full-width-btn[style*="background:#4b6cb7"] { background-color: #6a85c7 !important; border-color: #5a75b7 !important; color: #fff !important; }
 body.editor-theme-light .primary-btn, body.editor-theme-light .full-width-btn[style*="background:#2e7d32"] { background-color: #5ba35f !important; border-color: #4b934f !important; color: #fff !important; }
 body.editor-theme-light .action-btn[onclick*="runLlmAction"] { opacity: 0.9; border-width: 0 !important; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
@@ -103,11 +66,11 @@ body.editor-theme-light #llm-manual-ui > div:first-child { color: #b08d00 !impor
 .primary-btn { background: #2e7d32 !important; color: white !important; border: 1px solid #1b5e20 !important; }
 .primary-btn:hover { background: #388e3c !important; }
 .btn-delete { background: #d32f2f !important; color: white !important; border: 1px solid #b71c1c !important; }
-
 .panel-box { background: var(--ed-panel-bg); border: 1px solid var(--ed-border); border-radius: 4px; padding: 10px; margin-bottom: 10px; }
 
 /* === VISUALS & HIGHLIGHTS === */
 .nav-scroll-area::-webkit-scrollbar { display: none; }
+/* Disable ALL transitions during dragging to prevent lag */
 body.editor-interacting .click-zone, body.editor-interacting .info-zone { transition: none !important; }
 .selection-marquee { position: fixed; border: 1px dashed #00ff88; background-color: rgba(0, 255, 136, 0.1); z-index: 9999; pointer-events: none; display: none; }
 
@@ -138,7 +101,7 @@ body.show-zones:not(.editor-preview-active) #game-wrapper .info-zone {
     background-color: var(--editor-group-bg) !important; 
 }
 
-/* PREVIEW MODE OVERRIDES */
+/* PREVIEW MODE */
 body.editor-preview-active.show-zones .click-zone:not(.selected):not(.disabled) { border: none !important; background-color: transparent !important; box-shadow: none !important; }
 body.editor-preview-active.show-zones .click-zone.visual-card:not(.selected):not(.disabled) { background-color: var(--vis-bg-color) !important; border: var(--vis-border-w) solid var(--vis-border-color) !important; border-radius: var(--vis-radius) !important; box-shadow: 0 4px 6px rgba(0,0,0,0.3) !important; }
 body.editor-preview-active.show-zones .click-zone::after { display: none !important; } 
@@ -148,18 +111,15 @@ body.editor-preview-active .editor-selected { background-image: none !important;
 body.editor-preview-active .click-zone, body.editor-preview-active .item-zone { pointer-events: auto !important; cursor: pointer !important; opacity: 1 !important; }
 body.editor-preview-active .info-zone { pointer-events: none !important; }
 
-/* FIX: SELECTION STYLES IN PREVIEW (Correct individual radii) */
+/* PREVIEW SELECTION STYLES */
 body.editor-preview-active.show-zones .click-zone.selected { 
     border: var(--sel-border-w) solid var(--sel-border-c) !important; 
-    border-top-left-radius: var(--sel-radius-tl) !important;
-    border-top-right-radius: var(--sel-radius-tr) !important;
-    border-bottom-right-radius: var(--sel-radius-br) !important;
-    border-bottom-left-radius: var(--sel-radius-bl) !important;
+    border-top-left-radius: var(--sel-radius-tl) !important; border-top-right-radius: var(--sel-radius-tr) !important;
+    border-bottom-right-radius: var(--sel-radius-br) !important; border-bottom-left-radius: var(--sel-radius-bl) !important;
     background-color: transparent !important; 
     box-shadow: 0 0 var(--sel-shadow-w) var(--sel-shadow-c), inset 0 0 var(--sel-inset-w) 5px var(--sel-inset-c) !important; 
     transition: box-shadow 0.2s, opacity 0.2s !important; 
 }
-
 body.editor-preview-active.show-zones .click-zone.visual-card.selected { background-color: var(--vis-bg-color) !important; border-width: var(--vis-border-w) !important; border-color: var(--sel-border-c) !important; box-shadow: 0 0 var(--sel-shadow-w) var(--sel-shadow-c) !important; }
 body.editor-preview-active.show-zones .click-zone.selected::after { display: block !important; content: '' !important; background-color: var(--sel-bg-color) !important; opacity: var(--sel-bg-opacity) !important; z-index: 1 !important; position: absolute !important; inset: 0 !important; border-radius: inherit !important; }
 body.editor-preview-active.show-zones .click-zone.disabled { border: var(--dis-border-w) solid var(--dis-border-c) !important; border-radius: var(--dis-radius-tl) !important; background-color: transparent !important; box-shadow: 0 0 var(--dis-shadow-w) var(--dis-shadow-c) !important; cursor: not-allowed !important; transition: box-shadow 0.2s, opacity 0.2s !important; }
@@ -180,7 +140,7 @@ body.editor-preview-active.show-zones .click-zone.disabled::after { display: blo
     max-width: 90%; border-bottom-left-radius: 6px; border-bottom-right-radius: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.5); pointer-events: none; z-index: 3001; line-height: 14px;
 }
 
-/* MISC UTILS & COMPACT STYLES */
+/* MISC UTILS */
 .editor-page-nav-container { display: flex; background: var(--ed-panel-bg); border-bottom: 1px solid var(--ed-border); height: 36px; flex-shrink: 0; }
 .nav-scroll-area { flex: 1; display: flex; overflow-x: auto; scrollbar-width: none; align-items: center; }
 .nav-arrow { background: var(--ed-btn-bg); border: none; color: var(--ed-btn-fg); width: 24px; cursor: pointer; }
@@ -208,7 +168,7 @@ body.editor-preview-active.show-zones .click-zone.disabled::after { display: blo
 .square-input { width: 32px; padding: 2px; }
 .thick-border { border: 2px solid var(--ed-fg); }
 
-/* RESTORED VISUAL CORNER INPUTS */
+/* VISUAL CORNER INPUTS */
 .input-corner-tl { background-image: linear-gradient(var(--ed-fg),var(--ed-fg)), linear-gradient(var(--ed-fg),var(--ed-fg)); background-size: 30% 2px, 2px 30%; background-position: top left; background-repeat: no-repeat; }
 .input-corner-tr { background-image: linear-gradient(var(--ed-fg),var(--ed-fg)), linear-gradient(var(--ed-fg),var(--ed-fg)); background-size: 30% 2px, 2px 30%; background-position: top right; background-repeat: no-repeat; }
 .input-corner-br { background-image: linear-gradient(var(--ed-fg),var(--ed-fg)), linear-gradient(var(--ed-fg),var(--ed-fg)); background-size: 30% 2px, 2px 30%; background-position: bottom right; background-repeat: no-repeat; }
@@ -236,9 +196,7 @@ body.editor-preview-active.show-zones .click-zone.disabled::after { display: blo
 .spinning-active .roulette-strip { transition-property: transform !important; }
 .masked-input { -webkit-text-security: disc; }
 
-/* ==========================================================================
-   AUDIT CHAT STYLES (RESTORED)
-   ========================================================================== */
+/* === AUDIT CHAT === */
 .audit-chat-window { position: fixed; bottom: 20px; right: 360px; width: 420px; height: 520px; background: var(--ed-bg); border: 1px solid var(--ed-border); border-radius: 12px; display: none; flex-direction: column; z-index: 5000; box-shadow: 0 10px 50px rgba(0,0,0,0.8); resize: both; overflow: hidden; min-width: 320px; min-height: 200px; color: var(--ed-fg); }
 .audit-chat-window.dragging { transition: none !important; opacity: 0.95; box-shadow: 0 20px 60px rgba(0,0,0,0.9); }
 .audit-chat-window.minimized { height: auto !important; min-height: auto; resize: none; }
@@ -283,3 +241,38 @@ body.editor-preview-active.show-zones .click-zone.disabled::after { display: blo
 .apply-response-btn { background: linear-gradient(135deg, #4CAF50, #388E3C); color: white; }
 .apply-response-btn:hover { background: linear-gradient(135deg, #66BB6A, #43A047); }
 .audit-token-counter { font-size: 0.7rem; background: rgba(255,255,255,0.1); padding: 3px 8px; border-radius: 10px; color: #aaa; cursor: help; }
+
+/* =========================================
+   SHAPE EDITOR FIXES (CRITICAL)
+   ========================================= */
+
+/* 1. Когда активен режим редактирования формы: отключаем все остальные элементы */
+body.shape-editing-mode .item-zone:not(:has(#shape-editor-overlay)) {
+    opacity: 0.3 !important;
+    pointer-events: none !important;
+    transition: none !important; 
+}
+body.shape-editing-mode .info-zone {
+    opacity: 0.1 !important;
+    pointer-events: none !important;
+    transition: none !important;
+}
+
+/* 2. Активный элемент: подсветка, активность, БЕЗ ЛАГОВ */
+body.shape-editing-mode .item-zone:has(#shape-editor-overlay) {
+    opacity: 1 !important;
+    pointer-events: auto !important;
+    background-color: rgba(255, 255, 255, 0.05) !important;
+    box-shadow: 0 0 0 2px cyan !important;
+    transition: none !important; /* Убираем лаг 0.2s */
+}
+
+/* 3. Оверлей перехватывает клики */
+#shape-editor-overlay {
+    pointer-events: auto !important;
+}
+
+/* 4. При перетаскивании (Drag/Resize) обычных рамок - тоже убираем анимацию */
+.item-zone.dragging, .info-zone.dragging {
+    transition: none !important;
+}

@@ -274,6 +274,39 @@ export class UIRenderer {
         button.dataset.groupId = group ? group.id : '';
         Object.assign(button.style, CoordHelper.toPercent(item.coords, dim));
 
+        // Перед присваиванием координат, убедимся что нет лагов
+        // Если мы не в режиме редактирования формы, применяем транзишн, иначе отключаем
+        if (document.body.classList.contains('shape-editing-mode')) {
+             button.style.transition = 'none';
+        } else {
+             button.style.transition = ''; // вернуть из CSS
+        }
+
+        Object.assign(button.style, CoordHelper.toPercent(item.coords, dim));
+
+        // --- SHAPE LOGIC ---
+        if (item.shapePoints && item.shapePoints.length >= 3) {
+            const polygonStr = item.shapePoints.map(p => `${p.x}% ${p.y}%`).join(', ');
+            button.style.clipPath = `polygon(${polygonStr})`;
+            
+            // Скрываем стандартные рамки, так как они обрезаются
+            button.style.border = 'none';
+            button.style.boxShadow = 'none';
+            button.style.borderRadius = '0';
+            
+            // Добавляем тень через drop-shadow, она учитывает форму (если юзер не переопределил это в custom css)
+            if (!item.isVisualCard && !this.engine.config.style.customCss?.includes('filter')) {
+                 button.style.filter = "drop-shadow(0 0 5px rgba(0, 255, 0, 0.5))";
+            }
+        } else {
+            button.style.clipPath = 'none';
+            // Сбрасываем инлайн стили, чтобы вернулись CSS классы
+            button.style.border = '';
+            button.style.boxShadow = '';
+            button.style.borderRadius = '';
+            button.style.filter = '';
+        }
+
         if (item.isVisualCard) {
             if (!button.classList.contains('visual-card')) button.classList.add('visual-card');
         } else {
