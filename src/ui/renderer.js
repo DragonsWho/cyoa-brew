@@ -100,7 +100,8 @@ export class UIRenderer {
         this.applyCustomCss(style.customCss, style.disabledCustomCss, style.visualCustomCss);
     }
 
-applyCustomCss(activeCss, disabledCss, visualCss) {
+
+    applyCustomCss(activeCss, disabledCss, visualCss) {
         let styleTag = document.getElementById('custom-card-style');
         if (!styleTag) {
             styleTag = document.createElement('style');
@@ -110,21 +111,22 @@ applyCustomCss(activeCss, disabledCss, visualCss) {
         
         let content = '';
         
-        // Active Styles
+        // Active Styles (ВЫБРАННЫЕ КАРТОЧКИ)
         if (activeCss) {
-            content += `#game-wrapper .click-zone.selected { ${this.forceImportant(activeCss)} } `;
+            // ИСПРАВЛЕНИЕ ЗДЕСЬ:
+            // Добавляем :not(.custom-shape), чтобы "крутые" CSS эффекты (пульсация, тени квадрата)
+            // применялись ТОЛЬКО к обычным прямоугольным кнопкам.
+            content += `#game-wrapper .click-zone.selected:not(.custom-shape) { ${this.forceImportant(activeCss)} } `;
         }
         
-        // Disabled Styles
+        // Disabled Styles (НЕДОСТУПНЫЕ)
         if (disabledCss) {
             const forcedDisabled = this.forceImportant(disabledCss);
             
-            // 1. ИЗМЕНЕНИЕ ЗДЕСЬ: Применяем стиль disabled ТОЛЬКО к НЕ кастомным формам
-            // Это уберет полосатый прямоугольник с родительского контейнера
+            // 1. Обычные кнопки (прямоугольники)
             content += `#game-wrapper .click-zone.disabled:not(.custom-shape) { ${forcedDisabled} } `;
             
-            // 2. А здесь применяем этот же стиль к ВНУТРЕННЕМУ слою кастомной формы
-            // (который уже обрезан по маске)
+            // 2. Внутренний слой для Custom Shape (полоски внутри формы)
             content += `#game-wrapper .click-zone.custom-shape .shape-internal-stripes { ${forcedDisabled} } `;
         }
         
@@ -135,6 +137,8 @@ applyCustomCss(activeCss, disabledCss, visualCss) {
         
         styleTag.textContent = content;
     }
+
+
 
     forceImportant(cssText) {
         if (!cssText) return '';
