@@ -158,3 +158,86 @@ body.text-mode .text-content { display: block; pointer-events: auto; }
 .ai-tip-box ul { margin: 0; padding-left: 20px; font-size: 0.9rem; color: #ccc; }
 .ai-tip-box a { color: #64b5f6; text-decoration: none; }
 .ai-tip-box a:hover { text-decoration: underline; }
+
+
+
+
+
+
+
+/* =========================================
+   CUSTOM SHAPE LOGIC (FIXED)
+   ========================================= */
+
+/* 1. Сбрасываем "коробку" */
+/* Используем #game-wrapper для перебивания специфичности других стилей */
+#game-wrapper .click-zone.custom-shape {
+    background-color: transparent !important;
+    background-image: none !important;
+    border: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    /* Важно: clip-path нужен для кликов, чтобы мышь не ловила пустоту в углах */
+    /* Но визуальную обрезку делает сам SVG */
+    overflow: visible !important;
+}
+
+/* Скрываем стандартный фон-тинт (если используется ::after для цвета) */
+#game-wrapper .click-zone.custom-shape::after {
+    display: none !important;
+}
+
+/* 2. Слой SVG */
+.shape-bg-layer {
+    position: absolute;
+    top: 0; left: 0; 
+    width: 100%; height: 100%;
+    z-index: -1; /* Чтобы текст был поверх формы */
+    overflow: visible;
+    pointer-events: none; /* Пропускаем клики сквозь SVG к DIVу */
+}
+
+/* 3. Сам полигон */
+.shape-poly {
+    /* vector-effect позволяет рамке не растягиваться при масштабировании кнопки */
+    vector-effect: non-scaling-stroke; 
+    transition: all 0.2s ease-in-out;
+    
+    /* Дефолтное состояние (не выбрано) */
+    fill: rgba(0, 0, 0, 0.5); /* Полупрозрачный фон */
+    stroke: rgba(255, 255, 255, 0.2); /* Тонкая рамка */
+    stroke-width: 1px;
+}
+
+/* =========================================
+   STATES (Состояния)
+   Переносим логику с DIV на Polygon
+   ========================================= */
+
+/* HOVER (Наведение) */
+#game-wrapper .click-zone.custom-shape:hover .shape-poly {
+    stroke: rgba(255, 255, 255, 0.8);
+    stroke-width: 2px;
+    /* drop-shadow - это "умная" тень, которая повторяет контур SVG, в отличие от box-shadow */
+    filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.5));
+}
+
+/* SELECTED (Выбрано) */
+#game-wrapper .click-zone.custom-shape.selected .shape-poly {
+    /* Берем цвета из CSS переменных (твоя тема) */
+    fill: var(--sel-bg-color, rgba(0, 255, 0, 0.2));
+    stroke: var(--sel-border-c, #00ff00);
+    stroke-width: var(--sel-border-w, 3px);
+    
+    /* Свечение по форме */
+    filter: drop-shadow(0 0 var(--sel-shadow-w, 10px) var(--sel-shadow-c, #00ff00));
+}
+
+/* DISABLED (Отключено) */
+#game-wrapper .click-zone.custom-shape.disabled .shape-poly {
+    fill: var(--dis-bg-color, #000);
+    fill-opacity: var(--dis-bg-opacity, 0.5);
+    stroke: var(--dis-border-c, #333);
+    stroke-width: 1px;
+    filter: grayscale(100%);
+}

@@ -519,37 +519,146 @@ export class UIRenderer {
         this.updateBudgets();
     }
 
-    updateButtons() {
+     updateButtons() {
+        // Проходимся по всем элементам кнопок
         document.querySelectorAll('.item-zone').forEach(el => {
             const itemId = el.dataset.itemId;
             const item = this.engine.findItem(itemId);
+            
+            // Если элемента нет или он скрыт логикой
             if (!item) return;
-            if (item.selectable === false) return;
-
+            // Если item.selectable === false, это "статичный" элемент (инфо),
+            // но мы все равно хотим рендерить его форму, если она есть, поэтому не делаем return сразу.
+            // Но логику выделения (click) для него пропускаем.
+            
+            // 1. ПОЛУЧАЕМ СОСТОЯНИЕ
             const qty = this.engine.state.selected.get(itemId) || 0;
             const isSelected = qty !== 0; 
-            const canSelect = this.engine.canSelect(item, this.engine.findGroupForItem(itemId));
+            const group = this.engine.findGroupForItem(itemId);
+            const canSelect = item.selectable !== false && this.engine.canSelect(item, group);
             const maxQty = item.max_quantity !== undefined ? item.max_quantity : 1;
             const minQty = item.min_quantity !== undefined ? item.min_quantity : 0;
-            const isSpinning = el.classList.contains('spinning-active');
-
-            const stateKey = `${isSelected}|${canSelect}|${qty}|${isSpinning}|${maxQty}|${minQty}`;
             
+            // 2. ЛОГИКА КАСТОМНОЙ ФОРМЫ (SVG SHAPES)
+            // Проверяем, есть ли точки и активен ли режим редактирования ЭТОЙ формы
+            const hasShape = item.shapePoints && item.shapePoints.length >= 3;
+            const isEditingThis = document.body.classList.contains('shape-editing-mode') && 
+                                  this.engine.editor && 
+                                  this.engine.editor.shapeItem && 
+                                  this.engine.editor.shapeItem.id === item.id;
+
+            // Мы показываем форму, если она есть, И мы НЕ редактируем её прямо сейчас
+            // (во время редактирования нам нужен чистый квадрат, чтобы видеть границы)
+            const showShape = hasShape && !isEditingThis;
+
+            if (showShape) {
+                // Включаем класс, который убирает стандартные border/background через CSS
+                if (!el.classList.contains('custom-shape')) el.classList.add('custom-shape');
+                
+                // 2.1. Создаем или находим SVG слой
+                let svgLayer = el.querySelector('.shape-bg-layer');
+                if (!svgLayer) {
+                    svgLayer = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+                    svgLayer.setAttribute("class", "shape-bg-layer");
+                    // Координаты 0-100 растягиваются на весь блок
+                    svgLayer.setAttribute("viewBox", "0 0 100 100"); 
+                    svgLayer.setAttribute("preserveAspectRatio", "none");
+                    // Вставляем в самое начало (под текст и картинки)
+                    el.insertBefore(svgLayer, el.firstChild);
+                }
+
+                // 2.2. Создаем или находим Полигон
+                let polygon = svgLayer.querySelector('.shape-poly');
+                if (!polygon) {
+                    polygon = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
+                    polygon.setAttribute("class", "shape-poly");
+                    svgLayer.appendChild(polygon);
+                }
+
+                // 2.3. Обновляем координаты точек
+                const pointsStr = item.shapePoints.map(p => `${p.x},${p.y}`).join(' ');
+                // Меняем DOM только если координаты изменились
+                if (polygon.getAttribute("points") !== pointsStr) {
+                    polygon.setAttribute("points", pointsStr);
+                }
+
+                // 2.4. Применяем Clip-path к самому DIV
+                // Это заставляет браузер обрезать область клика по форме полигона.
+                // ВАЖНО: Это также обрезает все, что вылезает за границы (например, внешнюю тень).
+                // Если нужна внешняя тень, SVG должен быть чуть меньше 100% или использовать фильтры внутри SVG.
+                const cssClipPath = `polygon(${item.shapePoints.map(p => `${p.x}% ${p.y}%`).join(', ')})`;
+                if (el.style.clipPath !== cssClipPath) {
+                    el.style.clipPath = cssClipPath;
+                }
+
+                // Сбрасываем инлайн стили, которые могут перебивать SVG (старые рамки)
+                el.style.border = 'none';
+                el.style.background = 'transparent';
+                el.style.boxShadow = 'none';
+
+            } else {
+                // РЕЖИМ ПРЯМОУГОЛЬНИКА (или режим редактирования формы)
+                if (el.classList.contains('custom-shape')) el.classList.remove('custom-shape');
+                
+                // Удаляем SVG, если он есть
+                const svgLayer = el.querySelector('.shape-bg-layer');
+                if (svgLayer) svgLayer.remove();
+
+                // Сбрасываем clip-path только если мы не в редакторе формы
+                // (В редакторе shape.js управляет этим сам)
+                if (!isEditingThis) {
+                    el.style.clipPath = 'none';
+                    // Возвращаем дефолтные стили (удаляем инлайн оверрайды)
+                    el.style.border = '';
+                    el.style.background = '';
+                    el.style.boxShadow = '';
+                }
+            }
+
+            // 3. КЭШИРОВАНИЕ СОСТОЯНИЯ (Чтобы не дергать DOM лишний раз)
+            // Ключ состояния включает в себя все переменные, влияющие на визуал
+            const stateKey = `${isSelected}|${canSelect}|${qty}|${maxQty}|${minQty}|${showShape}|${el.classList.contains('visual-card')}`;
+            
+            // Если ничего не изменилось с прошлого кадра — пропускаем тяжелую логику классов
             if (this.buttonStateCache.get(itemId) === stateKey) {
                 return; 
             }
             this.buttonStateCache.set(itemId, stateKey);
 
+            // 4. ПРИМЕНЕНИЕ КЛАССОВ (Selected, Disabled, Maxed)
+            // Это влияет на то, как CSS будет раскрашивать наш SVG (.shape-poly)
+            
             if (el.classList.contains('selected') !== isSelected) {
                 el.classList.toggle('selected', isSelected);
             }
 
-            const isDisabled = !canSelect && !isSelected;
+            // Disabled вешаем, если нельзя выбрать И не выбрано
+            const isDisabled = !canSelect && !isSelected && item.selectable !== false;
             if (el.classList.contains('disabled') !== isDisabled) {
                 el.classList.toggle('disabled', isDisabled);
             }
-            
-            // Roulette Animation Logic
+
+            // Maxed / Mined (для мультивыбора)
+            if (maxQty > 1 || minQty < 0) {
+                const isMaxed = qty >= maxQty;
+                if (el.classList.contains('maxed') !== isMaxed) {
+                    el.classList.toggle('maxed', isMaxed);
+                }
+                
+                // Обновляем бейдж с количеством
+                const badge = el.querySelector('.qty-badge');
+                if (badge) {
+                    badge.textContent = qty;
+                    // Красим в красный, если отрицательное
+                    if (qty < 0) badge.classList.add('negative');
+                    else badge.classList.remove('negative');
+                    
+                    const displayStyle = (qty !== 0) ? 'flex' : 'none';
+                    if (badge.style.display !== displayStyle) badge.style.display = displayStyle;
+                }
+            } 
+
+            // 5. АНИМАЦИИ (Рулетка / Dice Roll)
             if (isSelected && item.effects) {
                 const diceEffect = item.effects.find(e => e.type === 'roll_dice');
                 const rolledValue = this.engine.state.rollResults.get(itemId);
@@ -562,26 +671,12 @@ export class UIRenderer {
                 }
             }
             
+            // Очистка анимаций при снятии выбора
             if (!isSelected) {
                 delete el.dataset.hasAnimated;
                 const oldBadge = el.querySelector('.roll-result-badge');
                 if (oldBadge) oldBadge.remove();
             }
-
-            if (maxQty > 1 || minQty < 0) {
-                const isMaxed = qty >= maxQty;
-                if (el.classList.contains('maxed') !== isMaxed) {
-                    el.classList.toggle('maxed', isMaxed);
-                }
-                const badge = el.querySelector('.qty-badge');
-                if (badge) {
-                    badge.textContent = qty;
-                    if (qty < 0) badge.classList.add('negative');
-                    else badge.classList.remove('negative');
-                    const displayStyle = (qty !== 0) ? 'flex' : 'none';
-                    if (badge.style.display !== displayStyle) badge.style.display = displayStyle;
-                }
-            } 
         });
     }
 

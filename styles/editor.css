@@ -246,7 +246,9 @@ body.editor-preview-active.show-zones .click-zone.disabled::after { display: blo
    SHAPE EDITOR FIXES (CRITICAL)
    ========================================= */
 
-/* 1. Когда активен режим редактирования формы: отключаем все остальные элементы */
+/* 1. Когда активен режим редактирования формы: 
+      приглушаем все остальные элементы и отключаем события мыши на них,
+      чтобы они не мешали рисовать точки */
 body.shape-editing-mode .item-zone:not(:has(#shape-editor-overlay)) {
     opacity: 0.3 !important;
     pointer-events: none !important;
@@ -258,21 +260,24 @@ body.shape-editing-mode .info-zone {
     transition: none !important;
 }
 
-/* 2. Активный элемент: подсветка, активность, БЕЗ ЛАГОВ */
+/* 2. Активный элемент (тот, в котором лежит оверлей):
+      Делаем его полностью видимым и активным.
+      Убираем transition, чтобы рисование точек не лагало */
 body.shape-editing-mode .item-zone:has(#shape-editor-overlay) {
     opacity: 1 !important;
     pointer-events: auto !important;
-    background-color: rgba(255, 255, 255, 0.05) !important;
-    box-shadow: 0 0 0 2px cyan !important;
-    transition: none !important; /* Убираем лаг 0.2s */
+    /* Легкая подсветка границ, чтобы видеть где кончается div */
+    box-shadow: 0 0 0 1px rgba(0, 255, 255, 0.3) !important;
+    transition: none !important; 
 }
 
-/* 3. Оверлей перехватывает клики */
+/* 3. Оверлей с SVG должен перехватывать клики */
 #shape-editor-overlay {
     pointer-events: auto !important;
 }
 
-/* 4. При перетаскивании (Drag/Resize) обычных рамок - тоже убираем анимацию */
+/* 4. При перетаскивании (Drag/Resize) обычных рамок - тоже убираем анимацию, 
+      чтобы рамка не "догоняла" курсор с задержкой */
 .item-zone.dragging, .info-zone.dragging {
     transition: none !important;
 }
