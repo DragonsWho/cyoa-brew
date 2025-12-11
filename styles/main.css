@@ -160,12 +160,11 @@ body.text-mode .text-content { display: block; pointer-events: auto; }
 .ai-tip-box a:hover { text-decoration: underline; }
 
 
-
 /* =========================================
-   CUSTOM SHAPE LOGIC (FINAL)
+   CUSTOM SHAPE LOGIC (NO FLASH + SOFT HOVER)
    ========================================= */
 
-/* 1. БАЗОВЫЙ КОНТЕЙНЕР (DIV) */
+/* 1. БАЗОВЫЙ КОНТЕЙНЕР */
 #game-wrapper .click-zone.custom-shape {
     background: none !important;
     background-image: none !important;
@@ -180,13 +179,11 @@ body.text-mode .text-content { display: block; pointer-events: auto; }
     pointer-events: none !important;
 }
 
-/* Фикс для прозрачности: контейнер должен быть полностью непрозрачным,
-   чтобы внутренние слои сами управляли своей прозрачностью */
 #game-wrapper .click-zone.custom-shape.disabled {
     opacity: 1 !important; 
 }
 
-/* 2. УБИВАЕМ ПСЕВДОЭЛЕМЕНТЫ У КОНТЕЙНЕРА */
+/* 2. УБИВАЕМ ПСЕВДОЭЛЕМЕНТЫ */
 #game-wrapper .click-zone.custom-shape::after,
 #game-wrapper .click-zone.custom-shape::before,
 #game-wrapper .click-zone.custom-shape.selected::after,
@@ -204,7 +201,6 @@ body.text-mode .text-content { display: block; pointer-events: auto; }
     width: 100%; height: 100%;
     z-index: -1; 
     pointer-events: none;
-    /* Сюда JS нальет background-image с полосками */
 }
 
 /* 4. ИСКЛЮЧЕНИЕ ДЛЯ РЕДАКТОРА */
@@ -214,59 +210,80 @@ body:not(.editor-preview-active) #game-wrapper .click-zone.custom-shape.editor-s
     pointer-events: auto !important; 
 }
 
-/* 5. SVG SLOI */
+/* 5. СЛОЙ SVG (ТЕНЬ) */
 .shape-bg-layer {
     position: absolute;
     top: 0; left: 0; width: 100%; height: 100%;
     z-index: -2; 
     overflow: visible !important;
     pointer-events: none;
+    transition: filter 0.3s ease-out; /* Плавная тень */
 }
 
-/* 6. ПОЛИГОН */
+/* 6. ПОЛИГОН (ЗАЛИВКА) */
 .shape-poly {
     vector-effect: non-scaling-stroke;
-    transition: all 0.2s ease-in-out;
+    
+    /* ФИКС ВСПЫШКИ: Анимируем только прозрачность и толщину линий */
+    /* Не анимируем fill (цвет), чтобы не было интерполяции цветов */
+    transition: fill-opacity 0.3s ease-in-out, stroke-opacity 0.3s ease-in-out, stroke-width 0.3s ease-in-out;
+    
     pointer-events: auto;
     cursor: pointer;
+    
     fill: transparent;
+    fill-opacity: 0; /* Старт с 0 */
+    
     stroke: transparent;
     stroke-width: 0;
 }
 
 /* --- СОСТОЯНИЯ --- */
 
-/* Hover */
+/* HOVER (Наведение) - Мягкая подсветка без рамок */
+#game-wrapper .click-zone.custom-shape:not(.selected):not(.disabled):hover .shape-bg-layer {
+    /* Легкое внешнее свечение */
+    filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.3));
+}
 #game-wrapper .click-zone.custom-shape:not(.selected):not(.disabled):hover .shape-poly {
-    stroke: rgba(255, 255, 255, 0.6);
-    stroke-width: 2px;
-    filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.5));
-    fill: rgba(255, 255, 255, 0.05);
+    stroke: none; /* Убрали рамку по просьбе */
+    stroke-width: 0;
+    
+    fill: #ffffff; /* Белая подсветка */
+    fill-opacity: 0.1; /* Очень легкая прозрачность */
 }
 
-/* Selected */
+/* SELECTED (Выбрано) */
+#game-wrapper .click-zone.custom-shape.selected .shape-bg-layer {
+    filter: drop-shadow(0 0 15px var(--sel-shadow-c, #00ff00));
+}
 #game-wrapper .click-zone.custom-shape.selected .shape-poly {
     stroke: var(--sel-border-c, #00ff00);
     stroke-width: var(--sel-border-w, 3px);
-    filter: drop-shadow(0 0 15px var(--sel-shadow-c, #00ff00));
+    
     fill: var(--sel-bg-color, #00ff00);
+    
+    /* Анимация пойдет от 0 (или 0.1 при ховере) до нужного значения плавно */
     fill-opacity: var(--sel-bg-opacity, 0.1); 
 }
 
-/* Disabled */
+/* DISABLED (Недоступно) */
+#game-wrapper .click-zone.custom-shape.disabled .shape-bg-layer {
+    filter: none;
+}
 #game-wrapper .click-zone.custom-shape.disabled .shape-poly {
     stroke: var(--dis-border-c, #333);
     stroke-width: 1px;
     filter: grayscale(100%);
     cursor: not-allowed;
-    /* Убираем заливку SVG, так как под ним теперь лежит .shape-internal-stripes с полосками */
     fill: transparent; 
 }
 
-/* В редакторе */
+/* В РЕДАКТОРЕ */
 body.shape-editing-mode .shape-poly {
     stroke: #555;
     stroke-width: 1px;
     stroke-dasharray: 4;
     pointer-events: none;
+    fill-opacity: 0;
 }
