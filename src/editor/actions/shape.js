@@ -238,15 +238,32 @@ export const ShapeEditorMixin = {
     },
     
     resetShape() {
-        if(this.shapeItem) {
-            // Очищаем массив точек -> renderer поймет, что это прямоугольник
-            this.shapeItem.shapePoints = [];
-            
-            // Сбрасываем clip-path сразу
-            const itemEl = document.getElementById(`btn-${this.shapeItem.id}`);
-            if(itemEl) itemEl.style.clipPath = 'none';
-            
-            this.drawShapeOverlay();
+        if (this.shapeItem) {
+            if (confirm("Reset shape to standard rectangle?")) {
+                // 1. Очищаем данные
+                this.shapeItem.shapePoints = [];
+                
+                // 2. Находим элемент в DOM
+                const itemEl = document.getElementById(`btn-${this.shapeItem.id}`);
+                if (itemEl) {
+                    // Сбрасываем стили немедленно
+                    itemEl.style.clipPath = 'none';
+                    itemEl.classList.remove('custom-shape');
+                    
+                    // Удаляем SVG слой
+                    const svg = itemEl.querySelector('.shape-bg-layer');
+                    if(svg) svg.remove();
+                }
+
+                // 3. Перерисовываем оверлей редактора (он станет пустым)
+                this.drawShapeOverlay();
+                
+                // 4. Форсируем обновление рендерера, чтобы он понял, что формы больше нет
+                this.renderer.updateUI();
+                
+                // 5. Обновляем JSON превью в боковой панели
+                this.updateCodePreview();
+            }
         }
-    }
+    },
 };

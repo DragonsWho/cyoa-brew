@@ -166,78 +166,80 @@ body.text-mode .text-content { display: block; pointer-events: auto; }
 
 
 /* =========================================
-   CUSTOM SHAPE LOGIC (FIXED)
+   CUSTOM SHAPE LOGIC (SVG POLYGONS)
    ========================================= */
 
-/* 1. Сбрасываем "коробку" */
-/* Используем #game-wrapper для перебивания специфичности других стилей */
+/* 1. Контейнер (DIV) */
 #game-wrapper .click-zone.custom-shape {
-    background-color: transparent !important;
-    background-image: none !important;
+    /* Отключаем стандартные стили коробки */
+    background: transparent !important;
     border: none !important;
     box-shadow: none !important;
     border-radius: 0 !important;
-    /* Важно: clip-path нужен для кликов, чтобы мышь не ловила пустоту в углах */
-    /* Но визуальную обрезку делает сам SVG */
+    /* Разрешаем SVG выходить за границы (для свечения) */
     overflow: visible !important;
 }
 
-/* Скрываем стандартный фон-тинт (если используется ::after для цвета) */
-#game-wrapper .click-zone.custom-shape::after {
-    display: none !important;
+/* В режиме редактора (НЕ превью) возвращаем рамку, чтобы видеть границы */
+body:not(.editor-preview-active) #game-wrapper .click-zone.custom-shape.editor-selected {
+    border: 1px dashed rgba(255, 255, 255, 0.5) !important;
+    box-shadow: 0 0 5px rgba(0,0,0,0.5) !important;
 }
 
 /* 2. Слой SVG */
 .shape-bg-layer {
     position: absolute;
-    top: 0; left: 0; 
-    width: 100%; height: 100%;
-    z-index: -1; /* Чтобы текст был поверх формы */
+    top: 0; left: 0; width: 100%; height: 100%;
+    z-index: -1; 
     overflow: visible;
-    pointer-events: none; /* Пропускаем клики сквозь SVG к DIVу */
+    pointer-events: none; /* Клики проходят сквозь SVG в DIV */
 }
 
-/* 3. Сам полигон */
+/* 3. Полигон (Сама форма) */
 .shape-poly {
-    /* vector-effect позволяет рамке не растягиваться при масштабировании кнопки */
-    vector-effect: non-scaling-stroke; 
+    vector-effect: non-scaling-stroke; /* Чтобы линия не жирнела при растягивании */
     transition: all 0.2s ease-in-out;
     
-    /* Дефолтное состояние (не выбрано) */
-    fill: rgba(0, 0, 0, 0.5); /* Полупрозрачный фон */
-    stroke: rgba(255, 255, 255, 0.2); /* Тонкая рамка */
-    stroke-width: 1px;
+    /* ПО УМОЛЧАНИЮ: НЕВИДИМЫЙ */
+    fill: transparent; 
+    stroke: transparent;
+    stroke-width: 0;
 }
 
-/* =========================================
-   STATES (Состояния)
-   Переносим логику с DIV на Polygon
-   ========================================= */
+/* --- СОСТОЯНИЯ --- */
 
-/* HOVER (Наведение) */
-#game-wrapper .click-zone.custom-shape:hover .shape-poly {
-    stroke: rgba(255, 255, 255, 0.8);
+/* HOVER (Наведение) - Легкая подсветка контура */
+#game-wrapper .click-zone.custom-shape:not(.disabled):hover .shape-poly {
+    stroke: rgba(255, 255, 255, 0.5);
     stroke-width: 2px;
-    /* drop-shadow - это "умная" тень, которая повторяет контур SVG, в отличие от box-shadow */
-    filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.5));
+    filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.5));
 }
 
-/* SELECTED (Выбрано) */
+/* SELECTED (Выбрано) - Берет цвета из глобальных настроек стиля */
 #game-wrapper .click-zone.custom-shape.selected .shape-poly {
-    /* Берем цвета из CSS переменных (твоя тема) */
-    fill: var(--sel-bg-color, rgba(0, 255, 0, 0.2));
-    stroke: var(--sel-border-c, #00ff00);
-    stroke-width: var(--sel-border-w, 3px);
+    /* Переменные берутся из renderer.js applyGlobalStyles */
+    fill: var(--sel-bg-color); 
+    stroke: var(--sel-border-c);
+    stroke-width: var(--sel-border-w);
     
     /* Свечение по форме */
-    filter: drop-shadow(0 0 var(--sel-shadow-w, 10px) var(--sel-shadow-c, #00ff00));
+    filter: drop-shadow(0 0 10px var(--sel-shadow-c));
+    
+    /* Учитываем прозрачность фона */
+    fill-opacity: var(--sel-bg-opacity, 0.2);
 }
 
-/* DISABLED (Отключено) */
+/* DISABLED (Недоступно) */
 #game-wrapper .click-zone.custom-shape.disabled .shape-poly {
-    fill: var(--dis-bg-color, #000);
-    fill-opacity: var(--dis-bg-opacity, 0.5);
-    stroke: var(--dis-border-c, #333);
+    fill: rgba(0, 0, 0, 0.5);
+    stroke: #333;
     stroke-width: 1px;
     filter: grayscale(100%);
+}
+
+/* В РЕДАКТОРЕ ТОЧЕК (пока рисуем) - делаем форму чуть видной */
+body.shape-editing-mode .shape-poly {
+    stroke: #555;
+    stroke-width: 1px;
+    stroke-dasharray: 4;
 }

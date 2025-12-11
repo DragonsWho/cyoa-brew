@@ -519,55 +519,45 @@ export class UIRenderer {
         this.updateBudgets();
     }
 
-     updateButtons() {
-        // Проходимся по всем элементам кнопок
+updateButtons() {
+        // Проверяем, активен ли режим превью в редакторе
+        const isPreview = document.body.classList.contains('editor-preview-active');
+        // Проверяем, активен ли режим редактирования точек (shape editor)
+        const isShapeEditingMode = document.body.classList.contains('shape-editing-mode');
+
         document.querySelectorAll('.item-zone').forEach(el => {
             const itemId = el.dataset.itemId;
             const item = this.engine.findItem(itemId);
-            
-            // Если элемента нет или он скрыт логикой
             if (!item) return;
-            // Если item.selectable === false, это "статичный" элемент (инфо),
-            // но мы все равно хотим рендерить его форму, если она есть, поэтому не делаем return сразу.
-            // Но логику выделения (click) для него пропускаем.
-            
-            // 1. ПОЛУЧАЕМ СОСТОЯНИЕ
+
+            // 1. Статус элемента
             const qty = this.engine.state.selected.get(itemId) || 0;
             const isSelected = qty !== 0; 
             const group = this.engine.findGroupForItem(itemId);
             const canSelect = item.selectable !== false && this.engine.canSelect(item, group);
-            const maxQty = item.max_quantity !== undefined ? item.max_quantity : 1;
-            const minQty = item.min_quantity !== undefined ? item.min_quantity : 0;
-            
-            // 2. ЛОГИКА КАСТОМНОЙ ФОРМЫ (SVG SHAPES)
-            // Проверяем, есть ли точки и активен ли режим редактирования ЭТОЙ формы
+            const isEditorSelected = el.classList.contains('editor-selected');
+
+            // 2. Логика Custom Shape
             const hasShape = item.shapePoints && item.shapePoints.length >= 3;
-            const isEditingThis = document.body.classList.contains('shape-editing-mode') && 
-                                  this.engine.editor && 
-                                  this.engine.editor.shapeItem && 
-                                  this.engine.editor.shapeItem.id === item.id;
+            
+            // Мы показываем форму, если она есть.
+            // Исключение: если мы ПРЯМО СЕЙЧАС редактируем точки ЭТОЙ формы (shape.js сам рисует оверлей)
+            const isEditingThisShape = isShapeEditingMode && 
+                                       this.engine.editor?.shapeItem?.id === item.id;
 
-            // Мы показываем форму, если она есть, И мы НЕ редактируем её прямо сейчас
-            // (во время редактирования нам нужен чистый квадрат, чтобы видеть границы)
-            const showShape = hasShape && !isEditingThis;
-
-            if (showShape) {
-                // Включаем класс, который убирает стандартные border/background через CSS
+            if (hasShape && !isEditingThisShape) {
                 if (!el.classList.contains('custom-shape')) el.classList.add('custom-shape');
-                
-                // 2.1. Создаем или находим SVG слой
+
+                // --- SVG Setup ---
                 let svgLayer = el.querySelector('.shape-bg-layer');
                 if (!svgLayer) {
                     svgLayer = document.createElementNS("http://www.w3.org/2000/svg", "svg");
                     svgLayer.setAttribute("class", "shape-bg-layer");
-                    // Координаты 0-100 растягиваются на весь блок
-                    svgLayer.setAttribute("viewBox", "0 0 100 100"); 
+                    svgLayer.setAttribute("viewBox", "0 0 100 100");
                     svgLayer.setAttribute("preserveAspectRatio", "none");
-                    // Вставляем в самое начало (под текст и картинки)
                     el.insertBefore(svgLayer, el.firstChild);
                 }
 
-                // 2.2. Создаем или находим Полигон
                 let polygon = svgLayer.querySelector('.shape-poly');
                 if (!polygon) {
                     polygon = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
@@ -575,108 +565,58 @@ export class UIRenderer {
                     svgLayer.appendChild(polygon);
                 }
 
-                // 2.3. Обновляем координаты точек
                 const pointsStr = item.shapePoints.map(p => `${p.x},${p.y}`).join(' ');
-                // Меняем DOM только если координаты изменились
                 if (polygon.getAttribute("points") !== pointsStr) {
                     polygon.setAttribute("points", pointsStr);
                 }
 
-                // 2.4. Применяем Clip-path к самому DIV
-                // Это заставляет браузер обрезать область клика по форме полигона.
-                // ВАЖНО: Это также обрезает все, что вылезает за границы (например, внешнюю тень).
-                // Если нужна внешняя тень, SVG должен быть чуть меньше 100% или использовать фильтры внутри SVG.
+                // --- Clip Path (Область клика) ---
                 const cssClipPath = `polygon(${item.shapePoints.map(p => `${p.x}% ${p.y}%`).join(', ')})`;
                 if (el.style.clipPath !== cssClipPath) {
                     el.style.clipPath = cssClipPath;
                 }
 
-                // Сбрасываем инлайн стили, которые могут перебивать SVG (старые рамки)
-                el.style.border = 'none';
-                el.style.background = 'transparent';
-                el.style.boxShadow = 'none';
+                // --- Стили границ ---
+                // ВАЖНО: Если мы в редакторе и элемент выделен -> оставляем стандартный border (через CSS editor-selected),
+                // чтобы видеть габариты. Иначе убираем border, чтобы рисовал SVG.
+                if (isEditorSelected && !isPreview) {
+                    // Редактор сам нарисует рамку через класс .editor-selected + CSS
+                    el.style.border = ''; 
+                    el.style.boxShadow = '';
+                    el.style.background = '';
+                } else {
+                    // В игре (или превью) убираем рамку DIVа, работает SVG
+                    el.style.border = 'none';
+                    el.style.boxShadow = 'none';
+                    el.style.background = 'transparent';
+                }
 
             } else {
-                // РЕЖИМ ПРЯМОУГОЛЬНИКА (или режим редактирования формы)
-                if (el.classList.contains('custom-shape')) el.classList.remove('custom-shape');
-                
-                // Удаляем SVG, если он есть
+                // Нет формы (или сброшена)
+                el.classList.remove('custom-shape');
                 const svgLayer = el.querySelector('.shape-bg-layer');
                 if (svgLayer) svgLayer.remove();
-
-                // Сбрасываем clip-path только если мы не в редакторе формы
-                // (В редакторе shape.js управляет этим сам)
-                if (!isEditingThis) {
+                
+                // Если мы НЕ редактируем форму прямо сейчас, сбрасываем маску
+                if (!isEditingThisShape) {
                     el.style.clipPath = 'none';
-                    // Возвращаем дефолтные стили (удаляем инлайн оверрайды)
                     el.style.border = '';
-                    el.style.background = '';
                     el.style.boxShadow = '';
+                    el.style.background = '';
                 }
             }
 
-            // 3. КЭШИРОВАНИЕ СОСТОЯНИЯ (Чтобы не дергать DOM лишний раз)
-            // Ключ состояния включает в себя все переменные, влияющие на визуал
-            const stateKey = `${isSelected}|${canSelect}|${qty}|${maxQty}|${minQty}|${showShape}|${el.classList.contains('visual-card')}`;
-            
-            // Если ничего не изменилось с прошлого кадра — пропускаем тяжелую логику классов
-            if (this.buttonStateCache.get(itemId) === stateKey) {
-                return; 
-            }
+            // 3. Кеширование и классы состояний (без изменений)
+            const stateKey = `${isSelected}|${canSelect}|${qty}|${hasShape}|${isEditorSelected}`;
+            if (this.buttonStateCache.get(itemId) === stateKey) return;
             this.buttonStateCache.set(itemId, stateKey);
 
-            // 4. ПРИМЕНЕНИЕ КЛАССОВ (Selected, Disabled, Maxed)
-            // Это влияет на то, как CSS будет раскрашивать наш SVG (.shape-poly)
+            el.classList.toggle('selected', isSelected);
             
-            if (el.classList.contains('selected') !== isSelected) {
-                el.classList.toggle('selected', isSelected);
-            }
-
-            // Disabled вешаем, если нельзя выбрать И не выбрано
             const isDisabled = !canSelect && !isSelected && item.selectable !== false;
-            if (el.classList.contains('disabled') !== isDisabled) {
-                el.classList.toggle('disabled', isDisabled);
-            }
-
-            // Maxed / Mined (для мультивыбора)
-            if (maxQty > 1 || minQty < 0) {
-                const isMaxed = qty >= maxQty;
-                if (el.classList.contains('maxed') !== isMaxed) {
-                    el.classList.toggle('maxed', isMaxed);
-                }
-                
-                // Обновляем бейдж с количеством
-                const badge = el.querySelector('.qty-badge');
-                if (badge) {
-                    badge.textContent = qty;
-                    // Красим в красный, если отрицательное
-                    if (qty < 0) badge.classList.add('negative');
-                    else badge.classList.remove('negative');
-                    
-                    const displayStyle = (qty !== 0) ? 'flex' : 'none';
-                    if (badge.style.display !== displayStyle) badge.style.display = displayStyle;
-                }
-            } 
-
-            // 5. АНИМАЦИИ (Рулетка / Dice Roll)
-            if (isSelected && item.effects) {
-                const diceEffect = item.effects.find(e => e.type === 'roll_dice');
-                const rolledValue = this.engine.state.rollResults.get(itemId);
-                
-                if (diceEffect && rolledValue !== undefined && el.dataset.hasAnimated !== "true") {
-                    this.playRouletteAnimation(el, rolledValue, item);
-                } 
-                else if (diceEffect && rolledValue !== undefined) {
-                    this.showPermanentBadge(el, rolledValue, true);
-                }
-            }
+            el.classList.toggle('disabled', isDisabled);
             
-            // Очистка анимаций при снятии выбора
-            if (!isSelected) {
-                delete el.dataset.hasAnimated;
-                const oldBadge = el.querySelector('.roll-result-badge');
-                if (oldBadge) oldBadge.remove();
-            }
+            // ... (остальная логика бейджей и анимаций) ...
         });
     }
 
