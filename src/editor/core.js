@@ -38,6 +38,7 @@ import { AuditChatMixin } from './integrations/llm/audit-chat.js';
 import { EditorIOMixin } from './io.js';
 import { EditorMenusMixin } from './menus.js'; 
 import { EditorHelpersMixin } from './utils/helpers.js';
+import { ShapeEditorMixin } from './actions/shape.js';
 
 export class CYOAEditor {
     constructor(engine, renderer) {
@@ -86,6 +87,11 @@ export class CYOAEditor {
         this.enabled = false;
         this.triggerLabelCheck = null;
 
+        // Auto-Save State
+        this.autoSaveTimer = null;
+        this.autoSaveIntervalMs = 10 * 60 * 1000; // 10 minutes
+        this.isAutoSaveEnabled = localStorage.getItem('cyoa_autosave_enabled') !== 'false'; // Default true
+
         this.llmConfig = {
             provider: 'openrouter', 
             baseUrl: 'https://openrouter.ai/api/v1',
@@ -105,6 +111,7 @@ export class CYOAEditor {
         this.createEditorUI();
         this.attachEventListeners();
         this.switchTab('choice');
+        this.startAutoSave(); // Start the timer
         console.log('✏️ Editor enabled');
     }
 
@@ -123,6 +130,7 @@ export class CYOAEditor {
         if (splitGuide) splitGuide.remove();
 
         this.setZoom(1);
+        this.stopAutoSave(); // Stop the timer
 
         // --- NEW: Reset Preview Mode ---
         // Prevents ghost preview state when re-opening editor

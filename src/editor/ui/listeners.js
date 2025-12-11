@@ -18,6 +18,7 @@ export const ListenersMixin = {
         this.setupAddPageListener();
         this.setupSettingsListeners();
         this.setupStyleListeners();
+        this.setupAutoSaveListeners(); // NEW
     },
 
     // ==================== STYLE SETTINGS ====================
@@ -160,6 +161,15 @@ export const ListenersMixin = {
         if (notes) {
             notes.addEventListener('input', (e) => {
                 this.engine.config.notes = e.target.value;
+            });
+        }
+    },
+
+    setupAutoSaveListeners() {
+        const toggle = document.getElementById('autosave-toggle');
+        if (toggle) {
+            toggle.addEventListener('change', (e) => {
+                this.toggleAutoSave(e.target.checked);
             });
         }
     },

@@ -1,7 +1,7 @@
 /**
  * src/ui/editor/io.js
  * Editor IO Mixin
- * Handles File Export (JSON/ZIP), New Project, and Debug Image generation.
+ * Handles File Export (JSON/ZIP), New Project, Debug Image, and Auto-Save.
  */
 
 import { ProjectStorage } from '../utils/storage.js';
@@ -217,4 +217,103 @@ export const EditorIOMixin = {
             }
         }
     },
+
+    // ==================== AUTO-SAVE LOGIC ====================
+
+    startAutoSave() {
+        this.stopAutoSave();
+        if (this.isAutoSaveEnabled) {
+            console.log(`💾 Auto-Save started (${this.autoSaveIntervalMs / 60000}m interval)`);
+            this.autoSaveTimer = setInterval(() => this.performAutoSave(), this.autoSaveIntervalMs);
+        }
+    },
+
+    stopAutoSave() {
+        if (this.autoSaveTimer) {
+            clearInterval(this.autoSaveTimer);
+            this.autoSaveTimer = null;
+        }
+    },
+
+    toggleAutoSave(enabled) {
+        this.isAutoSaveEnabled = enabled;
+        localStorage.setItem('cyoa_autosave_enabled', enabled);
+        if (enabled) this.startAutoSave();
+        else this.stopAutoSave();
+    },
+
+    performAutoSave() {
+        if (!this.engine.config) return;
+
+        // Cycle logic: 1 -> 2 -> 3 -> 1
+        let currentSlot = parseInt(localStorage.getItem('cyoa_autosave_slot') || '0');
+        let nextSlot = (currentSlot % 3) + 1;
+
+        const dataToSave = {
+            timestamp: new Date().toISOString(),
+            config: this.engine.config
+        };
+
+        try {
+            localStorage.setItem(`cyoa_autosave_${nextSlot}`, JSON.stringify(dataToSave));
+            localStorage.setItem('cyoa_autosave_slot', nextSlot);
+            
+            console.log(`💾 Auto-saved to Slot ${nextSlot}`);
+            
+            // Trigger visual update if Settings tab is open
+            if (this.activeTab === 'settings') {
+                this.updateAutoSaveUI();
+            }
+        } catch (e) {
+            console.warn("⚠️ Auto-Save Failed (Quota Exceeded?):", e);
+            // Optionally notify user nicely
+        }
+    },
+
+    loadAutoSave(slot) {
+        if (!confirm(`Load Auto-Save from Slot ${slot}? Unsaved changes will be lost.`)) return;
+
+        try {
+            const raw = localStorage.getItem(`cyoa_autosave_${slot}`);
+            if (!raw) {
+                alert("Empty slot.");
+                return;
+            }
+            const data = JSON.parse(raw);
+            if (data.config) {
+                this.engine.loadConfig(data.config);
+                this.deselectChoice();
+                this.selectedGroup = null;
+                this.activePageIndex = 0;
+                this.updateSettingsInputs();
+                alert(`✅ Loaded Slot ${slot} (${new Date(data.timestamp).toLocaleTimeString()})`);
+            }
+        } catch (e) {
+            alert("Failed to load auto-save: " + e.message);
+        }
+    },
+
+    updateAutoSaveUI() {
+        const slots = [1, 2, 3];
+        slots.forEach(i => {
+            const raw = localStorage.getItem(`cyoa_autosave_${i}`);
+            const labelEl = document.getElementById(`autosave-time-${i}`);
+            if (labelEl) {
+                if (raw) {
+                    try {
+                        const data = JSON.parse(raw);
+                        const date = new Date(data.timestamp);
+                        labelEl.textContent = date.toLocaleString();
+                        labelEl.style.color = "#aaa";
+                    } catch (e) {
+                        labelEl.textContent = "Corrupted";
+                        labelEl.style.color = "#d32f2f";
+                    }
+                } else {
+                    labelEl.textContent = "Empty";
+                    labelEl.style.color = "#666";
+                }
+            }
+        });
+    }
 };
