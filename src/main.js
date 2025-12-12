@@ -12,6 +12,8 @@ import { ControlPanel } from './ui/controls.js';
 import { BuildManager } from './ui/build-manager.js';
 import { HelpManager } from './ui/help-manager.js'; // Import HelpManager
 
+import { PanzoomManager } from './ui/panzoom-manager.js';
+
 // Global state
 let engine, renderer, controls, buildManager, helpManager;
 
@@ -50,6 +52,7 @@ async function init() {
             setTimeout(() => loading.remove(), 300);
         }
 
+window.panzoomManager = new PanzoomManager(engine);
         console.log('✨ CYOA loaded successfully!');
         console.log('💡 Tip: Click 🐞 Debug to enter edit mode');
 

@@ -30,6 +30,7 @@
   },
   "dependencies": {
     "@gradio/client": "^2.0.0",
+    "@panzoom/panzoom": "^4.6.1",
     "jszip": "^3.10.1"
   }
 }

@@ -7,32 +7,23 @@ export class ControlPanel {
     constructor(engine, renderer) {
         this.engine = engine;
         this.renderer = renderer;
-        this.editor = null; // Редактор пока не создан
+        this.editor = null; 
 
         this.setupControls();
         console.log('🎮 Controls initialized');
     }
 
-    // ==================== SETUP ====================
-
     setupControls() {
-        // Text toggle
         const textBtn = document.getElementById('text-toggle');
         if (textBtn) {
             textBtn.addEventListener('click', () => this.toggleText());
         }
 
-        // Edit/Debug toggle
         const editBtn = document.getElementById('edit-toggle');
         if (editBtn) {
-            // Теперь функция асинхронная (async)
             editBtn.addEventListener('click', () => this.toggleEditMode());
         }
-
-        // Reset button removed
     }
-
-    // ==================== ACTIONS ====================
 
     toggleText() {
         document.body.classList.toggle('text-mode');
@@ -45,10 +36,8 @@ export class ControlPanel {
     async toggleEditMode() {
         const btn = document.getElementById('edit-toggle');
         
-        // 1. ЛЕНИВАЯ ЗАГРУЗКА (Lazy Load)
         if (!this.editor) {
             if (btn) {
-                // Не меняем textContent, чтобы не затереть SVG иконку
                 btn.style.cursor = "wait"; 
                 btn.disabled = true;
                 btn.style.opacity = "0.5";
@@ -56,13 +45,9 @@ export class ControlPanel {
 
             try {
                 console.log('📦 Downloading Editor module...');
-                
-                // ИЗМЕНЕНИЕ ЗДЕСЬ: Импорт из index.js внутри папки editor
                 const module = await import('../editor/index.js');
-                
                 const CYOAEditor = module.CYOAEditor;
                 this.editor = new CYOAEditor(this.engine, this.renderer);
-                
                 console.log('📦 Editor module loaded!');
             } catch (e) {
                 console.error("Failed to load editor:", e);
@@ -82,7 +67,6 @@ export class ControlPanel {
             }
         }
 
-        // 2. Обычная логика переключения
         document.body.classList.toggle('edit-mode-active');
         
         if (btn) {
@@ -92,13 +76,41 @@ export class ControlPanel {
         const isActive = document.body.classList.contains('edit-mode-active');
         
         if (isActive) {
+            // === РЕЖИМ РЕДАКТОРА ВКЛЮЧЕН ===
             this.editor.enable();
-            document.body.classList.add('show-zones'); 
+            document.body.classList.add('show-zones');
+            
+            // Отключаем Panzoom
+            if (window.panzoomManager) {
+                window.panzoomManager.disable();
+                if (window.panzoomManager.instance) {
+                    window.panzoomManager.instance.reset(); 
+                }
+                const wrapper = document.getElementById('game-wrapper');
+                if (wrapper) wrapper.style.transform = ''; 
+                
+                // РАЗРЕШАЕМ скролл страницы
+                document.body.style.overflow = 'auto';
+                document.documentElement.style.overflow = 'auto';
+                document.body.style.touchAction = 'auto';
+            }
+
         } else {
+            // === РЕЖИМ РЕДАКТОРА ВЫКЛЮЧЕН ===
             this.editor.disable();
             document.body.classList.remove('show-zones');
             document.body.classList.remove('edit-mode-choice');
             document.body.classList.remove('edit-mode-group');
+            
+            // Включаем Panzoom
+            if (window.panzoomManager) {
+                // БЛОКИРУЕМ скролл страницы
+                document.body.style.overflow = 'hidden';
+                document.documentElement.style.overflow = 'hidden';
+                document.body.style.touchAction = 'none';
+                
+                window.panzoomManager.enable();
+            }
         }
         
         console.log(isActive ? '✏️ Edit mode ON' : '✏️ Edit mode OFF');

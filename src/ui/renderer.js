@@ -1,5 +1,5 @@
 /**
- * src\ui\renderer.js
+ * src/ui/renderer.js
  * UI Renderer - Handles all visual rendering
  */
 
@@ -43,7 +43,7 @@ export class UIRenderer {
 
         const root = document.documentElement;
         
-        // --- ACTIVE STYLE ---
+        // --- ACTIVE STATE ---
         root.style.setProperty('--sel-border-c', style.borderColor || '#00ff00');
         root.style.setProperty('--sel-border-w', `${style.borderWidth !== undefined ? style.borderWidth : 3}px`);
         root.style.setProperty('--sel-radius-tl', `${style.radiusTL !== undefined ? style.radiusTL : 12}px`);
@@ -92,14 +92,14 @@ export class UIRenderer {
             root.style.setProperty('--dis-bg-image', 'none');
         }
 
-        // --- POINT BAR STYLE (NEW) ---
+        // --- POINT BAR STYLE (UPDATED) ---
+        // Подтягиваем цвета из конфига для покраски бара
         root.style.setProperty('--pb-bg', style.pointBarBg || '#101010');
         root.style.setProperty('--pb-label', style.pointBarLabelColor || '#cccccc');
         root.style.setProperty('--pb-val', style.pointBarValueColor || '#00ff88');
 
         this.applyCustomCss(style.customCss, style.disabledCustomCss, style.visualCustomCss);
     }
-
 
     applyCustomCss(activeCss, disabledCss, visualCss) {
         let styleTag = document.getElementById('custom-card-style');
@@ -111,34 +111,22 @@ export class UIRenderer {
         
         let content = '';
         
-        // Active Styles (ВЫБРАННЫЕ КАРТОЧКИ)
         if (activeCss) {
-            // ИСПРАВЛЕНИЕ ЗДЕСЬ:
-            // Добавляем :not(.custom-shape), чтобы "крутые" CSS эффекты (пульсация, тени квадрата)
-            // применялись ТОЛЬКО к обычным прямоугольным кнопкам.
             content += `#game-wrapper .click-zone.selected:not(.custom-shape) { ${this.forceImportant(activeCss)} } `;
         }
         
-        // Disabled Styles (НЕДОСТУПНЫЕ)
         if (disabledCss) {
             const forcedDisabled = this.forceImportant(disabledCss);
-            
-            // 1. Обычные кнопки (прямоугольники)
             content += `#game-wrapper .click-zone.disabled:not(.custom-shape) { ${forcedDisabled} } `;
-            
-            // 2. Внутренний слой для Custom Shape (полоски внутри формы)
             content += `#game-wrapper .click-zone.custom-shape .shape-internal-stripes { ${forcedDisabled} } `;
         }
         
-        // Visual Card Styles
         if (visualCss) {
             content += `#game-wrapper .click-zone.visual-card { ${this.forceImportant(visualCss)} } `;
         }
         
         styleTag.textContent = content;
     }
-
-
 
     forceImportant(cssText) {
         if (!cssText) return '';
@@ -158,19 +146,15 @@ export class UIRenderer {
 
         const pages = this.engine.config.pages || [];
         
-        if (pages.length === 0) {
-            return;
-        }
+        if (pages.length === 0) return;
 
         const loadPromises = pages.map((page, index) => {
             return new Promise((resolve) => {
-                // 1. Create Separator (NOW OUTSIDE THE CONTAINER)
                 const separator = document.createElement('div');
                 separator.className = 'page-separator';
                 separator.textContent = `Page ${index + 1}`;
                 wrapper.appendChild(separator);
 
-                // 2. Create Page Container (Strictly for Image + Layer)
                 const container = document.createElement('div');
                 container.className = 'page-container';
                 container.id = `page-${index}`;
@@ -190,13 +174,9 @@ export class UIRenderer {
                 wrapper.appendChild(container);
 
                 img.onload = () => {
-                    this.pageDimensions[index] = {
-                        w: img.naturalWidth,
-                        h: img.naturalHeight
-                    };
+                    this.pageDimensions[index] = { w: img.naturalWidth, h: img.naturalHeight };
                     resolve();
                 };
-
                 img.onerror = () => {
                     this.pageDimensions[index] = { w: 1920, h: 1080 };
                     resolve();
@@ -209,7 +189,6 @@ export class UIRenderer {
 
     renderLayout() {
         const pages = this.engine.config.pages || [];
-        
         pages.forEach((page, pageIndex) => {
             const layer = document.getElementById(`layer-${pageIndex}`);
             const dim = this.pageDimensions[pageIndex];
@@ -233,14 +212,11 @@ export class UIRenderer {
             
             existingElements.forEach(el => {
                 if (el.classList.contains('group-budget-badge')) return; 
-                if (el.id && !activeIds.has(el.id)) {
-                    el.remove();
-                }
+                if (el.id && !activeIds.has(el.id)) el.remove();
             });
 
             this.syncBudgetBadges(page, layer, dim);
         });
-        
         this.updateUI();
     }
 
@@ -291,33 +267,23 @@ export class UIRenderer {
         button.dataset.groupId = group ? group.id : '';
         Object.assign(button.style, CoordHelper.toPercent(item.coords, dim));
 
-        // Перед присваиванием координат, убедимся что нет лагов
-        // Если мы не в режиме редактирования формы, применяем транзишн, иначе отключаем
         if (document.body.classList.contains('shape-editing-mode')) {
              button.style.transition = 'none';
         } else {
-             button.style.transition = ''; // вернуть из CSS
+             button.style.transition = '';
         }
 
-        Object.assign(button.style, CoordHelper.toPercent(item.coords, dim));
-
-        // --- SHAPE LOGIC ---
         if (item.shapePoints && item.shapePoints.length >= 3) {
             const polygonStr = item.shapePoints.map(p => `${p.x}% ${p.y}%`).join(', ');
             button.style.clipPath = `polygon(${polygonStr})`;
-            
-            // Скрываем стандартные рамки, так как они обрезаются
             button.style.border = 'none';
             button.style.boxShadow = 'none';
             button.style.borderRadius = '0';
-            
-            // Добавляем тень через drop-shadow, она учитывает форму (если юзер не переопределил это в custom css)
             if (!item.isVisualCard && !this.engine.config.style.customCss?.includes('filter')) {
                  button.style.filter = "drop-shadow(0 0 5px rgba(0, 255, 0, 0.5))";
             }
         } else {
             button.style.clipPath = 'none';
-            // Сбрасываем инлайн стили, чтобы вернулись CSS классы
             button.style.border = '';
             button.style.boxShadow = '';
             button.style.borderRadius = '';
@@ -331,9 +297,7 @@ export class UIRenderer {
         }
 
         const isStatic = (item.selectable === false);
-        if (button.classList.contains('static-info') !== isStatic) {
-            button.classList.toggle('static-info', isStatic);
-        }
+        button.classList.toggle('static-info', isStatic);
 
         const newTitle = item.title || '';
         const newDesc = item.description || '';
@@ -357,7 +321,6 @@ export class UIRenderer {
                     imgDiv.className = 'vc-image'; 
                     button.appendChild(imgDiv);
                 }
-                
                 const contentDiv = document.createElement('div');
                 contentDiv.className = 'vc-content';
                 
@@ -367,14 +330,12 @@ export class UIRenderer {
                     titleDiv.textContent = newTitle;
                     contentDiv.appendChild(titleDiv);
                 }
-
                 if (costStr) {
                     const costDiv = document.createElement('div');
                     costDiv.className = 'vc-cost';
                     costDiv.innerHTML = costStr; 
                     contentDiv.appendChild(costDiv);
                 }
-
                 const reqString = this.getTinyReqString(item);
                 if (reqString) {
                     const reqDiv = document.createElement('div');
@@ -382,7 +343,6 @@ export class UIRenderer {
                     reqDiv.textContent = reqString;
                     contentDiv.appendChild(reqDiv);
                 }
-
                 if (newDesc) {
                     const bodyDiv = document.createElement('div');
                     bodyDiv.className = 'vc-body';
@@ -421,7 +381,6 @@ export class UIRenderer {
             } else {
                 button.classList.remove('multi-select');
             }
-            
             button.dataset.contentHash = contentHash;
         }
         
@@ -500,6 +459,7 @@ export class UIRenderer {
         return parts.join(' • ');
     }
 
+    // --- ОБНОВЛЕННЫЙ МЕТОД RENDER POINTS BAR ---
     renderPointsBar() {
         const bar = document.getElementById('points-bar');
         bar.innerHTML = '';
@@ -509,13 +469,16 @@ export class UIRenderer {
             const div = document.createElement('div');
             div.className = 'currency';
             div.id = `curr-${p.id}`;
+            
+            // Используем классы, совместимые с CSS
             div.innerHTML = `
-                ${p.name}: 
-                <span>${this.engine.state.currencies[p.id] || p.start}</span>
+                <span class="curr-name">${p.name}</span>
+                <span class="curr-val">${this.engine.state.currencies[p.id] || p.start}</span>
             `;
             bar.appendChild(div);
         });
 
+        // Кнопка помощи (на мобильных скроется через CSS)
         const helpBtn = document.createElement('button');
         helpBtn.className = 'help-bar-btn';
         helpBtn.innerHTML = '!';
@@ -523,8 +486,6 @@ export class UIRenderer {
         helpBtn.onclick = () => {
             if (window.CYOA && window.CYOA.helpManager) {
                 window.CYOA.helpManager.open();
-            } else {
-                alert("Help module not loaded yet.");
             }
         };
         bar.appendChild(helpBtn);
@@ -536,8 +497,7 @@ export class UIRenderer {
         this.updateBudgets();
     }
 
-
-updateButtons() {
+    updateButtons() {
         const isPreview = document.body.classList.contains('editor-preview-active');
         const isShapeEditingMode = document.body.classList.contains('shape-editing-mode');
 
@@ -556,9 +516,6 @@ updateButtons() {
             const maxQty = item.max_quantity !== undefined ? item.max_quantity : 1;
             const minQty = item.min_quantity !== undefined ? item.min_quantity : 0;
 
-            // ============================================================
-            // 1. ЛОГИКА CUSTOM SHAPE (Многоугольники)
-            // ============================================================
             const hasShape = item.shapePoints && item.shapePoints.length >= 3;
             const isEditingThisShape = isShapeEditingMode && 
                                        this.engine.editor?.shapeItem?.id === item.id;
@@ -566,7 +523,6 @@ updateButtons() {
             if (hasShape && !isEditingThisShape) {
                 if (!el.classList.contains('custom-shape')) el.classList.add('custom-shape');
 
-                // A. SVG Layer (Тень и Рамка)
                 let svgLayer = el.querySelector('.shape-bg-layer');
                 if (!svgLayer) {
                     svgLayer = document.createElementNS("http://www.w3.org/2000/svg", "svg");
@@ -588,7 +544,6 @@ updateButtons() {
                     polygon.setAttribute("points", pointsStr);
                 }
 
-                // B. Internal Stripes Layer (Полоски для disabled)
                 let stripeLayer = el.querySelector('.shape-internal-stripes');
                 if (!stripeLayer) {
                     stripeLayer = document.createElement('div');
@@ -600,7 +555,6 @@ updateButtons() {
                 stripeLayer.style.clipPath = cssClipPath;
                 stripeLayer.style.display = isDisabled ? 'block' : 'none';
 
-                // C. Очистка контейнера
                 el.style.clipPath = 'none';
 
                 if (isEditorSelected && !isPreview) {
@@ -614,7 +568,6 @@ updateButtons() {
                 }
 
             } else {
-                // Стандартный прямоугольник
                 el.classList.remove('custom-shape');
                 const svgLayer = el.querySelector('.shape-bg-layer');
                 if (svgLayer) svgLayer.remove();
@@ -629,23 +582,13 @@ updateButtons() {
                 }
             }
 
-            // ============================================================
-            // 2. КЭШИРОВАНИЕ СОСТОЯНИЯ
-            // ============================================================
-            // Добавляем флаг visual-card в ключ, чтобы обновлять стиль при изменении типа
             const stateKey = `${isSelected}|${canSelect}|${qty}|${hasShape}|${isEditorSelected}|${isDisabled}|${el.classList.contains('visual-card')}`;
             if (this.buttonStateCache.get(itemId) === stateKey) return;
             this.buttonStateCache.set(itemId, stateKey);
 
-            // ============================================================
-            // 3. ПРИМЕНЕНИЕ КЛАССОВ (Selected, Disabled)
-            // ============================================================
             el.classList.toggle('selected', isSelected);
             el.classList.toggle('disabled', isDisabled);
 
-            // ============================================================
-            // 4. МНОЖЕСТВЕННЫЙ ВЫБОР (QTY BADGE) - ВОТ ЭТО БЫЛО ПОТЕРЯНО
-            // ============================================================
             if (maxQty > 1 || minQty < 0) {
                 const isMaxed = qty >= maxQty;
                 el.classList.toggle('maxed', isMaxed);
@@ -655,31 +598,23 @@ updateButtons() {
                     badge.textContent = qty;
                     if (qty < 0) badge.classList.add('negative');
                     else badge.classList.remove('negative');
-                    
-                    // Показываем бейдж, если количество не равно 0
                     const displayStyle = (qty !== 0) ? 'flex' : 'none';
                     if (badge.style.display !== displayStyle) badge.style.display = displayStyle;
                 }
             } 
 
-            // ============================================================
-            // 5. РУЛЕТКА И АНИМАЦИИ (DICE ROLL) - ВОТ ЭТО БЫЛО ПОТЕРЯНО
-            // ============================================================
             if (isSelected && item.effects) {
                 const diceEffect = item.effects.find(e => e.type === 'roll_dice');
                 const rolledValue = this.engine.state.rollResults.get(itemId);
                 
-                // Если есть эффект, есть результат, и анимация еще не играла
                 if (diceEffect && rolledValue !== undefined && el.dataset.hasAnimated !== "true") {
                     this.playRouletteAnimation(el, rolledValue, item);
                 } 
-                // Если анимация уже была (например, при перезагрузке страницы), просто показываем цифру
                 else if (diceEffect && rolledValue !== undefined) {
                     this.showPermanentBadge(el, rolledValue, true);
                 }
             }
             
-            // Если сняли выделение - сбрасываем анимацию и удаляем бейдж результата
             if (!isSelected) {
                 delete el.dataset.hasAnimated;
                 const oldBadge = el.querySelector('.roll-result-badge');
@@ -687,11 +622,6 @@ updateButtons() {
             }
         });
     }
-
-
-
-
-
 
     playRouletteAnimation(container, targetNumber, item) {
         if (container.classList.contains('spinning-active')) return;
@@ -727,7 +657,7 @@ updateButtons() {
         mask.appendChild(strip);
         container.appendChild(mask);
         
-        strip.offsetHeight; // Force reflow
+        strip.offsetHeight; 
         
         const duration = 2000;
         const targetY = -1 * (targetIndex * itemHeight) + maskOffset;
@@ -771,7 +701,7 @@ updateButtons() {
 
     updatePointsBar() {
         for (const currencyId in this.engine.state.currencies) {
-            const span = document.querySelector(`#curr-${currencyId} span`);
+            const span = document.querySelector(`#curr-${currencyId} .curr-val`);
             if (span) {
                 const value = this.engine.state.currencies[currencyId];
                 span.textContent = value;

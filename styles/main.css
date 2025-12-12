@@ -289,3 +289,127 @@ body.shape-editing-mode .shape-poly {
     pointer-events: none;
     fill-opacity: 0;
 }
+
+/* ==========================================================================
+   MOBILE ADAPTATION (Fixed & Restored)
+   ========================================================================== */
+@media (max-width: 768px) {
+    
+    /* 1. Points Bar */
+    #points-bar {
+        height: 60px;
+        padding: 0 50px 0 10px; /* Отступ справа для кнопок */
+        justify-content: flex-start;
+        overflow-x: auto;
+        gap: 15px;
+        scrollbar-width: none; 
+    }
+    #points-bar::-webkit-scrollbar { display: none; }
+
+    .currency {
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        gap: 0;
+        min-width: 60px;
+        max-width: 100px; /* Ограничиваем ширину */
+        border-right: 1px solid rgba(255,255,255,0.1);
+        padding-right: 15px;
+    }
+    .currency:last-child { border-right: none; }
+    
+    /* SCROLLABLE NAMES FIX */
+    .curr-name { 
+        font-size: 0.7rem; 
+        color: var(--pb-label);
+        width: 100%;
+        text-align: center;
+        overflow-x: auto; /* Разрешаем скролл */
+        white-space: nowrap;
+        scrollbar-width: none;
+        pointer-events: auto; /* Чтобы палец цеплял текст */
+        mask-image: linear-gradient(to right, black 85%, transparent 100%); /* Красивое затухание */
+        -webkit-mask-image: linear-gradient(to right, black 85%, transparent 100%);
+    }
+    .curr-name::-webkit-scrollbar { display: none; }
+    .curr-val { font-size: 1.1rem; }
+
+    .help-bar-btn { display: none !important; }
+
+    /* 2. Bottom Tools (Vertical Right) */
+    .bottom-tools {
+        left: auto; right: 0; bottom: 0;
+        width: 45px; height: 60px;
+        flex-direction: column;
+        border-radius: 0;
+        
+        /* FIX: Используем цвета из настроек */
+        background: var(--pb-bg) !important;
+        /* Убираем border-left, чтобы не было "разделителя" */
+        border: none;
+        border-top: 1px solid rgba(255,255,255,0.1);
+        
+        padding: 0; gap: 0;
+        justify-content: space-evenly;
+    }
+
+    .ctrl-btn {
+        width: 100%; height: 50%;
+        border-radius: 0;
+        /* Цвет иконок берем из настроек лейблов */
+        color: var(--pb-label);
+    }
+    #edit-toggle { display: none !important; }
+
+    /* 3. Tooltip (Compact) */
+    #tooltip {
+        bottom: 60px; left: 0; right: 0; top: auto !important;
+        border-radius: 0; border: none; border-top: 1px solid #444;
+        max-height: 40vh; transform: none !important;
+        font-size: 0.85rem; /* Уменьшаем шрифт, чтобы не было огромным */
+        padding: 10px;
+    }
+
+    /* 4. Mini Badges & Borders Fix */
+    /* Уменьшаем размеры, чтобы при зуме они не перекрывали все */
+    .qty-badge, .roll-result-badge {
+        width: 18px !important; height: 18px !important;
+        font-size: 9px !important;
+        border-width: 1px !important;
+    }
+    .group-budget-badge {
+        font-size: 7px !important; padding: 2px 5px !important;
+        border-width: 1px !important;
+    }
+    /* Уменьшаем толщину обводки выделения при просмотре с мобильного (опционально) */
+    .click-zone.selected { border-width: 2px !important; }
+
+    /* 5. VISUAL CARD RESTORATION (The "Don't touch!" part) */
+    .click-zone.visual-card { 
+        container-type: size; /* ВОЗВРАЩЕНО */
+        flex-direction: column !important;
+        /* Фикс рамок на мобильных */
+        border-width: 1px !important; 
+    }
+    .vc-content {
+        height: 100%;
+        overflow: hidden;
+        padding: 2cqw !important; /* Отступы в % от ширины карточки */
+    }
+    .vc-title { 
+        font-size: 10cqw !important; /* ВОЗВРАЩЕНО */
+        line-height: 1.1; margin-bottom: 2cqh; flex-shrink: 0; 
+    }
+    .vc-cost { 
+        font-size: 8cqw !important; /* ВОЗВРАЩЕНО */
+        margin-bottom: 1cqh; flex-shrink: 0; 
+    }
+    .vc-body { 
+        font-size: 6cqw !important; /* ВОЗВРАЩЕНО */
+        overflow-y: auto !important; /* ВОЗВРАЩЕНО */
+        scrollbar-width: none;
+        flex: 1;
+        pointer-events: auto; /* Чтобы можно было скроллить пальцем */
+    }
+    .vc-req { display: none !important; }
+}

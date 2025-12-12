@@ -1,6 +1,6 @@
 /**
  * src\ui\tooltip.js
- * Tooltip Manager - Handles hover tooltips
+ * Tooltip Manager - Handles hover tooltips (PC) and Long-Press (Mobile)
  */
 
 export class TooltipManager {
@@ -10,20 +10,43 @@ export class TooltipManager {
         this.currentItem = null;
         this.currentGroup = null;
         this.timer = null;
+        
+        // Mobile state
+        this.touchTimer = null;
+        this.isTouchAction = false;
+        this.longPressTriggered = false;
+
+        // Close tooltip on global click (mobile UX)
+        document.addEventListener('touchstart', (e) => {
+            if (!e.target.closest('#tooltip') && !e.target.closest('.item-zone')) {
+                this.hide();
+            }
+        });
 
         console.log('💬 Tooltip manager initialized');
     }
 
     // ==================== ATTACH ====================
 
-    attach(element, item, group) {
+ attach(element, item, group) {
+        // --- 1. ПРЕДОТВРАЩЕНИЕ КОНТЕКСТНОГО МЕНЮ (Android/iOS) ---
+        // Это блокирует всплывающее окно "Сохранить изображение / Поделиться"
+        element.addEventListener('contextmenu', (e) => {
+            if (this.isTouchAction) {
+                e.preventDefault();
+                e.stopPropagation();
+                return false;
+            }
+        });
+
+        // --- 2. PC MOUSE LOGIC ---
         element.addEventListener('mouseenter', (e) => {
+            if (this.isTouchAction) return; 
             this.currentItem = item;
             this.currentGroup = group;
             this.updateContent(item, group);
             this.updatePosition(e);
 
-            // Delay show
             this.timer = setTimeout(() => {
                 if (!document.body.classList.contains('text-mode')) {
                     this.show();
@@ -32,15 +55,62 @@ export class TooltipManager {
         });
 
         element.addEventListener('mousemove', (e) => {
+            if (this.isTouchAction) return;
             this.updatePosition(e);
         });
 
         element.addEventListener('mouseleave', () => {
+            if (this.isTouchAction) return;
             this.hide();
-            this.currentItem = null;
-            this.currentGroup = null;
             clearTimeout(this.timer);
         });
+
+        // --- 3. MOBILE TOUCH LOGIC (Long Press) ---
+        element.addEventListener('touchstart', (e) => {
+            this.isTouchAction = true;
+            this.longPressTriggered = false;
+            
+            // Если тултип уже открыт и мы тыкаем в другое место - он закроется глобальным листенером.
+            // Но если мы тыкаем в карточку - запускаем таймер.
+            this.touchTimer = setTimeout(() => {
+                this.longPressTriggered = true;
+                this.currentItem = item;
+                this.currentGroup = group;
+                this.updateContent(item, group);
+                this.show();
+                
+                // Вибрация, если поддерживается
+                if (navigator.vibrate) navigator.vibrate(50);
+            }, 500); // 500мс достаточно
+        }, { passive: true }); // passive: true улучшает скролл, но мы не делаем preventDefault тут
+
+        element.addEventListener('touchend', (e) => {
+            clearTimeout(this.touchTimer);
+            
+            // Если сработал лонг-пресс (появился тултип)
+            if (this.longPressTriggered) {
+                // Блокируем клик (выбор карточки), потому что пользователь просто хотел почитать
+                if (e.cancelable) e.preventDefault();
+                e.stopPropagation();
+            }
+            
+            // Сбрасываем флаг тача с задержкой, чтобы клик (если он разрешен) успел пройти
+            setTimeout(() => { this.isTouchAction = false; }, 100);
+        });
+
+        element.addEventListener('touchmove', () => {
+            // Если палец сдвинулся (скролл), отменяем таймер лонг-пресса
+            clearTimeout(this.touchTimer);
+        });
+        
+        // Дополнительная защита от клика при лонг-прессе
+        element.addEventListener('click', (e) => {
+            if (this.longPressTriggered) {
+                e.stopImmediatePropagation();
+                e.preventDefault();
+                this.longPressTriggered = false;
+            }
+        }, true);
     }
 
     // ==================== SHOW/HIDE ====================
@@ -86,8 +156,7 @@ export class TooltipManager {
         if (isDebug) {
             html += `<div class="debug-info">
                 ID: ${item.id}<br>
-                Group: ${group ? group.id : '(standalone)'}<br>
-                Coords: [${item.coords?.x}, ${item.coords?.y}, ${item.coords?.w}, ${item.coords?.h}]
+                Group: ${group ? group.id : '(standalone)'}
             </div>`;
         }
 
@@ -105,62 +174,35 @@ export class TooltipManager {
 
     renderEffects(item) {
         let html = '<div style="margin-bottom:8px; border-top:1px solid #444; padding-top:4px;">';
-        
         item.effects.forEach(eff => {
             let text = '';
             let icon = '⚡';
-
             switch (eff.type) {
                 case 'modify_group_limit':
-                    // Changed: use findGroup() instead of config.groups.find()
                     const group = this.engine.findGroup(eff.group_id);
                     const gName = group ? (group.title || eff.group_id) : eff.group_id;
                     const val = eff.value > 0 ? `+${eff.value}` : eff.value;
-                    text = `Allows <b>${val}</b> more choices in <i>${gName}</i>`;
+                    text = `Limit: <b>${val}</b> in <i>${gName}</i>`;
                     break;
-
                 case 'modify_cost':
-                    const target = eff.tag ? `[${eff.tag}]` : (eff.group_id ? `Group` : 'items');
-                    if (eff.mode === 'multiply') {
-                        const percent = Math.round((1 - eff.value) * 100);
-                        text = `<b>${percent}% Discount</b> on ${target} items`;
-                    } else {
-                        const sign = eff.value > 0 ? 'Discount' : 'Markup';
-                        text = `<b>${Math.abs(eff.value)} point ${sign}</b> on ${target} items`;
-                    }
+                    text = eff.mode === 'multiply' ? `<b>-${Math.round((1-eff.value)*100)}% Cost</b>` : `<b>${eff.value} Cost</b>`;
                     icon = '🏷️';
                     break;
-
                 case 'force_selection':
-                    const forcedItem = this.engine.findItem(eff.target_id);
-                    const name = forcedItem ? forcedItem.title : eff.target_id;
-                    text = `Automatically adds: <b>${name}</b>`;
+                    text = `Adds: <b>${eff.target_id}</b>`;
                     icon = '🎁';
                     break;
-
                 case 'set_value':
-                    text = `Sets <b>${eff.currency}</b> to ${eff.value}`;
+                    text = `Set <b>${eff.currency}</b> = ${eff.value}`;
                     break;
-
                 case 'roll_dice':
-                    const current = this.engine.state.rollResults.get(item.id);
-                    const range = `${eff.min || 1}-${eff.max || 6}`;
-                    if (current !== undefined) {
-                        text = `Rolled Result: <b>${current}</b> ${eff.currency}`;
-                        icon = '🎲';
-                    } else {
-                        text = `Rolls <b>${range}</b> ${eff.currency}`;
-                        icon = '🎲';
-                    }
+                    text = `Rolls <b>${eff.min}-${eff.max}</b> ${eff.currency}`;
+                    icon = '🎲';
                     break;
-
-                default:
-                    text = `Unknown Effect: ${eff.type}`;
+                default: text = eff.type;
             }
-
             html += `<div style="color:#4db8ff; font-size:0.9em; margin-bottom:2px;">${icon} ${text}</div>`;
         });
-
         html += '</div>';
         return html;
     }
@@ -170,105 +212,59 @@ export class TooltipManager {
         item.cost.forEach(c => {
             const { value, modifiers } = this.engine.rules.getCostBreakdown(c, item, group);
             const sign = value > 0 ? '+' : '';
-            
-            let colorClass = value < 0 ? 'bad' : ''; 
-            if (value === 0) colorClass = 'free';      
-            if (value > 0) colorClass = 'good';        
-
-            let modHtml = '';
-            if (modifiers.length > 0) {
-                modHtml = `<span class="mod-applied">(${modifiers.join(' ')})</span>`;
-            }
-
-            html += `<div class="cost ${colorClass}">
-                ${c.currency}: ${sign}${value} ${modHtml}
-            </div>`;
+            let colorClass = value < 0 ? 'bad' : (value > 0 ? 'good' : 'free');
+            let modHtml = modifiers.length > 0 ? `<span class="mod-applied">(${modifiers.join(' ')})</span>` : '';
+            html += `<div class="cost ${colorClass}">${c.currency}: ${sign}${value} ${modHtml}</div>`;
         });
         return html;
     }
 
     renderRequirements(item, group) {
         let reqsHtml = '';
-
         if (item.incompatible) {
             item.incompatible.forEach(badId => {
                 if (this.engine.state.selected.has(badId)) {
-                    const badItem = this.engine.findItem(badId);
-                    reqsHtml += `<span class="req-item fail">❌ Incompatible with: ${badItem?.title || badId}</span>`;
+                    reqsHtml += `<span class="req-item fail">❌ Incomp: ${badId}</span>`;
                 }
             });
         }
-
-        // Changed: add null check for group
         const isSelected = this.engine.state.selected.has(item.id);
         if (!isSelected && group && group.rules?.max_choices) {
             const currentCount = this.engine.getSelectedInGroup(group).length;
             if (currentCount >= group.rules.max_choices) {
-                reqsHtml += `<span class="req-item fail">⛔ Max choices reached (${group.rules.max_choices})</span>`;
+                reqsHtml += `<span class="req-item fail">⛔ Limit Reached</span>`;
             }
         }
-
         if (item.requirements) {
             item.requirements.forEach(req => {
-                reqsHtml += this.renderRequirement(req);
+                let isMet = false;
+                if (req.includes('(') || req.includes('||') || req.includes('&&')) {
+                    isMet = this.engine.rules.evaluateRequirement(req, null);
+                } else {
+                    const isNot = req.startsWith('!');
+                    const cleanId = isNot ? req.slice(1) : req;
+                    const targetSelected = this.engine.state.selected.has(cleanId);
+                    isMet = isNot ? !targetSelected : targetSelected;
+                }
+                const cleanReq = req.replace(/count\.tag\(['"](.+?)['"]\)/, 'Tag:$1').replace(/\|\|/, ' OR ');
+                reqsHtml += isMet ? `<span class="req-item ok">✔ ${cleanReq}</span>` : `<span class="req-item missing">⚠️ ${cleanReq}</span>`;
             });
         }
-
-        if (reqsHtml) {
-            return `<div class="reqs">${reqsHtml}</div>`;
-        }
-        return '';
-    }
-
-    renderRequirement(req) {
-        let isMet = false;
-        let displayText = req;
-
-        const formatText = (txt) => {
-            return txt
-                .replace(/count\.tag\(['"](.+?)['"]\)/g, "Tag: $1")
-                .replace(/count\.([a-zA-Z0-9_]+)/g, "Group: $1")
-                .replace(/has\(['"](.+?)['"]\)/g, "$1")
-                .replace(/\|\|/g, " OR ")
-                .replace(/&&/g, " AND ")
-                .replace(/>=/g, "≥")
-                .replace(/<=/g, "≤");
-        };
-
-        if (req.includes('(') || req.includes('||') || req.includes('&&') || req.includes('count.')) {
-            isMet = this.engine.rules.evaluateRequirement(req, null);
-            displayText = formatText(req);
-        } else {
-            const isNot = req.startsWith('!');
-            const cleanId = isNot ? req.slice(1) : req;
-            const targetSelected = this.engine.state.selected.has(cleanId);
-            isMet = isNot ? !targetSelected : targetSelected;
-            const targetItem = this.engine.findItem(cleanId);
-            const name = targetItem?.title || cleanId;
-            displayText = (isNot ? "NOT " : "") + name;
-        }
-
-        if (!isMet) {
-            return `<span class="req-item missing">⚠️ Requires: ${displayText}</span>`;
-        } else {
-            return `<span class="req-item ok">✔ ${displayText}</span>`;
-        }
+        return reqsHtml ? `<div class="reqs">${reqsHtml}</div>` : '';
     }
 
     updatePosition(e) {
+        // Mobile position is handled by CSS (fixed bottom)
+        if (window.innerWidth <= 768) return;
+
         const tt = this.tooltipEl;
         const ttH = tt.offsetHeight;
         const ttW = tt.offsetWidth;
-
         let top = e.clientY + 20;
         let left = e.clientX + 20;
 
-        if (left + ttW > window.innerWidth) {
-            left = window.innerWidth - ttW - 20;
-        }
-        if (top + ttH > window.innerHeight) {
-            top = e.clientY - ttH - 10;
-        }
+        if (left + ttW > window.innerWidth) left = window.innerWidth - ttW - 20;
+        if (top + ttH > window.innerHeight) top = e.clientY - ttH - 10;
 
         tt.style.top = top + 'px';
         tt.style.left = left + 'px';
