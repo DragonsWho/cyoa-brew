@@ -537,7 +537,7 @@ export class UIRenderer {
     }
 
 
-    updateButtons() {
+updateButtons() {
         const isPreview = document.body.classList.contains('editor-preview-active');
         const isShapeEditingMode = document.body.classList.contains('shape-editing-mode');
 
@@ -553,7 +553,12 @@ export class UIRenderer {
             const isDisabled = !canSelect && !isSelected && item.selectable !== false;
             const isEditorSelected = el.classList.contains('editor-selected');
 
-            // --- SHAPE LOGIC ---
+            const maxQty = item.max_quantity !== undefined ? item.max_quantity : 1;
+            const minQty = item.min_quantity !== undefined ? item.min_quantity : 0;
+
+            // ============================================================
+            // 1. ЛОГИКА CUSTOM SHAPE (Многоугольники)
+            // ============================================================
             const hasShape = item.shapePoints && item.shapePoints.length >= 3;
             const isEditingThisShape = isShapeEditingMode && 
                                        this.engine.editor?.shapeItem?.id === item.id;
@@ -561,7 +566,7 @@ export class UIRenderer {
             if (hasShape && !isEditingThisShape) {
                 if (!el.classList.contains('custom-shape')) el.classList.add('custom-shape');
 
-                // 1. SVG Layer (Свечение и Рамка)
+                // A. SVG Layer (Тень и Рамка)
                 let svgLayer = el.querySelector('.shape-bg-layer');
                 if (!svgLayer) {
                     svgLayer = document.createElementNS("http://www.w3.org/2000/svg", "svg");
@@ -583,26 +588,21 @@ export class UIRenderer {
                     polygon.setAttribute("points", pointsStr);
                 }
 
-                // 2. Internal Stripes Layer (Слой для полосок) - НОВОЕ
+                // B. Internal Stripes Layer (Полоски для disabled)
                 let stripeLayer = el.querySelector('.shape-internal-stripes');
                 if (!stripeLayer) {
                     stripeLayer = document.createElement('div');
                     stripeLayer.className = 'shape-internal-stripes';
-                    // Вставляем ПОД текст, но НАД SVG (хотя z-index решит)
                     el.insertBefore(stripeLayer, el.firstChild); 
                 }
 
-                // Применяем маску к слою полосок
                 const cssClipPath = `polygon(${item.shapePoints.map(p => `${p.x}% ${p.y}%`).join(', ')})`;
                 stripeLayer.style.clipPath = cssClipPath;
-                
-                // Показываем полоски ТОЛЬКО если disabled
                 stripeLayer.style.display = isDisabled ? 'block' : 'none';
 
-                // Очищаем clip-path у родителя
+                // C. Очистка контейнера
                 el.style.clipPath = 'none';
 
-                // Сброс рамок родителя
                 if (isEditorSelected && !isPreview) {
                     el.style.border = ''; 
                     el.style.boxShadow = '';
@@ -614,11 +614,11 @@ export class UIRenderer {
                 }
 
             } else {
-                // Стандартный режим
+                // Стандартный прямоугольник
                 el.classList.remove('custom-shape');
                 const svgLayer = el.querySelector('.shape-bg-layer');
                 if (svgLayer) svgLayer.remove();
-                const stripeLayer = el.querySelector('.shape-internal-stripes'); // Удаляем слой полосок
+                const stripeLayer = el.querySelector('.shape-internal-stripes');
                 if (stripeLayer) stripeLayer.remove();
                 
                 if (!isEditingThisShape) {
@@ -629,15 +629,62 @@ export class UIRenderer {
                 }
             }
 
-            // --- STANDARD STATE LOGIC ---
-            const stateKey = `${isSelected}|${canSelect}|${qty}|${hasShape}|${isEditorSelected}`;
+            // ============================================================
+            // 2. КЭШИРОВАНИЕ СОСТОЯНИЯ
+            // ============================================================
+            // Добавляем флаг visual-card в ключ, чтобы обновлять стиль при изменении типа
+            const stateKey = `${isSelected}|${canSelect}|${qty}|${hasShape}|${isEditorSelected}|${isDisabled}|${el.classList.contains('visual-card')}`;
             if (this.buttonStateCache.get(itemId) === stateKey) return;
             this.buttonStateCache.set(itemId, stateKey);
 
+            // ============================================================
+            // 3. ПРИМЕНЕНИЕ КЛАССОВ (Selected, Disabled)
+            // ============================================================
             el.classList.toggle('selected', isSelected);
             el.classList.toggle('disabled', isDisabled);
+
+            // ============================================================
+            // 4. МНОЖЕСТВЕННЫЙ ВЫБОР (QTY BADGE) - ВОТ ЭТО БЫЛО ПОТЕРЯНО
+            // ============================================================
+            if (maxQty > 1 || minQty < 0) {
+                const isMaxed = qty >= maxQty;
+                el.classList.toggle('maxed', isMaxed);
+                
+                const badge = el.querySelector('.qty-badge');
+                if (badge) {
+                    badge.textContent = qty;
+                    if (qty < 0) badge.classList.add('negative');
+                    else badge.classList.remove('negative');
+                    
+                    // Показываем бейдж, если количество не равно 0
+                    const displayStyle = (qty !== 0) ? 'flex' : 'none';
+                    if (badge.style.display !== displayStyle) badge.style.display = displayStyle;
+                }
+            } 
+
+            // ============================================================
+            // 5. РУЛЕТКА И АНИМАЦИИ (DICE ROLL) - ВОТ ЭТО БЫЛО ПОТЕРЯНО
+            // ============================================================
+            if (isSelected && item.effects) {
+                const diceEffect = item.effects.find(e => e.type === 'roll_dice');
+                const rolledValue = this.engine.state.rollResults.get(itemId);
+                
+                // Если есть эффект, есть результат, и анимация еще не играла
+                if (diceEffect && rolledValue !== undefined && el.dataset.hasAnimated !== "true") {
+                    this.playRouletteAnimation(el, rolledValue, item);
+                } 
+                // Если анимация уже была (например, при перезагрузке страницы), просто показываем цифру
+                else if (diceEffect && rolledValue !== undefined) {
+                    this.showPermanentBadge(el, rolledValue, true);
+                }
+            }
             
-            // ... (остальной код) ...
+            // Если сняли выделение - сбрасываем анимацию и удаляем бейдж результата
+            if (!isSelected) {
+                delete el.dataset.hasAnimated;
+                const oldBadge = el.querySelector('.roll-result-badge');
+                if (oldBadge) oldBadge.remove();
+            }
         });
     }
 

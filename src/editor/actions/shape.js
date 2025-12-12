@@ -124,11 +124,20 @@ export const ShapeEditorMixin = {
 
     drawShapeOverlay() {
         const points = this.shapeItem.shapePoints;
+        const overlay = document.getElementById('shape-editor-overlay');
+        
+        // 1. Очищаем SVG (линии и полигон)
         this.shapeSvg.innerHTML = ''; 
+        
+        // 2. Очищаем старые HTML-ручки (точки), если они есть
+        if (overlay) {
+            overlay.querySelectorAll('.shape-handle').forEach(el => el.remove());
+        }
 
         if (!points || points.length === 0) return;
 
-        // 1. Полигон (Предпросмотр заливки - полупрозрачный желтый)
+        // --- РИСУЕМ SVG (ЛИНИИ И ЗАЛИВКУ) ---
+        // 1. Полигон (Предпросмотр заливки)
         if (points.length >= 3) {
             const polygon = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
             const pointsStr = points.map(p => `${p.x},${p.y}`).join(' ');
@@ -137,44 +146,49 @@ export const ShapeEditorMixin = {
             this.shapeSvg.appendChild(polygon);
         }
 
-        // 2. Линии (Контур - пунктир)
+        // 2. Линии (Контур)
         const polyline = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
         let linePoints = points.map(p => `${p.x},${p.y}`).join(' ');
-        // Если точек > 2, замыкаем контур визуально
         if (points.length > 2) linePoints += ` ${points[0].x},${points[0].y}`;
         
         polyline.setAttribute("points", linePoints);
         polyline.style.cssText = "fill: none; stroke: #FFD700; stroke-width: 2px; vector-effect: non-scaling-stroke; stroke-dasharray: 4;";
         this.shapeSvg.appendChild(polyline);
 
-        // 3. Точки (Ручки управления)
+        // --- РИСУЕМ HTML РУЧКИ (ТОЧКИ) ---
         points.forEach((p, idx) => {
-            const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-            circle.setAttribute("cx", p.x);
-            circle.setAttribute("cy", p.y);
-            circle.setAttribute("r", "4"); // Размер точки
-            // vector-effect: non-scaling-stroke позволяет точкам не плющиться при ресайзе, но для радиуса это не работает напрямую в SVG 1.1,
-            // однако курсор будет работать.
-            circle.style.cssText = "fill: #fff; stroke: #000; stroke-width: 1px; cursor: move; vector-effect: non-scaling-stroke;";
+            const handle = document.createElement('div');
+            handle.className = 'shape-handle';
             
-            circle.addEventListener('mousedown', (e) => {
+            // НАСТРОЙКИ ВНЕШНЕГО ВИДА ТОЧЕК
+            handle.style.cssText = `
+                position: absolute;
+                left: ${p.x}%; 
+                top: ${p.y}%;
+                width: 15px;        /* Размер точки (было r=4, т.е. 8px) */
+                height: 15px;       /* Квадрат, который станет кругом */
+                background: #fff;
+                border: 1px solid #000;
+                border-radius: 50%; /* Делает идеальный круг */
+                transform: translate(-50%, -50%); /* Центрируем точку точно по координатам */
+                cursor: move;
+                z-index: 10002;     /* Поверх SVG */
+                box-shadow: 0 0 2px rgba(0,0,0,0.5);
+            `;
+            
+            handle.addEventListener('mousedown', (e) => {
                 e.stopPropagation(); 
-                e.preventDefault();
-                
-                // Правый клик = удалить точку
+                e.preventDefault();  
                 if (e.button === 2) {
                     this.shapeItem.shapePoints.splice(idx, 1);
                     this.drawShapeOverlay();
                 } else {
-                    // Левый клик = тащить точку
                     this.startDraggingPoint(idx);
                 }
             });
-            
-            // Блокируем контекстное меню браузера на точках
-            circle.addEventListener('contextmenu', e => e.preventDefault());
+            handle.addEventListener('contextmenu', e => e.preventDefault());
 
-            this.shapeSvg.appendChild(circle);
+            overlay.appendChild(handle);
         });
     },
 

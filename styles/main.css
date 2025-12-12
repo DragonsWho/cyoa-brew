@@ -22,7 +22,6 @@ body { margin: 0; padding: 0 0 120px 0; background: #1a1a1a; color: #eee; font-f
 }
 
 /* === CLICK ZONES & BUTTONS === */
-/* FIX: Transition applies only to cosmetics, NOT geometry (top/left/width/height) */
 .click-zone { 
     position: absolute; cursor: pointer; z-index: 100; pointer-events: auto; border-radius: 12px; 
     transition: background-color 0.2s, box-shadow 0.2s, opacity 0.2s, border-color 0.2s, filter 0.2s, transform 0.2s; 
@@ -48,7 +47,7 @@ body { margin: 0; padding: 0 0 120px 0; background: #1a1a1a; color: #eee; font-f
 /* === SELECTED STATE (Standard) === */
 .click-zone.selected { 
     background-color: transparent; border: var(--sel-border-w) solid var(--sel-border-c);
-    border-radius: var(--sel-radius-tl); /* Fallback */
+    border-radius: var(--sel-radius-tl);
     border-top-left-radius: var(--sel-radius-tl); border-top-right-radius: var(--sel-radius-tr);
     border-bottom-right-radius: var(--sel-radius-br); border-bottom-left-radius: var(--sel-radius-bl);
     box-shadow: 0 0 var(--sel-shadow-w) var(--sel-shadow-c), inset 0 0 var(--sel-inset-w) 5px var(--sel-inset-c);
@@ -159,9 +158,8 @@ body.text-mode .text-content { display: block; pointer-events: auto; }
 .ai-tip-box a { color: #64b5f6; text-decoration: none; }
 .ai-tip-box a:hover { text-decoration: underline; }
 
-
 /* =========================================
-   CUSTOM SHAPE LOGIC (NO FLASH + SOFT HOVER)
+   CUSTOM SHAPE LOGIC (NO FLASH + SOFT HOVER + INTERACTIVE FIX)
    ========================================= */
 
 /* 1. БАЗОВЫЙ КОНТЕЙНЕР */
@@ -176,7 +174,17 @@ body.text-mode .text-content { display: block; pointer-events: auto; }
     animation: none !important;
     overflow: visible !important;
     clip-path: none !important; 
+    
+    /* Контейнер пропускает клики, но... */
     pointer-events: none !important;
+}
+
+/* ... ВОТ ТУТ ЧИНИМ КЛИКАБЕЛЬНОСТЬ ВНУТРЕННИХ ЭЛЕМЕНТОВ (Бейджи, Кнопки +/-, и т.д.) */
+#game-wrapper .click-zone.custom-shape .split-controls,
+#game-wrapper .click-zone.custom-shape .qty-badge,
+#game-wrapper .click-zone.custom-shape .help-btn,
+#game-wrapper .click-zone.custom-shape .text-content { 
+    pointer-events: auto !important;
 }
 
 #game-wrapper .click-zone.custom-shape.disabled {
@@ -225,10 +233,9 @@ body:not(.editor-preview-active) #game-wrapper .click-zone.custom-shape.editor-s
     vector-effect: non-scaling-stroke;
     
     /* ФИКС ВСПЫШКИ: Анимируем только прозрачность и толщину линий */
-    /* Не анимируем fill (цвет), чтобы не было интерполяции цветов */
     transition: fill-opacity 0.3s ease-in-out, stroke-opacity 0.3s ease-in-out, stroke-width 0.3s ease-in-out;
     
-    pointer-events: auto;
+    pointer-events: auto; /* Сам полигон ловит клики */
     cursor: pointer;
     
     fill: transparent;
@@ -242,15 +249,13 @@ body:not(.editor-preview-active) #game-wrapper .click-zone.custom-shape.editor-s
 
 /* HOVER (Наведение) - Мягкая подсветка без рамок */
 #game-wrapper .click-zone.custom-shape:not(.selected):not(.disabled):hover .shape-bg-layer {
-    /* Легкое внешнее свечение */
     filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.3));
 }
 #game-wrapper .click-zone.custom-shape:not(.selected):not(.disabled):hover .shape-poly {
-    stroke: none; /* Убрали рамку по просьбе */
+    stroke: none; 
     stroke-width: 0;
-    
-    fill: #ffffff; /* Белая подсветка */
-    fill-opacity: 0.1; /* Очень легкая прозрачность */
+    fill: #ffffff; 
+    fill-opacity: 0.1; 
 }
 
 /* SELECTED (Выбрано) */
@@ -260,10 +265,7 @@ body:not(.editor-preview-active) #game-wrapper .click-zone.custom-shape.editor-s
 #game-wrapper .click-zone.custom-shape.selected .shape-poly {
     stroke: var(--sel-border-c, #00ff00);
     stroke-width: var(--sel-border-w, 3px);
-    
     fill: var(--sel-bg-color, #00ff00);
-    
-    /* Анимация пойдет от 0 (или 0.1 при ховере) до нужного значения плавно */
     fill-opacity: var(--sel-bg-opacity, 0.1); 
 }
 
