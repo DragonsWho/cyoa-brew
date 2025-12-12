@@ -4,7 +4,19 @@
 
 /* === RESET & BASE === */
 * { box-sizing: border-box; }
-body { margin: 0; padding: 0 0 120px 0; background: #1a1a1a; color: #eee; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; overflow-x: hidden; }
+html, body {
+    width: 100%; height: 100%; margin: 0; padding: 0;
+    background: #1a1a1a; color: #eee;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    overflow: hidden; /* Panzoom fix */
+    touch-action: none;
+    position: fixed;
+}
+
+/* Scroll for Editor Mode */
+body.edit-mode-active {
+    overflow: auto !important; position: static !important; touch-action: auto !important;
+}
 
 /* === VARIABLES === */
 :root {
@@ -21,13 +33,27 @@ body { margin: 0; padding: 0 0 120px 0; background: #1a1a1a; color: #eee; font-f
     --pb-bg: #101010; --pb-label: #cccccc; --pb-val: #00ff88;
 }
 
-/* === CLICK ZONES & BUTTONS === */
+/* === GAME WRAPPER === */
+#game-wrapper { 
+    transform-origin: center top; transition: none; 
+    position: relative; min-height: 100vh; 
+    padding-top: 20px; padding-bottom: 150px; 
+    display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+}
+body.edit-mode-active #game-wrapper { transform: none !important; overflow: visible; }
+
+.page-container { position: relative; margin-bottom: 0; line-height: 0; box-shadow: 0 0 30px rgba(0,0,0,0.5); max-width: 100%; }
+.page-image { display: block; max-width: 100%; height: auto; user-select: none; pointer-events: none; }
+.page-layer { position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 10; pointer-events: none; }
+
+/* === CLICK ZONES === */
 .click-zone { 
     position: absolute; cursor: pointer; z-index: 100; pointer-events: auto; border-radius: 12px; 
     transition: background-color 0.2s, box-shadow 0.2s, opacity 0.2s, border-color 0.2s, filter 0.2s, transform 0.2s; 
     overflow: visible; display: flex; flex-direction: column; justify-content: flex-end; 
 }
 .click-zone:hover { background: rgba(255,255,255,0.07); box-shadow: 0 0 10px rgba(255,255,255,0.1); }
+.info-zone { z-index: 50; pointer-events: none; border: none; }
 
 /* === SPECIAL VISUAL CARD === */
 .click-zone.visual-card {
@@ -36,7 +62,6 @@ body { margin: 0; padding: 0 0 120px 0; background: #1a1a1a; color: #eee; font-f
     box-shadow: 0 4px 6px rgba(0,0,0,0.3);
 }
 .visual-card:hover { box-shadow: 0 6px 12px rgba(0,0,0,0.5); border-color: #666; }
-
 .vc-image { width: 100%; height: auto; display: block; border-bottom: 1px solid rgba(255,255,255,0.1); background-color: #000; }
 .vc-content { padding: 8px; display: flex; flex-direction: column; gap: 4px; flex: 1; z-index: 2; position: relative; }
 .vc-title { font-weight: bold; color: var(--vis-title-color) !important; font-size: 1.1em; line-height: 1.2; text-align: center; margin-bottom: 2px; }
@@ -44,7 +69,7 @@ body { margin: 0; padding: 0 0 120px 0; background: #1a1a1a; color: #eee; font-f
 .vc-req { font-size: 0.75em; color: #888; text-transform: uppercase; letter-spacing: 0.5px; text-align: center; margin-bottom: 4px; }
 .vc-body { font-size: 0.9em; color: var(--vis-text-color) !important; line-height: 1.4; margin-top: 2px; }
 
-/* === SELECTED STATE (Standard) === */
+/* === SELECTED & DISABLED STATES === */
 .click-zone.selected { 
     background-color: transparent; border: var(--sel-border-w) solid var(--sel-border-c);
     border-radius: var(--sel-radius-tl);
@@ -60,79 +85,95 @@ body { margin: 0; padding: 0 0 120px 0; background: #1a1a1a; color: #eee; font-f
     content: ''; position: absolute; inset: 0; background-color: var(--sel-bg-color); background-image: var(--sel-bg-image);
     background-size: cover; opacity: var(--sel-bg-opacity); z-index: 1; pointer-events: none; border-radius: inherit;
 }
-
-/* === DISABLED STATE === */
 .click-zone.disabled { cursor: not-allowed; border: var(--dis-border-w) solid var(--dis-border-c); opacity: 0.6; filter: grayscale(80%); }
 .click-zone.disabled::after {
     content: ''; position: absolute; inset: 0; background-color: var(--dis-bg-color); background-image: var(--dis-bg-image);
     background-size: cover; opacity: var(--dis-bg-opacity); z-index: 1; pointer-events: none; border-radius: inherit;
 }
 
-/* === STANDARD TEXT CONTENT === */
+/* === TEXT & TOOLTIP === */
 .text-content { display: none; background: rgba(0,0,0,0.85); color: #ddd; padding: 10px; font-size: 14px; line-height: 1.4; max-height: 100%; overflow-y: auto; pointer-events: none; backdrop-filter: blur(2px); border-top: 1px solid #444; position: relative; z-index: 10; }
 body.text-mode .text-content { display: block; pointer-events: auto; }
 .text-content strong { display: block; color: #fff; font-size: 1.1em; margin-bottom: 4px; border-bottom: 1px solid #555; }
 
-/* === TOOLBAR & UTILS === */
-.bottom-tools { position: fixed; bottom: 0; left: 0; z-index: 2500; display: flex; gap: 5px; padding: 10px 15px; height: 60px; align-items: center; }
-.ctrl-btn { background: transparent; color: #666; border: none; padding: 8px; cursor: pointer; border-radius: 50%; transition: all 0.2s; display: flex; align-items: center; justify-content: center; }
-.ctrl-btn svg { width: 24px; height: 24px; fill: currentColor; }
-.ctrl-btn:hover { color: #eee; background: rgba(255,255,255,0.1); }
-.ctrl-btn.active { color: #4CAF50; background: rgba(76, 175, 80, 0.1); opacity: 1; }
-
-#game-wrapper { position: relative; max-width: 100%; margin: 0 auto; display: flex; flex-direction: column; align-items: center; padding-top: 15px; min-height: 100vh; justify-content: flex-start; overflow: visible; }
-.page-container { position: relative; margin-bottom: 0; line-height: 0; box-shadow: 0 0 30px rgba(0,0,0,0.5); max-width: 100%; }
-.page-image { display: block; max-width: 100%; height: auto; user-select: none; }
-.page-layer { position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 10; pointer-events: none; }
-.info-zone { z-index: 50; pointer-events: none; border: none; }
-
-/* === POINT BAR STYLES === */
-#points-bar { 
-    position: fixed; bottom: 0; left: 0; right: 0; background: var(--pb-bg); border-top: 1px solid rgba(255,255,255,0.1); 
-    padding: 15px; display: flex; justify-content: center; gap: 40px; box-shadow: 0 -5px 30px rgba(0,0,0,0.8); z-index: 2000; flex-wrap: wrap; 
-}
-.currency { font-size: 1.2em; font-weight: bold; text-transform: uppercase; display: flex; align-items: center; gap: 10px; color: var(--pb-label); }
-.currency span { color: var(--pb-val); font-family: monospace; font-size: 1.3em; text-shadow: 0 0 5px rgba(255,255,255,0.2); }
-.currency.negative span { color: #ff4444; }
-
-/* === TOOLTIP === */
 #tooltip { position: fixed; z-index: 3000; background: rgba(10,10,10,0.95); border: 1px solid #444; padding: 15px; border-radius: 8px; pointer-events: none; font-size: 0.95em; max-width: 380px; box-shadow: 0 10px 40px #000; backdrop-filter: blur(8px); opacity: 0; transition: opacity 0.2s; color: #ccc; }
-#tooltip.visible { opacity: 1; }
+#tooltip.visible { opacity: 1; pointer-events: auto; }
 #tooltip h4 { margin: 0 0 8px 0; color: #fff; border-bottom: 1px solid #333; padding-bottom: 6px; }
 
-/* === BADGES === */
+/* === UI TOOLS (PC Defaults) === */
+.bottom-tools { 
+    position: fixed; 
+    bottom: 0;       /* Прижимаем к низу, как раньше */
+    left: 0;         /* Прижимаем влево */
+    z-index: 2500; 
+    display: flex; 
+    gap: 5px; 
+    padding: 0 15px; 
+    height: 70px;    /* Высота как у бара очков, чтобы было ровно по центру */
+    align-items: center; 
+    
+    /* Убираем стили "пузыря" */
+    border-radius: 0; 
+    background: transparent; 
+    border: none; 
+    backdrop-filter: none; 
+}.ctrl-btn { background: transparent; color: #aaa; border: none; padding: 8px; cursor: pointer; border-radius: 50%; transition: all 0.2s; display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; }
+.ctrl-btn svg { width: 24px; height: 24px; fill: currentColor; }
+.ctrl-btn:hover { color: #fff; background: rgba(255,255,255,0.2); }
+.ctrl-btn.active { color: #4CAF50; background: rgba(76, 175, 80, 0.2); opacity: 1; }
+
+
+
+
+/* === POINT BAR STYLE === */
+#points-bar { 
+    position: fixed; bottom: 0; left: 0; right: 0; background: var(--pb-bg); border-top: 1px solid rgba(255,255,255,0.1); 
+    padding: 0 20px; height: 70px; display: flex; align-items: center; justify-content: center; gap: 40px; box-shadow: 0 -5px 30px rgba(0,0,0,0.8); z-index: 2000; 
+}
+.currency { font-size: 1.2em; font-weight: bold; text-transform: uppercase; display: flex; align-items: center; gap: 10px; }
+
+/* Название валюты (берет цвет из Label Color) */
+.curr-name { color: var(--pb-label); }
+
+/* Значение валюты (берет цвет из Value Color) */
+.curr-val { color: var(--pb-val); font-family: monospace; font-size: 1.3em; text-shadow: 0 0 5px rgba(255,255,255,0.2); }
+
+/* Красим в красный только цифры при отрицательном балансе */
+.currency.negative .curr-val { color: #ff4444; }
+
+
+
+
+
+/* === BADGES & ROULETTE === */
 .split-controls { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; z-index: 150; }
 .split-btn { width: 50%; height: 100%; transition: background 0.2s, opacity 0.2s; display: flex; align-items: center; justify-content: center; font-size: 40px; font-weight: bold; opacity: 0; color: rgba(255,255,255,0.8); text-shadow: 0 0 5px #000; }
 .split-btn:hover { opacity: 1; }
-.split-btn.minus:hover { background: rgba(255,0,0,0.2); } .split-btn.minus:hover::after { content: '-'; }
-.split-btn.plus:hover { background: rgba(0,255,0,0.2); } .split-btn.plus:hover::after { content: '+'; }
 .qty-badge { position: absolute; top: 10px; right: 10px; width: 40px; height: 40px; background: #000; border: 2px solid #0f0; border-radius: 50%; color: #0f0; font-weight: bold; font-size: 18px; display: flex; align-items: center; justify-content: center; z-index: 160; box-shadow: 0 0 10px rgba(0,255,0,0.5); pointer-events: none; }
-.qty-badge.negative { border-color: #ff4444; color: #ff4444; box-shadow: 0 0 10px rgba(255, 68, 68, 0.5); }
+.qty-badge.negative { border-color: #ff4444; color: #ff4444; }
 .group-budget-badge { position: absolute; transform: translate(-50%, -50%); background: #000; border: 2px solid #ffd700; color: #ffd700; padding: 8px 20px; border-radius: 8px; font-weight: 800; font-size: 18px; z-index: 200; pointer-events: none; }
+.help-bar-btn { width: 28px; height: 28px; border-radius: 50%; border: 2px solid #666; background: transparent; color: #666; font-weight: bold; font-size: 16px; font-family: serif; cursor: pointer; display: flex; align-items: center; justify-content: center; position: absolute; right: 20px; top: 50%; transform: translateY(-50%); }
 
-/* === ROULETTE === */
-.roulette-mask { position: absolute; top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important; overflow: hidden; border-radius: inherit; background: #151515 !important; z-index: 500 !important; mask-image: linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%); -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%); pointer-events: none; }
-.roulette-strip { width: 100%; position: absolute; left: 0; top: 0; will-change: transform; margin: 0; padding: 0; }
-.roulette-item { width: 100%; display: flex; justify-content: center; align-items: center; font-family: 'Impact', 'Arial Black', sans-serif; font-size: 3.5rem; line-height: 1; color: #fff !important; text-shadow: 3px 3px 0 #000; }
-.roulette-item.winner { color: #FFD700 !important; text-shadow: 0 0 20px #FFD700, 3px 3px 0 #000; transform: scale(1.2); transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
-.roll-result-badge { position: absolute; top: 0; left: 50%; transform: translate(-50%, -50%); width: 50px; height: 50px; background: #111; border: 3px solid #ffd700; border-radius: 50%; color: #ffd700; display: flex; align-items: center; justify-content: center; font-family: 'Impact', sans-serif; font-size: 24px; z-index: 600 !important; pointer-events: none; box-shadow: 0 0 15px rgba(255, 215, 0, 0.5); }
-.roll-result-badge.spawn-anim { top: 50%; transform: translate(-50%, -50%) scale(2.0); opacity: 0; }
+/* Roulette */
+.roulette-mask { position: absolute; top: 0; left: 0; right: 0; bottom: 0; overflow: hidden; border-radius: inherit; background: #151515 !important; z-index: 500; pointer-events: none; }
+.roulette-strip { width: 100%; position: absolute; left: 0; top: 0; will-change: transform; }
+.roulette-item { width: 100%; display: flex; justify-content: center; align-items: center; font-family: 'Impact', sans-serif; font-size: 3.5rem; color: #fff; text-shadow: 3px 3px 0 #000; }
+.roulette-item.winner { color: #FFD700 !important; transform: scale(1.2); }
+.roll-result-badge { position: absolute; top: 0; left: 50%; transform: translate(-50%, -50%); width: 50px; height: 50px; background: #111; border: 3px solid #ffd700; border-radius: 50%; color: #ffd700; display: flex; align-items: center; justify-content: center; font-family: 'Impact', sans-serif; font-size: 24px; z-index: 600; pointer-events: none; }
 
-/* === MODAL STYLES (Global) === */
+/* Custom Shapes */
+#game-wrapper .click-zone.custom-shape { background: none !important; border: none !important; box-shadow: none !important; clip-path: none !important; pointer-events: none !important; }
+#game-wrapper .click-zone.custom-shape .split-controls, #game-wrapper .click-zone.custom-shape .qty-badge, #game-wrapper .click-zone.custom-shape .text-content { pointer-events: auto !important; }
+#game-wrapper .click-zone.custom-shape::after, #game-wrapper .click-zone.custom-shape::before { display: none !important; }
+.shape-internal-stripes, .shape-bg-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
+.shape-poly { vector-effect: non-scaling-stroke; transition: fill-opacity 0.3s, stroke-opacity 0.3s; pointer-events: auto; cursor: pointer; fill: transparent; fill-opacity: 0; stroke: transparent; }
+#game-wrapper .click-zone.custom-shape.selected .shape-poly { stroke: var(--sel-border-c, #00ff00); stroke-width: var(--sel-border-w, 3px); fill: var(--sel-bg-color, #00ff00); fill-opacity: var(--sel-bg-opacity, 0.1); }
+
+/* Modal */
 .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 5000; display: flex; align-items: center; justify-content: center; }
-.modal-content { background: #1a1a1a; padding: 20px; border: 1px solid #444; border-radius: 8px; box-shadow: 0 10px 40px rgba(0,0,0,0.8); }
-.code-editor { width: 100%; background: #111; color: #0f0; font-family: monospace; border: 1px solid #333; padding: 8px; border-radius: 4px; }
-.primary-btn { background: #2e7d32; border: 1px solid #1b5e20; color: white; border-radius: 4px; padding: 8px 16px; cursor: pointer; }
-.primary-btn:hover { background: #388e3c; }
-
+.modal-content { background: #1a1a1a; padding: 20px; border: 1px solid #444; border-radius: 8px; }
 .page-separator { display: none; }
-@media (max-width: 768px) { .bottom-tools { gap: 0; padding: 10px 5px; } #points-bar { gap: 20px; padding: 10px; } }
-
-/* === HELP BUTTON (Right Aligned) === */
-.help-bar-btn { width: 28px; height: 28px; border-radius: 50%; border: 2px solid #666; background: transparent; color: #666; font-weight: bold; font-size: 16px; font-family: serif; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; position: absolute; right: 20px; top: 50%; transform: translateY(-50%); }
-.help-bar-btn:hover { color: #fff; border-color: #fff; background: rgba(255,255,255,0.1); box-shadow: 0 0 10px rgba(255,255,255,0.2); }
-
-/* === HELP MODAL STYLES === */
+/* === HELP MODAL STYLES (MISSING IN NEW) === */
 .help-modal-content { width: 600px; max-width: 95%; max-height: 85vh; display: flex; flex-direction: column; padding: 0 !important; overflow: hidden; }
 .help-header { padding: 15px 20px; background: #222; border-bottom: 1px solid #333; display: flex; justify-content: space-between; align-items: center; }
 .help-header h3 { margin: 0; color: #fff; font-size: 1.2rem; }
@@ -158,96 +199,20 @@ body.text-mode .text-content { display: block; pointer-events: auto; }
 .ai-tip-box a { color: #64b5f6; text-decoration: none; }
 .ai-tip-box a:hover { text-decoration: underline; }
 
+.code-editor { width: 100%; background: #111; color: #0f0; font-family: monospace; border: 1px solid #333; padding: 8px; border-radius: 4px; }
+.primary-btn { background: #2e7d32; border: 1px solid #1b5e20; color: white; border-radius: 4px; padding: 8px 16px; cursor: pointer; }
+.primary-btn:hover { background: #388e3c; }
+
 /* =========================================
-   CUSTOM SHAPE LOGIC (NO FLASH + SOFT HOVER + INTERACTIVE FIX)
+   ВОССТАНОВЛЕННЫЕ СТИЛИ ШЕЙПОВ И АНИМАЦИЙ
    ========================================= */
 
-/* 1. БАЗОВЫЙ КОНТЕЙНЕР */
-#game-wrapper .click-zone.custom-shape {
-    background: none !important;
-    background-image: none !important;
-    background-color: transparent !important;
-    border: none !important;
-    box-shadow: none !important;
-    border-radius: 0 !important;
-    filter: none !important; 
-    animation: none !important;
-    overflow: visible !important;
-    clip-path: none !important; 
-    
-    /* Контейнер пропускает клики, но... */
-    pointer-events: none !important;
-}
-
-/* ... ВОТ ТУТ ЧИНИМ КЛИКАБЕЛЬНОСТЬ ВНУТРЕННИХ ЭЛЕМЕНТОВ (Бейджи, Кнопки +/-, и т.д.) */
-#game-wrapper .click-zone.custom-shape .split-controls,
-#game-wrapper .click-zone.custom-shape .qty-badge,
-#game-wrapper .click-zone.custom-shape .help-btn,
-#game-wrapper .click-zone.custom-shape .text-content { 
-    pointer-events: auto !important;
-}
-
-#game-wrapper .click-zone.custom-shape.disabled {
-    opacity: 1 !important; 
-}
-
-/* 2. УБИВАЕМ ПСЕВДОЭЛЕМЕНТЫ */
-#game-wrapper .click-zone.custom-shape::after,
-#game-wrapper .click-zone.custom-shape::before,
-#game-wrapper .click-zone.custom-shape.selected::after,
-#game-wrapper .click-zone.custom-shape.selected::before,
-#game-wrapper .click-zone.custom-shape.disabled::after,
-#game-wrapper .click-zone.custom-shape.disabled::before {
-    display: none !important;
-    content: none !important;
-}
-
-/* 3. ВНУТРЕННИЙ СЛОЙ ПОЛОСОК */
-.shape-internal-stripes {
-    position: absolute;
-    top: 0; left: 0; 
-    width: 100%; height: 100%;
-    z-index: -1; 
-    pointer-events: none;
-}
-
-/* 4. ИСКЛЮЧЕНИЕ ДЛЯ РЕДАКТОРА */
-body:not(.editor-preview-active) #game-wrapper .click-zone.custom-shape.editor-selected {
-    border: 1px dashed rgba(0, 255, 255, 0.5) !important;
-    box-shadow: 0 0 5px rgba(0, 0, 0, 0.5) !important;
-    pointer-events: auto !important; 
-}
-
-/* 5. СЛОЙ SVG (ТЕНЬ) */
+/* 1. Возвращаем плавность тени */
 .shape-bg-layer {
-    position: absolute;
-    top: 0; left: 0; width: 100%; height: 100%;
-    z-index: -2; 
-    overflow: visible !important;
-    pointer-events: none;
-    transition: filter 0.3s ease-out; /* Плавная тень */
+    transition: filter 0.3s ease-out; /* Этого не хватало */
 }
 
-/* 6. ПОЛИГОН (ЗАЛИВКА) */
-.shape-poly {
-    vector-effect: non-scaling-stroke;
-    
-    /* ФИКС ВСПЫШКИ: Анимируем только прозрачность и толщину линий */
-    transition: fill-opacity 0.3s ease-in-out, stroke-opacity 0.3s ease-in-out, stroke-width 0.3s ease-in-out;
-    
-    pointer-events: auto; /* Сам полигон ловит клики */
-    cursor: pointer;
-    
-    fill: transparent;
-    fill-opacity: 0; /* Старт с 0 */
-    
-    stroke: transparent;
-    stroke-width: 0;
-}
-
-/* --- СОСТОЯНИЯ --- */
-
-/* HOVER (Наведение) - Мягкая подсветка без рамок */
+/* 2. HOVER (Наведение) - Мягкое свечение */
 #game-wrapper .click-zone.custom-shape:not(.selected):not(.disabled):hover .shape-bg-layer {
     filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.3));
 }
@@ -258,18 +223,13 @@ body:not(.editor-preview-active) #game-wrapper .click-zone.custom-shape.editor-s
     fill-opacity: 0.1; 
 }
 
-/* SELECTED (Выбрано) */
+/* 3. SELECTED (Выбрано) - ВОЗВРАЩАЕМ ТЕНЬ */
 #game-wrapper .click-zone.custom-shape.selected .shape-bg-layer {
+    /* Вот это потерялось! Свечение вокруг формы */
     filter: drop-shadow(0 0 15px var(--sel-shadow-c, #00ff00));
 }
-#game-wrapper .click-zone.custom-shape.selected .shape-poly {
-    stroke: var(--sel-border-c, #00ff00);
-    stroke-width: var(--sel-border-w, 3px);
-    fill: var(--sel-bg-color, #00ff00);
-    fill-opacity: var(--sel-bg-opacity, 0.1); 
-}
 
-/* DISABLED (Недоступно) */
+/* 4. DISABLED (Недоступно) - Специфика для SVG */
 #game-wrapper .click-zone.custom-shape.disabled .shape-bg-layer {
     filter: none;
 }
@@ -281,24 +241,26 @@ body:not(.editor-preview-active) #game-wrapper .click-zone.custom-shape.editor-s
     fill: transparent; 
 }
 
-/* В РЕДАКТОРЕ */
-body.shape-editing-mode .shape-poly {
-    stroke: #555;
-    stroke-width: 1px;
-    stroke-dasharray: 4;
-    pointer-events: none;
-    fill-opacity: 0;
+/* 5. Потерянная анимация рулетки */
+.roulette-item.winner {
+    /* Вернули красивую пружинистую анимацию */
+    transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
-
+.roll-result-badge.spawn-anim {
+    /* Анимация появления бейджа с результатом */
+    top: 50%; 
+    transform: translate(-50%, -50%) scale(2.0); 
+    opacity: 0; 
+}
 /* ==========================================================================
-   MOBILE ADAPTATION (Fixed & Restored)
+   MOBILE ADAPTATION (Fixed: Tools Color, Separator, Visual Cards)
    ========================================================================== */
 @media (max-width: 768px) {
     
     /* 1. Points Bar */
     #points-bar {
         height: 60px;
-        padding: 0 50px 0 10px; /* Отступ справа для кнопок */
+        padding: 0 50px 0 10px; /* Space for buttons on right */
         justify-content: flex-start;
         overflow-x: auto;
         gap: 15px;
@@ -312,23 +274,24 @@ body.shape-editing-mode .shape-poly {
         align-items: center;
         gap: 0;
         min-width: 60px;
-        max-width: 100px; /* Ограничиваем ширину */
+        max-width: 100px;
         border-right: 1px solid rgba(255,255,255,0.1);
         padding-right: 15px;
     }
     .currency:last-child { border-right: none; }
     
-    /* SCROLLABLE NAMES FIX */
+    /* SCROLLABLE NAMES + MASK */
     .curr-name { 
         font-size: 0.7rem; 
         color: var(--pb-label);
         width: 100%;
         text-align: center;
-        overflow-x: auto; /* Разрешаем скролл */
+        overflow-x: auto; /* Allow swipe scroll */
         white-space: nowrap;
         scrollbar-width: none;
-        pointer-events: auto; /* Чтобы палец цеплял текст */
-        mask-image: linear-gradient(to right, black 85%, transparent 100%); /* Красивое затухание */
+        pointer-events: auto;
+        padding-bottom: 2px;
+        mask-image: linear-gradient(to right, black 85%, transparent 100%);
         -webkit-mask-image: linear-gradient(to right, black 85%, transparent 100%);
     }
     .curr-name::-webkit-scrollbar { display: none; }
@@ -336,18 +299,19 @@ body.shape-editing-mode .shape-poly {
 
     .help-bar-btn { display: none !important; }
 
-    /* 2. Bottom Tools (Vertical Right) */
+    /* 2. Bottom Tools (Background Fix, Separator Removed) */
     .bottom-tools {
         left: auto; right: 0; bottom: 0;
         width: 45px; height: 60px;
         flex-direction: column;
         border-radius: 0;
         
-        /* FIX: Используем цвета из настроек */
+        /* FIX: Match point bar color exactly */
         background: var(--pb-bg) !important;
-        /* Убираем border-left, чтобы не было "разделителя" */
-        border: none;
-        border-top: 1px solid rgba(255,255,255,0.1);
+        /* FIX: Remove unwanted vertical separator */
+        border: none !important;
+        /* Optional: Match top border if needed, otherwise seamless */
+        border-top: 1px solid rgba(255,255,255,0.1) !important;
         
         padding: 0; gap: 0;
         justify-content: space-evenly;
@@ -356,8 +320,8 @@ body.shape-editing-mode .shape-poly {
     .ctrl-btn {
         width: 100%; height: 50%;
         border-radius: 0;
-        /* Цвет иконок берем из настроек лейблов */
-        color: var(--pb-label);
+        /* FIX: Match label color */
+        color: var(--pb-label) !important;
     }
     #edit-toggle { display: none !important; }
 
@@ -366,50 +330,39 @@ body.shape-editing-mode .shape-poly {
         bottom: 60px; left: 0; right: 0; top: auto !important;
         border-radius: 0; border: none; border-top: 1px solid #444;
         max-height: 40vh; transform: none !important;
-        font-size: 0.85rem; /* Уменьшаем шрифт, чтобы не было огромным */
-        padding: 10px;
+        font-size: 0.85rem; padding: 10px;
     }
 
-    /* 4. Mini Badges & Borders Fix */
-    /* Уменьшаем размеры, чтобы при зуме они не перекрывали все */
+    /* 4. Mini Badges Size Fix */
     .qty-badge, .roll-result-badge {
         width: 18px !important; height: 18px !important;
-        font-size: 9px !important;
-        border-width: 1px !important;
+        font-size: 9px !important; border-width: 1px !important;
     }
     .group-budget-badge {
-        font-size: 7px !important; padding: 2px 5px !important;
-        border-width: 1px !important;
+        font-size: 7px !important; padding: 2px 5px !important; border-width: 1px !important;
     }
-    /* Уменьшаем толщину обводки выделения при просмотре с мобильного (опционально) */
     .click-zone.selected { border-width: 2px !important; }
 
-    /* 5. VISUAL CARD RESTORATION (The "Don't touch!" part) */
+    /* 5. VISUAL CARD RESTORATION (Text Size & Scroll) */
     .click-zone.visual-card { 
-        container-type: size; /* ВОЗВРАЩЕНО */
+        container-type: size; 
         flex-direction: column !important;
-        /* Фикс рамок на мобильных */
         border-width: 1px !important; 
     }
     .vc-content {
-        height: 100%;
-        overflow: hidden;
-        padding: 2cqw !important; /* Отступы в % от ширины карточки */
+        height: 100%; overflow: hidden; padding: 2cqw !important;
     }
     .vc-title { 
-        font-size: 10cqw !important; /* ВОЗВРАЩЕНО */
-        line-height: 1.1; margin-bottom: 2cqh; flex-shrink: 0; 
+        font-size: 10cqw !important; line-height: 1.1; margin-bottom: 2cqh; flex-shrink: 0; 
     }
     .vc-cost { 
-        font-size: 8cqw !important; /* ВОЗВРАЩЕНО */
-        margin-bottom: 1cqh; flex-shrink: 0; 
+        font-size: 8cqw !important; margin-bottom: 1cqh; flex-shrink: 0; 
     }
     .vc-body { 
-        font-size: 6cqw !important; /* ВОЗВРАЩЕНО */
-        overflow-y: auto !important; /* ВОЗВРАЩЕНО */
+        font-size: 6cqw !important; 
+        overflow-y: auto !important; /* Scroll enabled */
         scrollbar-width: none;
-        flex: 1;
-        pointer-events: auto; /* Чтобы можно было скроллить пальцем */
+        flex: 1; pointer-events: auto; 
     }
     .vc-req { display: none !important; }
 }
