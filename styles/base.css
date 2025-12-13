@@ -1,0 +1,31 @@
+/* === RESET & BASE === */
+* { box-sizing: border-box; }
+html, body {
+    width: 100%; height: 100%; margin: 0; padding: 0;
+    background: #1a1a1a; color: #eee;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    overflow: hidden; /* Panzoom fix */
+    touch-action: none;
+    position: fixed;
+}
+
+/* Scroll for Editor Mode */
+body.edit-mode-active {
+    overflow: auto !important; position: static !important; touch-action: auto !important;
+}
+
+/* === GAME WRAPPER === */
+#game-wrapper { 
+    transform-origin: center top; transition: none; 
+    position: relative; min-height: 100vh; 
+    padding-top: 20px; padding-bottom: 150px; 
+    display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+}
+body.edit-mode-active #game-wrapper { transform: none !important; overflow: visible; }
+
+.page-container { position: relative; margin-bottom: 0; line-height: 0; box-shadow: 0 0 30px rgba(0,0,0,0.5); max-width: 100%; }
+.page-image { display: block; max-width: 100%; height: auto; user-select: none; pointer-events: none; }
+.page-layer { position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 10; pointer-events: none; }
+
+/* Separator (was inside Modal block originally) */
+.page-separator { display: none; }

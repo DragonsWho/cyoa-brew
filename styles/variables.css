@@ -1,0 +1,13 @@
+:root {
+    /* --- ACTIVE STATE --- */
+    --sel-border-c: #00ff00; --sel-border-w: 2px; --sel-radius-tl: 12px; --sel-radius-tr: 12px; --sel-radius-br: 12px; --sel-radius-bl: 12px;
+    --sel-shadow-c: #00ff00; --sel-shadow-w: 15px; --sel-bg-color: #00ff00; --sel-bg-opacity: 0.1; --sel-bg-image: none;
+    --sel-inset-c: rgba(0, 255, 0, 0.2); --sel-inset-w: 20px;
+    /* --- DISABLED STATE --- */
+    --dis-border-c: #333333; --dis-border-w: 0px; --dis-radius-tl: 12px; --dis-radius-tr: 12px; --dis-radius-br: 12px; --dis-radius-bl: 12px;
+    --dis-shadow-c: #000000; --dis-shadow-w: 0px; --dis-bg-color: #000000; --dis-bg-opacity: 0.5; --dis-bg-image: none;
+    /* --- VISUAL CARD STYLE --- */
+    --vis-bg-color: #222222; --vis-title-color: #ffffff; --vis-text-color: #cccccc; --vis-border-color: #444444; --vis-border-w: 1px; --vis-radius: 8px;
+    /* --- POINT BAR STYLE --- */
+    --pb-bg: #101010; --pb-label: #cccccc; --pb-val: #00ff88;
+}

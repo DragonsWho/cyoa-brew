@@ -1,0 +1,44 @@
+/* === CLICK ZONES === */
+.click-zone { 
+    position: absolute; cursor: pointer; z-index: 100; pointer-events: auto; border-radius: 12px; 
+    transition: background-color 0.2s, box-shadow 0.2s, opacity 0.2s, border-color 0.2s, filter 0.2s, transform 0.2s; 
+    overflow: visible; display: flex; flex-direction: column; justify-content: flex-end; 
+}
+.click-zone:hover { background: rgba(255,255,255,0.07); box-shadow: 0 0 10px rgba(255,255,255,0.1); }
+.info-zone { z-index: 50; pointer-events: none; border: none; }
+
+/* === SPECIAL VISUAL CARD === */
+.click-zone.visual-card {
+    background-color: var(--vis-bg-color); border: var(--vis-border-w) solid var(--vis-border-color); border-radius: var(--vis-radius);
+    overflow: hidden; display: flex; flex-direction: column; justify-content: flex-start; padding: 0; opacity: 1; 
+    box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+}
+.visual-card:hover { box-shadow: 0 6px 12px rgba(0,0,0,0.5); border-color: #666; }
+.vc-image { width: 100%; height: auto; display: block; border-bottom: 1px solid rgba(255,255,255,0.1); background-color: #000; }
+.vc-content { padding: 8px; display: flex; flex-direction: column; gap: 4px; flex: 1; z-index: 2; position: relative; }
+.vc-title { font-weight: bold; color: var(--vis-title-color) !important; font-size: 1.1em; line-height: 1.2; text-align: center; margin-bottom: 2px; }
+.vc-cost { font-size: 0.9em; font-weight: bold; color: #FFD700; text-align: center; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; text-shadow: 0 1px 2px rgba(0,0,0,0.8); display: block; min-height: 1em; }
+.vc-req { font-size: 0.75em; color: #888; text-transform: uppercase; letter-spacing: 0.5px; text-align: center; margin-bottom: 4px; }
+.vc-body { font-size: 0.9em; color: var(--vis-text-color) !important; line-height: 1.4; margin-top: 2px; }
+
+/* === SELECTED & DISABLED STATES === */
+.click-zone.selected { 
+    background-color: transparent; border: var(--sel-border-w) solid var(--sel-border-c);
+    border-radius: var(--sel-radius-tl);
+    border-top-left-radius: var(--sel-radius-tl); border-top-right-radius: var(--sel-radius-tr);
+    border-bottom-right-radius: var(--sel-radius-br); border-bottom-left-radius: var(--sel-radius-bl);
+    box-shadow: 0 0 var(--sel-shadow-w) var(--sel-shadow-c), inset 0 0 var(--sel-inset-w) 5px var(--sel-inset-c);
+}
+.click-zone.visual-card.selected {
+    background-color: var(--vis-bg-color); border-width: var(--vis-border-w); border-color: var(--sel-border-c); border-radius: var(--vis-radius);      
+    box-shadow: 0 0 var(--sel-shadow-w) var(--sel-shadow-c);
+}
+.click-zone.selected::after {
+    content: ''; position: absolute; inset: 0; background-color: var(--sel-bg-color); background-image: var(--sel-bg-image);
+    background-size: cover; opacity: var(--sel-bg-opacity); z-index: 1; pointer-events: none; border-radius: inherit;
+}
+.click-zone.disabled { cursor: not-allowed; border: var(--dis-border-w) solid var(--dis-border-c); opacity: 0.6; filter: grayscale(80%); }
+.click-zone.disabled::after {
+    content: ''; position: absolute; inset: 0; background-color: var(--dis-bg-color); background-image: var(--dis-bg-image);
+    background-size: cover; opacity: var(--dis-bg-opacity); z-index: 1; pointer-events: none; border-radius: inherit;
+}

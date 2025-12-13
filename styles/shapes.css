@@ -1,0 +1,32 @@
+/* === CUSTOM SHAPES (SVG) === */
+#game-wrapper .click-zone.custom-shape { background: none !important; border: none !important; box-shadow: none !important; clip-path: none !important; pointer-events: none !important; }
+#game-wrapper .click-zone.custom-shape .split-controls, #game-wrapper .click-zone.custom-shape .qty-badge, #game-wrapper .click-zone.custom-shape .text-content { pointer-events: auto !important; }
+#game-wrapper .click-zone.custom-shape::after, #game-wrapper .click-zone.custom-shape::before { display: none !important; }
+
+.shape-internal-stripes, .shape-bg-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
+/* Restored: Transition smoothness (from end of file) */
+.shape-bg-layer { transition: filter 0.3s ease-out; }
+
+.shape-poly { vector-effect: non-scaling-stroke; transition: fill-opacity 0.3s, stroke-opacity 0.3s; pointer-events: auto; cursor: pointer; fill: transparent; fill-opacity: 0; stroke: transparent; }
+
+/* Restored: HOVER (from end of file) */
+#game-wrapper .click-zone.custom-shape:not(.selected):not(.disabled):hover .shape-bg-layer {
+    filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.3));
+}
+#game-wrapper .click-zone.custom-shape:not(.selected):not(.disabled):hover .shape-poly {
+    stroke: none; stroke-width: 0; fill: #ffffff; fill-opacity: 0.1; 
+}
+
+/* Restored: SELECTED (from end of file - critical shadow fix) */
+#game-wrapper .click-zone.custom-shape.selected .shape-bg-layer {
+    filter: drop-shadow(0 0 15px var(--sel-shadow-c, #00ff00));
+}
+#game-wrapper .click-zone.custom-shape.selected .shape-poly { 
+    stroke: var(--sel-border-c, #00ff00); stroke-width: var(--sel-border-w, 3px); fill: var(--sel-bg-color, #00ff00); fill-opacity: var(--sel-bg-opacity, 0.1); 
+}
+
+/* Restored: DISABLED (from end of file) */
+#game-wrapper .click-zone.custom-shape.disabled .shape-bg-layer { filter: none; }
+#game-wrapper .click-zone.custom-shape.disabled .shape-poly {
+    stroke: var(--dis-border-c, #333); stroke-width: 1px; filter: grayscale(100%); cursor: not-allowed; fill: transparent; 
+}
