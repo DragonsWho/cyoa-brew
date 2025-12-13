@@ -35,10 +35,10 @@ export class ControlPanel {
 
     async toggleEditMode() {
         const btn = document.getElementById('edit-toggle');
-        
+
         if (!this.editor) {
             if (btn) {
-                btn.style.cursor = "wait"; 
+                btn.style.cursor = "wait";
                 btn.disabled = true;
                 btn.style.opacity = "0.5";
             }
@@ -52,11 +52,6 @@ export class ControlPanel {
             } catch (e) {
                 console.error("Failed to load editor:", e);
                 alert("Could not load editor module.");
-                if (btn) {
-                    btn.style.cursor = "";
-                    btn.disabled = false;
-                    btn.style.opacity = "";
-                }
                 return;
             } finally {
                 if (btn) {
@@ -68,51 +63,43 @@ export class ControlPanel {
         }
 
         document.body.classList.toggle('edit-mode-active');
-        
-        if (btn) {
-            btn.classList.toggle('active');
-        }
+
+        if (btn) btn.classList.toggle('active');
 
         const isActive = document.body.classList.contains('edit-mode-active');
-        
+        const pz = window.panzoomManager;
+
         if (isActive) {
             // === РЕЖИМ РЕДАКТОРА ВКЛЮЧЕН ===
             this.editor.enable();
             document.body.classList.add('show-zones');
-            
-            // Отключаем Panzoom
-            if (window.panzoomManager) {
-                window.panzoomManager.disable();
-                if (window.panzoomManager.instance) {
-                    window.panzoomManager.instance.reset(); 
-                }
-                const wrapper = document.getElementById('game-wrapper');
-                if (wrapper) wrapper.style.transform = ''; 
-                
-                // РАЗРЕШАЕМ скролл страницы
-                document.body.style.overflow = 'auto';
-                document.documentElement.style.overflow = 'auto';
-                document.body.style.touchAction = 'auto';
-            }
+
+            // Отключаем Panzoom (только если он вообще используется)
+            pz?.disable();
+
+            // Важно: чистим возможные inline-стили, чтобы ПК-скролл не "залипал"
+            document.body.style.overflow = '';
+            document.documentElement.style.overflow = '';
+            document.body.style.touchAction = '';
+
+            // На всякий случай сбрасываем transform
+            const wrapper = document.getElementById('game-wrapper');
+            if (wrapper) wrapper.style.transform = '';
 
         } else {
             // === РЕЖИМ РЕДАКТОРА ВЫКЛЮЧЕН ===
             this.editor.disable();
-            document.body.classList.remove('show-zones');
-            document.body.classList.remove('edit-mode-choice');
-            document.body.classList.remove('edit-mode-group');
-            
-            // Включаем Panzoom
-            if (window.panzoomManager) {
-                // БЛОКИРУЕМ скролл страницы
-                document.body.style.overflow = 'hidden';
-                document.documentElement.style.overflow = 'hidden';
-                document.body.style.touchAction = 'none';
-                
-                window.panzoomManager.enable();
-            }
+            document.body.classList.remove('show-zones', 'edit-mode-choice', 'edit-mode-group');
+
+            // Возвращаем дефолтный скролл (ПК) через сброс inline
+            document.body.style.overflow = '';
+            document.documentElement.style.overflow = '';
+            document.body.style.touchAction = '';
+
+            // Включаем Panzoom только на мобилках (внутри enable() уже есть guard)
+            pz?.enable();
         }
-        
+
         console.log(isActive ? '✏️ Edit mode ON' : '✏️ Edit mode OFF');
     }
 }
