@@ -1,19 +1,62 @@
 /* === RESET & BASE === */
 * { box-sizing: border-box; }
+
 html, body {
     width: 100%; height: 100%; margin: 0; padding: 0;
     background: #1a1a1a; color: #eee;
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    overflow: hidden; /* Panzoom fix */
-    touch-action: none;
-    position: fixed;
+    
+    /* ПО УМОЛЧАНИЮ (ПК) - обычный браузерный скролл */
+    overflow: auto; 
+    touch-action: auto; 
+    position: static;
+    
+    /* Важно: обычный курсор по умолчанию */
+    cursor: default; 
+}
+
+/* === MOBILE MODE ONLY === */
+/* Эти стили сработают ТОЛЬКО если JS определил мобильное устройство */
+body.mobile-panzoom-active {
+    overflow: hidden !important; 
+    position: fixed !important; 
+    touch-action: none !important;
+    cursor: grab; /* Курсор "рука" только на мобильном (если там вообще есть курсор) */
+}
+
+body.mobile-panzoom-active:active {
+    cursor: grabbing;
+}
+
+/* === GAME WRAPPER === */
+#game-wrapper { 
+    transform-origin: center top; 
+    transition: none; 
+    position: relative; 
+    min-height: 100vh; 
+    
+    /* Отступы, чтобы контент не прилипал к краям */
+    padding-top: 20px; 
+    padding-bottom: 150px; 
+    
+    display: flex; 
+    flex-direction: column; 
+    align-items: center; 
+    justify-content: flex-start;
+}
+
+/* Сброс трансформаций для ПК (на всякий случай) */
+body:not(.mobile-panzoom-active) #game-wrapper {
+    transform: none !important;
 }
 
 /* Scroll for Editor Mode */
 body.edit-mode-active {
-    overflow: auto !important; position: static !important; touch-action: auto !important;
+    overflow: auto !important; 
+    position: static !important; 
+    touch-action: auto !important;
+    cursor: default !important;
 }
-
 /* === GAME WRAPPER === */
 #game-wrapper { 
     transform-origin: center top; transition: none; 
@@ -22,6 +65,9 @@ body.edit-mode-active {
     display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
 }
 body.edit-mode-active #game-wrapper { transform: none !important; overflow: visible; }
+
+
+
 
 .page-container { position: relative; margin-bottom: 0; line-height: 0; box-shadow: 0 0 30px rgba(0,0,0,0.5); max-width: 100%; }
 .page-image { display: block; max-width: 100%; height: auto; user-select: none; pointer-events: none; }
